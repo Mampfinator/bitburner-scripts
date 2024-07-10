@@ -1,0 +1,9 @@
+{
+  "reserveHomeRam": 32,
+  "enableHacking": true,
+  "enableNuking": true,
+  "purchaseUpgrades": false,
+  "purchaseServers": false,
+  "purchaseRamThreshold": 512,
+  "schedulerThreads": 1500
+}

@@ -1,0 +1,1 @@
+Skeleton based on https://github.com/bitburner-official/typescript-template.
