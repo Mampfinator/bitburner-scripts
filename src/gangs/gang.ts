@@ -1,4 +1,4 @@
-import { GangTaskStats } from "@ns";
+import { GangTaskStats, NS } from "@ns";
 
 const { React } = globalThis;
 
@@ -13,7 +13,7 @@ enum GangMode {
 
 const MAX_GANG_SIZE = 12;
 
-function findMax<T>(arr: T[], fn: (element: T, index: number) => number) {
+function findMax<T>(arr: T[], fn: (element: T, index: number) => number): T | undefined {
     let highest = -1;
     let highestIndex = -1;
 
@@ -28,8 +28,7 @@ function findMax<T>(arr: T[], fn: (element: T, index: number) => number) {
     return arr[highestIndex];
 }
 
-/** @param {NS} ns */
-export async function main(ns) {
+export async function main(ns: NS) {
     if (!globalThis.eventEmitter) {
         throw new Error(
             `This script requires globalThis.eventEmitter to work. Run events.js on "home" to set it up.`,
@@ -49,9 +48,11 @@ export async function main(ns) {
     /**
      * Task for reducing wanted level. Should normally be `Vigilante Justice` or `Ethical Hacking`.
      */
-    const wantedTask = findMax(tasks, (task) => {
-        -task.baseWanted;
-    });
+    const wantedTask = findMax(tasks, (task) => -task.baseWanted);
+    if (!wantedTask) {
+        ns.tprint("ERROR: failed to find a suitable wanted task. Aborting.");
+        return;
+    }
 
     // For notifications about dead members
     const knownMembers = new Set(ns.gang.getMemberNames());
@@ -113,7 +114,7 @@ export async function main(ns) {
         }
 
         if (mode === GangMode.Territory) {
-            for (const member of memberInfo) {
+            for (const member of members) {
                 ns.gang.setMemberTask(member, "Territory Warfare");
             }
         } else {
@@ -121,15 +122,12 @@ export async function main(ns) {
                 ns.gang.getMemberInformation(member),
             );
 
-            /**
-             * @type {GangTaskStats[]}
-             */
-            let potentialTasks;
+            let potentialTasks: GangTaskStats[];
             if (mode === GangMode.Money) {
                 potentialTasks = tasks
                     .filter((task) => task.baseMoney > 0)
                     .sort((a, b) => b.baseMoney - a.baseMoney);
-            } else if (mode === GangMode.Respect) {
+            } else { // mode === GangMode.Respect
                 potentialTasks = tasks
                     .filter((task) => task.baseRespect > 0)
                     .sort((a, b) => b.baseRespect - a.baseRespect);
@@ -139,7 +137,7 @@ export async function main(ns) {
             if (ns.fileExists("Formulas.exe", "home")) {
                 let wantedBudget = 0;
 
-                for (const member of members) {
+                for (const member of memberInfo) {
                     ns.gang.setMemberTask(member.name, wantedTask.name);
                     wantedBudget += ns.formulas.gang.wantedLevelGain(
                         ns.gang.getGangInformation(),
@@ -182,7 +180,7 @@ export async function main(ns) {
                             `Set ${member.name} to ${task.name}, for new wanted gain of ${wantedBudget} + ${gain} = ${wantedBudget + gain}`,
                         );
 
-                        gang.setMemberTask(member.name, task.name);
+                        ns.gang.setMemberTask(member.name, task.name);
                         wantedBudget += gain;
                     }
                 }
@@ -191,11 +189,7 @@ export async function main(ns) {
     }
 }
 
-/**
- * @param {NS} ns
- * @returns { Promise<string | null> } the name of the recruited member, or null if no member has been recruited.
- */
-async function recruitMember(ns) {
+async function recruitMember(ns: NS): Promise<string | null> {
     const res = await fetch("https://api.namefake.com/united-states/random")
         .then((res) => res.json())
         .catch(console.error);
@@ -222,17 +216,16 @@ async function recruitMember(ns) {
 
 /**
  * Finds the other gang with the most power that still has territory.
- * @param {NS} ns
- * @returns { string | null } the other gang, or null if no other gangs have any territory.
+ * @returns the other gang, or null if no other gangs have any territory.
  */
-function getHighestPowerOtherGang(ns) {
+function getHighestPowerOtherGang(ns: NS) {
     const myGang = ns.gang.getGangInformation();
     const others = ns.gang.getOtherGangInformation();
 
     const [maxPowerGang] = Object.entries(others)
         .filter(([name, info]) => name !== myGang.faction && info.territory > 0)
         .reduce((highest, [name, info]) =>
-            highest[1].power > info.power ? highest : [name, info.power],
+            highest[1].power > info.power ? highest : [name, info],
         );
 
     return maxPowerGang ?? null;

@@ -1,7 +1,7 @@
 //! Main monitoring loop. Use `watch` and `unwatch` to add/remove things from monitor.
-import { readPort } from "util.js";
-import { calcThreads } from "free-network-threads.js";
-import { NS, Server } from "@ns";
+import { NS } from "@ns";
+import { readPort } from "/lib";
+import { calcThreads } from "/lib/network-threads";
 
 export const MONITORING_PORT = 10;
 

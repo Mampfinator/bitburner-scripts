@@ -1,17 +1,19 @@
-import { WorkerPool, HWGWWorkerBatch } from "hacking/pool.js";
-import { getServers } from "util.js";
-import { calcThreads } from "free-network-threads.js";
+import { NS, Server } from "@ns";
+import { getServers } from "/lib/servers/servers";
+import { WorkerPool } from "./workers/pool";
+import { WorkerMode } from "./workers/consts";
+import { calcThreads } from "/lib/network-threads";
+import { HWGWWorkerBatch } from "./workers/batch";
 
-function getPossibleTargetServers(ns) {
+function getPossibleTargetServers(ns: NS) {
     return getServers(ns).filter(
-        (server) => server.hasAdminRights && server.moneyMax > 0,
+        (server) => server.hasAdminRights && (server.moneyMax ?? 0) > 0,
     );
 }
 
 const DELAY = 30000;
 
-/** @param {NS} ns */
-export async function main(ns) {
+export async function main(ns: NS) {
     ns.disableLog("ALL");
     ns.enableLog("exec");
 
@@ -34,7 +36,7 @@ export async function main(ns) {
         pool.killAll();
     });
 
-    function getPreparationThreads(hostname) {
+    function getPreparationThreads(hostname: string) {
         let growByFactor =
             1 /
             (ns.getServerMoneyAvailable(hostname) /
@@ -56,12 +58,9 @@ export async function main(ns) {
 
     /**
      * Prepares a server by maximizing its money and minimizing its security.
-     * @param {string} hostname
-     * @param {number} weakenThreads
-     * @param {number} growThreads
      * @returns { Promise<boolean> } whether preparing the server was successful.
      */
-    async function prepare(hostname, weakenThreads, growThreads) {
+    async function prepare(hostname: string, weakenThreads: number, growThreads: number) {
         const weakenTime = ns.getWeakenTime(hostname);
         const growTime = ns.getGrowTime(hostname);
 
@@ -84,7 +83,7 @@ export async function main(ns) {
             }
             cleanup.push(() => weakenGroup.kill());
             ns.print(`Starting weakening on ${hostLog}...`);
-            await weakenGroup.start(hostname, "weaken");
+            await weakenGroup.start(hostname, WorkerMode.Weaken);
             ns.print(`Started weakening on ${hostLog}.`);
             promises.push(weakenGroup.nextDone());
             await ns.asleep(weakenTime - growTime - 3000);
@@ -100,7 +99,7 @@ export async function main(ns) {
             }
             cleanup.push(() => growGroup.kill());
             ns.print(`Starting growing on ${hostLog}...`);
-            await growGroup.start(hostname, "grow");
+            await growGroup.start(hostname, WorkerMode.Grow);
             ns.print(`Started growing on ${hostLog}.`);
             promises.push(growGroup.nextDone());
         }
@@ -118,13 +117,10 @@ export async function main(ns) {
         return success;
     }
 
-    /**
-     * @param { Server } server
-     */
-    function isPrepared(server) {
+    function isPrepared(server: Server) {
         return (
-            server.moneyAvailable >= server.moneyMax &&
-            server.hackDifficulty <= server.minDifficulty
+            (server.moneyAvailable ?? 0) >= (server.moneyMax ?? 0) &&
+            (server.hackDifficulty ?? 0) <= (server.minDifficulty ?? 0)
         );
     }
 
@@ -162,7 +158,7 @@ export async function main(ns) {
                 continue;
             }
 
-            const cycles = new Array(
+            const cycles = new Array<HWGWWorkerBatch | null>(
                 Math.floor(ns.getWeakenTime(server.hostname) / DELAY),
             ).fill(null);
             // until we can figure out how to do this better, we only reserve if we can completely saturate a server. This requires a lot of RAM, but since home has a PB, that's fine.
@@ -177,7 +173,12 @@ export async function main(ns) {
             );
 
             for (let i = 0; i < cycles.length; i++) {
-                const batch = pool.reserveBatch(server.hostname, 0.75);
+                const batch = pool.reserveBatch(server.hostname, { hackRatio: 0.75 });
+                if (!batch) {
+                    ns.print("ERROR: Failed to start batch.");
+                    for (const cycle of cycles) cycle?.kill();
+                    break;
+                }
                 cycles[i] = batch;
 
                 const schedule = async () => {

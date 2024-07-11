@@ -1,3 +1,5 @@
+import { NetscriptPort, NS } from "@ns";
+
 /**
  * Port read by Workers.
  */
@@ -6,7 +8,7 @@ const WORKER_MESSAGE_PORT_BASE = 10000;
 /**
  * @returns {Generator<{event: string, pid: number, data: Record<string, any>}, void>}
  */
-function* readPort(port) {
+function* readPort(port: NetscriptPort) {
     while (true) {
         const message = port.read();
         if (message === "NULL PORT DATA") return;
@@ -16,8 +18,7 @@ function* readPort(port) {
     }
 }
 
-/** @param {NS} ns */
-export async function main(ns) {
+export async function main(ns: NS) {
     ns.disableLog("sleep");
 
     ns.atExit(() => {
@@ -28,14 +29,14 @@ export async function main(ns) {
 
     let stopped = true;
 
-    const poolPort = ns.args[0];
+    const poolPort = ns.args[0] as number;
     if (!poolPort || typeof poolPort !== "number")
         throw new Error(`Invalid pool port: ${poolPort}.`);
 
-    let target = ns.args[1];
+    let target = ns.args[1] as string | undefined;
     if (target === "") target = undefined;
 
-    let mode = ns.args[2];
+    let mode = ns.args[2] as string | undefined;
     if (mode === "") mode = undefined;
 
     let autoContinue = ns.args[3] ?? true;
@@ -46,11 +47,8 @@ export async function main(ns) {
 
     /**
      * Send a message back to the Pool.
-     * @param {NS} ns
-     * @param {string} event
-     * @param {object} data
      */
-    function send(ns, event, data) {
+    function send(ns: NS, event: string, data: Record<string, any>) {
         ns.writePort(poolPort, {
             event,
             pid: ns.pid,
@@ -97,7 +95,7 @@ export async function main(ns) {
             continue;
         }
 
-        let promise;
+        let promise: Promise<number>;
         if (mode === "hack") promise = ns.hack(target);
         else if (mode === "weaken") promise = ns.weaken(target);
         else if (mode === "grow") promise = ns.grow(target);

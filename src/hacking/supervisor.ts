@@ -1,25 +1,24 @@
 import { NS, Server } from "@ns";
-import {
-    WorkerPool,
-    HWGWWorkerBatch,
-    WorkerGroup,
-    WorkerMode,
-} from "hacking/pool.js";
+import { WorkerMode } from "./workers/consts";
+import { type WorkerGroup } from "./workers/group";
+import { WorkerPool } from "./workers/pool";
 import { MONITORING_PORT } from "monitoring/monitor.js";
 import { getServers } from "/lib/servers/servers";
 import { calcThreads } from "/lib/network-threads";
 
+export interface SupervisorSettings {
+    limitServers?: number;
+    reserveHomeRam?: number;
+    hackRatio?: number;
+    exclude?: string[];
+}
+
 export async function main(ns: NS) {
     const startedAt = Math.floor(Date.now() / 1000);
     const settingsText = ns.read("hacking/supervisor-settings.json");
-    /**
-     * @type {{
-     *  limitServers?: number,
-     *  hackRatio?: number,
-     *  exclude?: string[]
-     * }}
-     */
-    const settings = JSON.parse(settingsText.length > 0 ? settingsText : "{}");
+    const settings: SupervisorSettings = JSON.parse(
+        settingsText.length > 0 ? settingsText : "{}",
+    );
 
     const exclude = new Set(settings.exclude ?? []);
 
