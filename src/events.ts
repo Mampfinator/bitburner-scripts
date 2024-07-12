@@ -7,11 +7,11 @@ class EventEmitter {
     >();
 
     /**
-     * @param {string | symbol | number} event the event to listen to
-     * @param {(...args: any[]) => void} callback
-     * @returns {number} this callback's ID. Use with `remove` to remove this callback again.
+     * @param event the event to listen to
+     * @param callback
+     * @returns this callback's ID. Use with `remove` to remove this callback again.
      */
-    on(event: string | symbol | number, callback: (...args: any[]) => void) {
+    on(event: string | symbol | number, callback: (...args: any[]) => void): number {
         const callbacks = this.#callbacks.get(event);
         if (!callbacks) {
             this.#callbacks.set(event, [callback]);
@@ -58,11 +58,9 @@ class EventEmitter {
     }
 
     /**
-     * @param {string | symbol | number} event
-     * @param {number} id
      * @returns the removed callback, or undefined if none was found.
      */
-    remove(event: string | symbol | number, id: number) {
+    remove(event: string | symbol | number, id: number): ((...args: any[]) => void) | undefined {
         const callbacks = this.#callbacks.get(event);
         if (!callbacks) return undefined;
 

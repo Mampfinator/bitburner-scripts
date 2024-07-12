@@ -57,10 +57,7 @@ export async function main(ns: NS) {
     // For notifications about dead members
     const knownMembers = new Set(ns.gang.getMemberNames());
 
-    /**
-     * @type {keyof GangMode}
-     */
-    let lastMode;
+    let lastMode: GangMode | undefined = undefined;
 
     while (true) {
         await ns.sleep(20);
