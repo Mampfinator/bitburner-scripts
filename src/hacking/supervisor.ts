@@ -412,8 +412,7 @@ export async function main(ns: NS) {
                 }),
             );
         }
-
-        pool.processMessages();
+        
         await ns.asleep(20);
     }
 }

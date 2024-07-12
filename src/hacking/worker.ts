@@ -5,10 +5,7 @@ import { NetscriptPort, NS } from "@ns";
  */
 const WORKER_MESSAGE_PORT_BASE = 10000;
 
-/**
- * @returns {Generator<{event: string, pid: number, data: Record<string, any>}, void>}
- */
-function* readPort(port: NetscriptPort) {
+function* readPort(port: NetscriptPort): Generator<{event: string, pid: number, data: Record<string, any>}, void> {
     while (true) {
         const message = port.read();
         if (message === "NULL PORT DATA") return;
@@ -22,7 +19,7 @@ export async function main(ns: NS) {
     ns.disableLog("sleep");
 
     ns.atExit(() => {
-        send(ns, "killed", {});
+        send("killed");
     });
 
     const port = ns.getPortHandle(WORKER_MESSAGE_PORT_BASE + ns.pid);
@@ -45,15 +42,13 @@ export async function main(ns: NS) {
         `Got initial args - Target: ${target}/Mode: ${mode}/Auto continue: ${autoContinue}`,
     );
 
+    const pid = ns.pid;
+
     /**
      * Send a message back to the Pool.
      */
-    function send(ns: NS, event: string, data: Record<string, any>) {
-        ns.writePort(poolPort, {
-            event,
-            pid: ns.pid,
-            data,
-        });
+    function send(event: string, data?: Record<string, any>) {
+        globalThis.eventEmitter.emit(`worker:${event}`, { ...(data ?? {}), pid });
     }
 
     while (true) {
@@ -65,7 +60,7 @@ export async function main(ns: NS) {
 
                 stopped = true;
 
-                send(ns, "stopped", {});
+                send("stopped");
             } else if (event === "start") {
                 ns.print(
                     `Got start event: ${data.mode}:${data.target} (Continue: ${data.autoContinue ? "auto" : "manual"}).`,
@@ -82,11 +77,11 @@ export async function main(ns: NS) {
 
                 stopped = false;
 
-                send(ns, "started", {});
+                send("started");
             } else if (event === "resume") {
                 ns.print(`Got resume event.`);
                 stopped = false;
-                send(ns, "resumed", {});
+                send("resumed");
             }
         }
 
@@ -103,7 +98,7 @@ export async function main(ns: NS) {
 
         const result = await promise;
 
-        send(ns, "done", {
+        send("done", {
             mode: mode,
             target: target,
             result,

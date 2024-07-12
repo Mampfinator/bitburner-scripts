@@ -208,8 +208,6 @@ export async function main(ns: NS) {
             workers.set(server.hostname, cycles);
         }
 
-        pool.processMessages();
-
         await ns.asleep(20);
     }
 }

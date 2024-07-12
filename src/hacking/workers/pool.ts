@@ -54,12 +54,56 @@ export class WorkerPool {
         this.ns = ns;
         this.workerRam = this.ns.getScriptRam("hacking/worker.js");
 
-        if (this.workerRam === 0)
-            throw new Error(`Could not find worker script.`);
+        const registeredEvents: {id: number, name: string}[] = [];
 
         this.ns.atExit(() => {
             this.killAll();
+
+            for (const {name, id} of registeredEvents) {
+                globalThis.eventEmitter.remove(name, id);
+            }
         }, "workerpool-cleanup");
+
+        const doneId = globalThis.eventEmitter.on("worker:done", (data) => {
+            this.byPids.get(data.pid)?.done({...data, pid: undefined});
+        });
+        registeredEvents.push({id: doneId, name: "worker:done"});
+
+        const stoppedId = globalThis.eventEmitter.on("worker:stopped", ({pid}: {pid: number}) => {
+            // TODO
+        });
+        registeredEvents.push({id: stoppedId, name: "worker:stopped"});
+
+        const resumedId = globalThis.eventEmitter.on("worker:resumed", ({pid}: {pid: number}) => {
+            this.resumeResolvers.get(pid)?.(true);
+        });
+        registeredEvents.push({id: resumedId, name: "worker:resumed"});
+
+        const startedId = globalThis.eventEmitter.on("worker:started", ({pid}: {pid: number}) => {
+            this.startResolvers.get(pid)?.(true);
+        });
+        registeredEvents.push({id: startedId, name: "worker:started"});
+
+        const killedId = globalThis.eventEmitter.on("worker:killed", ({pid}: {pid: number}) => {
+            if (this.ns.isRunning(pid)) {
+                this.ns.print(
+                    `WARNING: Got killed event from ${pid}, but worker still exists. Forgetting, but not killing.`,
+                );
+                return;
+            }
+            const worker = this.byPids.get(pid);
+            if (!worker) {
+                this.ns.print(
+                    `WARNING: Got killed event from ${pid} but worker did not exist.`,
+                );
+                return;
+            }
+            this.byPids.delete(pid);
+        });
+        registeredEvents.push({id: killedId, name: "worker:killed"});
+
+        if (this.workerRam === 0)
+            throw new Error(`Could not find worker script.`);
 
         this.options = options ?? {};
     }
@@ -107,39 +151,6 @@ export class WorkerPool {
 
             if (!message || typeof message !== "object") continue;
             yield message;
-        }
-    }
-
-    /**
-     * Act on incoming messages from workers.
-     * Should be called in a `while(true)` loop with a decently low `ns.(a)sleep` between every call.
-     */
-    processMessages() {
-        for (const { event, pid, data } of this.readPort()) {
-            // Worker was shut down.
-            if (event === "killed") {
-                if (this.ns.isRunning(pid)) {
-                    this.ns.tprint(
-                        `WARNING: Got killed event from ${pid}, but worker still exists. Forgetting, but not killing.`,
-                    );
-                }
-                const worker = this.byPids.get(pid);
-                if (!worker) {
-                    this.ns.print(
-                        `WARNING: Got killed event from ${pid} but worker did not exist.`,
-                    );
-                    continue;
-                }
-                this.byPids.delete(pid);
-            } else if (event === "started") {
-                this.startResolvers.get(pid)?.(true);
-                this.startResolvers.delete(pid);
-            } else if (event === "resumed") {
-                this.resumeResolvers.get(pid)?.(true);
-                this.resumeResolvers.delete(pid);
-            } else if (event === "done") {
-                this.byPids.get(pid)?.done(data as any);
-            }
         }
     }
 
