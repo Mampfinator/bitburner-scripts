@@ -5,7 +5,9 @@ import { NetscriptPort, NS } from "@ns";
  */
 const WORKER_MESSAGE_PORT_BASE = 10000;
 
-function* readPort(port: NetscriptPort): Generator<{event: string, pid: number, data: Record<string, any>}, void> {
+function* readPort(
+    port: NetscriptPort,
+): Generator<{ event: string; pid: number; data: Record<string, any> }, void> {
     while (true) {
         const message = port.read();
         if (message === "NULL PORT DATA") return;
@@ -48,7 +50,10 @@ export async function main(ns: NS) {
      * Send a message back to the Pool.
      */
     function send(event: string, data?: Record<string, any>) {
-        globalThis.eventEmitter.emit(`worker:${event}`, { ...(data ?? {}), pid });
+        globalThis.eventEmitter.emit(`worker:${event}`, {
+            ...(data ?? {}),
+            pid,
+        });
     }
 
     while (true) {

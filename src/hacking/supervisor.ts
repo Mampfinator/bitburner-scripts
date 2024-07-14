@@ -412,7 +412,7 @@ export async function main(ns: NS) {
                 }),
             );
         }
-        
+
         await ns.asleep(20);
     }
 }

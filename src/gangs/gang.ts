@@ -13,7 +13,10 @@ enum GangMode {
 
 const MAX_GANG_SIZE = 12;
 
-function findMax<T>(arr: T[], fn: (element: T, index: number) => number): T | undefined {
+function findMax<T>(
+    arr: T[],
+    fn: (element: T, index: number) => number,
+): T | undefined {
     let highest = -1;
     let highestIndex = -1;
 
@@ -124,7 +127,8 @@ export async function main(ns: NS) {
                 potentialTasks = tasks
                     .filter((task) => task.baseMoney > 0)
                     .sort((a, b) => b.baseMoney - a.baseMoney);
-            } else { // mode === GangMode.Respect
+            } else {
+                // mode === GangMode.Respect
                 potentialTasks = tasks
                     .filter((task) => task.baseRespect > 0)
                     .sort((a, b) => b.baseRespect - a.baseRespect);

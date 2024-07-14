@@ -11,7 +11,10 @@ class EventEmitter {
      * @param callback
      * @returns this callback's ID. Use with `remove` to remove this callback again.
      */
-    on(event: string | symbol | number, callback: (...args: any[]) => void): number {
+    on(
+        event: string | symbol | number,
+        callback: (...args: any[]) => void,
+    ): number {
         const callbacks = this.#callbacks.get(event);
         if (!callbacks) {
             this.#callbacks.set(event, [callback]);
@@ -60,7 +63,10 @@ class EventEmitter {
     /**
      * @returns the removed callback, or undefined if none was found.
      */
-    remove(event: string | symbol | number, id: number): ((...args: any[]) => void) | undefined {
+    remove(
+        event: string | symbol | number,
+        id: number,
+    ): ((...args: any[]) => void) | undefined {
         const callbacks = this.#callbacks.get(event);
         if (!callbacks) return undefined;
 

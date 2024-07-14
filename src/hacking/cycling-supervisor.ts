@@ -60,7 +60,11 @@ export async function main(ns: NS) {
      * Prepares a server by maximizing its money and minimizing its security.
      * @returns { Promise<boolean> } whether preparing the server was successful.
      */
-    async function prepare(hostname: string, weakenThreads: number, growThreads: number) {
+    async function prepare(
+        hostname: string,
+        weakenThreads: number,
+        growThreads: number,
+    ) {
         const weakenTime = ns.getWeakenTime(hostname);
         const growTime = ns.getGrowTime(hostname);
 
@@ -173,7 +177,9 @@ export async function main(ns: NS) {
             );
 
             for (let i = 0; i < cycles.length; i++) {
-                const batch = pool.reserveBatch(server.hostname, { hackRatio: 0.75 });
+                const batch = pool.reserveBatch(server.hostname, {
+                    hackRatio: 0.75,
+                });
                 if (!batch) {
                     ns.print("ERROR: Failed to start batch.");
                     for (const cycle of cycles) cycle?.kill();
