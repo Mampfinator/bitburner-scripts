@@ -3,8 +3,6 @@ import { getServers } from "/lib/servers/servers";
 
 const { React } = globalThis;
 
-const e = React.createElement;
-
 interface DashboardProps {
     ns: NS;
     initialAuto?: boolean;
@@ -16,16 +14,16 @@ interface DashboardProps {
 function Dashboard(props: DashboardProps) {
     const { ns, onToggleAuto, onSetMinRam, onSetMinMoney } = props;
 
-    return e("div", null, [
-        e(AutoBuyConfiguration, {
-            ns,
-            onToggleAuto,
-            onSetMinRam,
-            onSetMinMoney,
-        }),
-        e("hr", { style: { width: "100%" } }),
-        e(ManualBuyMenu, { ns }),
-    ]);
+    return <div>
+        <AutoBuyConfiguration 
+            ns={ns}
+            onToggleAuto={onToggleAuto}
+            onSetMinMoney={onSetMinMoney}
+            onSetMinRam={onSetMinRam}
+        />
+        <hr style={{width: "100%"}}/>
+        <ManualBuyMenu ns={ns}/>
+    </div>
 }
 
 interface AutobuyProps {
@@ -43,66 +41,47 @@ function AutoBuyConfiguration(props: AutobuyProps) {
     const [minRam, setMinRam] = React.useState(0);
     const [minMoney, setMinMoney] = React.useState(0);
 
-    return e(
-        "div",
-        {
-            style: {
-                display: "flex",
-                flexDirection: "column",
+    return <div style={{
+        display: "flex",
+        flexDirection: "column",
+        padding: "0.25rem",
+        margin: "5px",
+        fontSize: "16pt",
+    }}>
+        <button 
+            style={{
+                backgroundColor: auto ? "green" : "red",
                 padding: "0.25rem",
-                margin: "5px",
-                fontSize: "16pt",
-            },
-        },
-        [
-            e(
-                "button",
-                {
-                    style: {
-                        backgroundColor: auto ? "green" : "red",
-                        padding: "0.25rem",
-                    },
-                    onClick: () => {
-                        setAuto(!auto);
-                        onToggleAuto();
-                    },
-                },
-                `Automatically buy new servers: ${auto ? "Enabled" : "Disabled"}`,
-            ),
-            e(
-                "label",
-                { for: "min-ram" },
-                `Minimum RAM for new servers: ${ns.formatRam(2 ** minRam)}`,
-            ),
-            e("input", {
-                type: "range",
-                id: "min-ram",
-                min: 0,
-                max: 20,
-                value: minRam,
-                onInput: (event) => {
-                    const exp = Number(event.currentTarget.value);
-                    setMinRam(exp);
-                    onSetMinRam(exp);
-                },
-            }),
-            e(
-                "label",
-                { for: "min-money" },
-                `Keep at least \$${ns.formatNumber(minMoney)}`,
-            ),
-            e("input", {
-                type: "number",
-                id: "min-money",
-                min: 0,
-                onInput: (event) => {
-                    const money = Number(event.currentTarget.value);
-                    setMinMoney(money);
-                    onSetMinMoney(money);
-                },
-            }),
-        ],
-    );
+            }} 
+            onClick={() => {
+                setAuto(!auto);
+                onToggleAuto();
+            }}
+        >Automatically buy new servers: {auto ? "Enabled" : "Disabled"}</button>
+        <label htmlFor="min-ram">`Minimum RAM for new servers: {ns.formatRam(2 ** minRam)}</label>
+        <input 
+            type="range" 
+            id="min-ram" 
+            min={0} 
+            max={0} 
+            value={minRam} 
+            onInput={(event) => {
+                const exp = Number(event.currentTarget.value);
+                setMinRam(exp);
+                onSetMinRam(exp);
+            }}
+        />
+        <label htmlFor="min-money">Keep at least ${ns.formatNumber(minMoney)}</label>
+        <input 
+            type="number" 
+            min={0} 
+            onInput={(event) => {
+                const money = Number(event.currentTarget.value);
+                setMinMoney(money);
+                onSetMinMoney(money);
+            }}
+        />
+    </div>
 }
 
 interface ManualBuyProps {
@@ -138,54 +117,25 @@ function ManualBuyMenu(props: ManualBuyProps) {
         }
     }
 
-    return e(
-        "form",
-        {
-            onSubmit: (e) => {
-                // We do **not** want to submit this to a server, we just act on it locally
-                e.preventDefault();
-                buy();
-                return false;
-            },
-            style: {
-                display: "flex",
-                flexDirection: "column",
-                padding: "0.25rem",
-                margin: "5px",
-                fontSize: "16pt",
-            },
-        },
-        [
-            e(
-                "label",
-                { for: "server-ram" },
-                `RAM: ${typeof ramExp == "number" ? ns.formatRam(2 ** ramExp) : "? GB"} | Price: \$${ns.formatNumber(ns.getPurchasedServerCost(2 ** ramExp))}`,
-            ),
-            e("input", {
-                id: "server-ram",
-                type: "range",
-                min: 0,
-                max: 20,
-                step: 1,
-                value: ramExp,
-                onInput: (event) => {
-                    setRamExponent(
-                        Number((event.nativeEvent.target as any).value),
-                    );
-                },
-            }),
-            e("input", {
-                id: "server-name",
-                type: "text",
-                placeholder: "Server Name (defaults to home)",
-                value: name,
-                onInput: (e) => {
-                    setName(e.currentTarget.value);
-                },
-            }),
-            e("input", { type: "submit", value: "Manually Buy" }),
-        ],
-    );
+    return <form 
+        onSubmit={e => {
+            e.preventDefault();
+            buy();
+            return false;
+        }}
+        style={{
+            display: "flex",
+            flexDirection: "column",
+            padding: "0.25rem",
+            margin: "5px",
+            fontSize: "16pt",
+        }}
+    >
+        <label htmlFor="server-ram">RAM: {typeof ramExp == "number" ? ns.formatRam(2 ** ramExp) : "? GB"} | Price: ${ns.formatNumber(ns.getPurchasedServerCost(2 ** ramExp))}</label>
+        <input id="server-ram" type="range" min={0} max={20} step={1} value={ramExp} onInput={event => setRamExponent(Number(event.currentTarget.value))}/>
+        <input id="server-name" type="text" placeholder="Server Name (defaults to home)" value={name} onInput={e => setName(e.currentTarget.value)}/>
+        <input type="submit" value="Manually Buy"/>
+    </form>
 }
 
 export async function main(ns: NS) {
@@ -197,21 +147,13 @@ export async function main(ns: NS) {
     let minMoney = 0;
     let minRamExp = 0;
 
-    const dashboardNode = e(Dashboard, {
-        ns,
-        onToggleAuto: () => (auto = !auto),
-        initialAuto: auto,
-        onSetMinRam: (ramExp) => (minRamExp = ramExp),
-        onSetMinMoney: (money) => (minMoney = money),
-    });
-
-    if (!dashboardNode) {
-        ns.tprint(
-            "ERROR: Failed to initialize server buy dashboard. Check console for potential React errors.",
-        );
-    }
-
-    ns.printRaw(dashboardNode as ReactNode);
+    ns.printRaw(<Dashboard 
+        ns={ns}
+        initialAuto={auto}
+        onToggleAuto={() => auto = !auto}
+        onSetMinRam={ramExp => minRamExp = ramExp}
+        onSetMinMoney={money => minMoney = money} 
+    />);
 
     while (true) {
         await ns.asleep(50);
