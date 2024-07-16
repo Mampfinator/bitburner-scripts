@@ -5,10 +5,7 @@ declare global {
 }
 
 export async function main(ns: NS) {
-    const settings = JSON.parse(ns.read("autostart-settings.json"));
-
-    // polyfill stuff for window/globalThis
-    ns.run("events.js", { temporary: true });
+    ns.run("system/load.js", { temporary: true });
 
     // reset monitoring
     ns.run("monitoring/cli.js", { temporary: true }, "reset");

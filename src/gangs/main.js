@@ -1,3 +1,4 @@
+//! OLD GANG MAIN SCRIPT; THIS ONLY EXISTS FOR REFERENCE WHILE I'M IRONING OUT gang/gang.ts.
 /** @param {NS} ns */
 export async function main(ns) {
     ns.disableLog("ALL");

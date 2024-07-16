@@ -1,5 +1,6 @@
 import { NS } from "@ns";
-import { getServers } from "./lib/servers/servers";
+import { register } from "./system/memory";
+import { getServerNames } from "./lib/servers/names";
 
 const PORT_CRACKERS: [string, (ns: NS, target: string) => void][] = [
     ["BruteSSH.exe", (ns, target) => ns.brutessh(target)],
@@ -9,7 +10,6 @@ const PORT_CRACKERS: [string, (ns: NS, target: string) => void][] = [
     ["SQLInject.exe", (ns, target) => ns.sqlinject(target)],
 ];
 
-/** @param {NS} ns */
 export async function main(ns: NS) {
     while (true) {
         const crackers = new Map(PORT_CRACKERS);
@@ -20,22 +20,28 @@ export async function main(ns: NS) {
 
         const availablePortCrackers = crackers.size;
 
-        const servers = getServers(ns);
+        const servers = getServerNames(ns);
         const pendingServers = servers.filter(
             (server) =>
-                !server.hasAdminRights &&
-                (server.requiredHackingSkill ?? 0) <= ns.getHackingLevel() &&
-                (server.numOpenPortsRequired ?? 0) <= availablePortCrackers,
+                !ns.hasRootAccess(server) &&
+                ns.getServerRequiredHackingLevel(server) <=
+                    ns.getHackingLevel() &&
+                ns.getServerNumPortsRequired(server) <= availablePortCrackers,
         );
 
         for (const server of pendingServers) {
-            ns.toast(`Nuking ${server.hostname}.`, "info");
+            ns.toast(`Nuking ${server}.`, "info");
 
             for (const crackPort of crackers.values()) {
-                crackPort(ns, server.hostname);
+                crackPort(ns, server);
             }
 
-            ns.nuke(server.hostname);
+            ns.nuke(server);
+            register({
+                hostname: server,
+                maxRam: ns.getServerMaxRam(server),
+                hasAdminRights: true,
+            });
         }
 
         await ns.sleep(10000);

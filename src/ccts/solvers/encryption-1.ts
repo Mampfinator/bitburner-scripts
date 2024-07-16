@@ -1,6 +1,6 @@
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-export function solveEncryption1(data: [string, number]) {
+export function solve(data: [string, number]) {
     const [plainText, shiftBy] = data;
     let outText = "";
 
@@ -23,3 +23,5 @@ export function solveEncryption1(data: [string, number]) {
 
     return outText;
 }
+
+export const contractType = "Encryption I: Caesar Cipher";

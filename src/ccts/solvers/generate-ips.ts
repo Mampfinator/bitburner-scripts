@@ -8,7 +8,7 @@ function isValid(ip: string) {
         );
 }
 
-export function generateIps(data: string) {
+export function solve(data: string) {
     let l = data.length;
 
     // Check for string size
@@ -47,3 +47,5 @@ export function generateIps(data: string) {
 
     return answer;
 }
+
+export const contractType = "Generate IP Addresses";

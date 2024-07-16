@@ -1,5 +1,6 @@
-import { NS, ReactNode } from "@ns";
+import { NS } from "@ns";
 import { getServers } from "/lib/servers/servers";
+import { register } from "/system/memory";
 
 const { React } = globalThis;
 
@@ -63,7 +64,7 @@ function AutoBuyConfiguration(props: AutobuyProps) {
             type="range" 
             id="min-ram" 
             min={0} 
-            max={0} 
+            max={20} 
             value={minRam} 
             onInput={(event) => {
                 const exp = Number(event.currentTarget.value);
@@ -80,6 +81,7 @@ function AutoBuyConfiguration(props: AutobuyProps) {
                 setMinMoney(money);
                 onSetMinMoney(money);
             }}
+            value={minMoney}
         />
     </div>
 }
@@ -102,7 +104,7 @@ function ManualBuyMenu(props: ManualBuyProps) {
             name ?? `home${ns.getPurchasedServers().length}`,
             2 ** ramExp,
         );
-        if (serverName === "") {
+        if (!serverName || serverName === "") {
             ns.toast(
                 `Failed to buy server. This might mean that you don't have enough money.`,
                 "error",
@@ -114,6 +116,8 @@ function ManualBuyMenu(props: ManualBuyProps) {
                 "success",
                 5000,
             );
+
+            register({hostname: name!, maxRam: 2 ** ramExp, hasAdminRights: true});
         }
     }
 
@@ -180,6 +184,7 @@ export async function main(ns: NS) {
                 ns.getServerMoneyAvailable("home") - upgradeCost > minMoney
             ) {
                 ns.upgradePurchasedServer(server.hostname, newRam);
+                register({hostname: server.hostname, maxRam: newRam, hasAdminRights: true});
             }
         }
 
@@ -219,6 +224,7 @@ export async function main(ns: NS) {
                 break;
             } else {
                 ns.toast(`Bought ${name} with ${ram} GB of RAM.`, "success");
+                register({hostname: name, maxRam: ram, hasAdminRights: true});
             }
         }
     }

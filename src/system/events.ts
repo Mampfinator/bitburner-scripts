@@ -1,6 +1,7 @@
 import { NS } from "@ns";
 
-class EventEmitter {
+// TODO: migrate callack storage to SparseArray
+export class EventEmitter {
     #callbacks = new Map<
         string | symbol | number,
         Array<((...args: any[]) => void | Promise<void>) | undefined>
@@ -11,7 +12,7 @@ class EventEmitter {
      * @param callback
      * @returns this callback's ID. Use with `remove` to remove this callback again.
      */
-    on(
+    public on(
         event: string | symbol | number,
         callback: (...args: any[]) => void,
     ): number {
@@ -32,7 +33,7 @@ class EventEmitter {
         return index;
     }
 
-    async emit(event: string | symbol | number, ...args: any[]) {
+    public async emit(event: string | symbol | number, ...args: any[]) {
         const callbacks = this.#callbacks.get(event);
         if (!callbacks) return;
 
@@ -55,6 +56,14 @@ class EventEmitter {
                     console.warn(
                         `NS-use after script death from ${e.hostname}/${e.name} (PID: ${e.pid})`,
                     );
+                    this.emit(
+                        "error:ns-after-script-death",
+                        e.hostname,
+                        e.name,
+                        e.pid,
+                    );
+                } else {
+                    this.emit("error", e, event, ...args);
                 }
             }
         }
@@ -63,7 +72,7 @@ class EventEmitter {
     /**
      * @returns the removed callback, or undefined if none was found.
      */
-    remove(
+    public remove(
         event: string | symbol | number,
         id: number,
     ): ((...args: any[]) => void) | undefined {
@@ -79,11 +88,32 @@ class EventEmitter {
     /**
      * @param {string | symbol | number} event if not specified, clears all callbacks.
      */
-    clear(event?: string | symbol | number) {
+    public clear(event?: string | symbol | number) {
         if (!event) this.#callbacks.clear();
         else {
             this.#callbacks.delete(event);
         }
+    }
+
+    /**
+     * Register a callback with automatic cleanup on script exit.
+     * @param ns
+     * @param event
+     * @param callback
+     */
+    public register(
+        ns: NS,
+        event: string | symbol | number,
+        callback: (...args: any[]) => void,
+    ): number {
+        const callbackId = this.on(event, callback);
+        ns.atExit(
+            () => {
+                this.remove(event, callbackId);
+            },
+            `clear-callback:${String(event)}:${callbackId}`,
+        );
+        return callbackId;
     }
 }
 
@@ -91,7 +121,7 @@ declare global {
     var eventEmitter: EventEmitter;
 }
 
-export async function main(ns: NS) {
+export async function load(_: NS) {
     globalThis.eventEmitter ??= new EventEmitter();
     // clear callbacks from last reset/reload, if EventEmitter persisted
     globalThis.eventEmitter.clear();

@@ -4,6 +4,8 @@ import { WorkerPool } from "./workers/pool";
 import { WorkerMode } from "./workers/consts";
 import { calcThreads } from "/lib/network-threads";
 import { HWGWWorkerBatch } from "./workers/batch";
+// FIXME: make work
+// TODO: use system/processes#run for automatic memory management.
 
 function getPossibleTargetServers(ns: NS) {
     return getServers(ns).filter(

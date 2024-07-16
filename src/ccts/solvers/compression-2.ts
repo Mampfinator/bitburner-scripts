@@ -1,4 +1,4 @@
-export function lzDecompress(data: string) {
+export function solve(data: string) {
     const chars = data.split("");
 
     let chunkLength;
@@ -37,3 +37,5 @@ export function lzDecompress(data: string) {
 
     return out;
 }
+
+export const contractType = "Compression II: LZ Decompression";

@@ -1,6 +1,5 @@
 /**
  * Check if the Character is letter or not
- * @param {string} str - character to check
  */
 function isLetter(str: string) {
     return str.length === 1 && str.match(/[a-zA-Z]/i);
@@ -8,20 +7,12 @@ function isLetter(str: string) {
 
 /**
  * Check if is Uppercase or Lowercase
- * @param {string} character - character to check
- * @return {boolean} result of the checking
  */
-function isUpperCase(character: string) {
+function isUpperCase(character: string): boolean {
     return character === character.toUpperCase();
 }
 
-/**
- * Encrypt a Vigenere cipher
- * @param {string} message - string to be encrypted
- * @param {string} key - key for encrypt
- * @return {string} result - encrypted string
- */
-export function vigenereEncrypt([message, key]: [string, string]) {
+export function solve([message, key]: [string, string]) {
     let result = "";
 
     for (let i = 0, j = 0; i < message.length; i++) {
@@ -51,3 +42,5 @@ export function vigenereEncrypt([message, key]: [string, string]) {
     }
     return result;
 }
+
+export const contractType = "Encryption II: Vigenère Cipher";

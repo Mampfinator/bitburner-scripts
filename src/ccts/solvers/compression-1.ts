@@ -1,4 +1,4 @@
-export function runLengthEncode(data: string) {
+export function solve(data: string) {
     return data
         .split("")
         .reduce(
@@ -16,3 +16,5 @@ export function runLengthEncode(data: string) {
         .map(([char, count]) => `${count}${char}`)
         .join("");
 }
+
+export const contractType = "Compression I: RLE Compression";
