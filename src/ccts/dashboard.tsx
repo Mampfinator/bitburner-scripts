@@ -1,6 +1,5 @@
-import { NS } from "@ns";
-import { ContractReward, ContractRewardType } from "./auto-solve";
 import { MessageBus } from "/lib/messages";
+import { ContractReward, ContractRewardType, ReputationReward } from "./consts";
 
 const { React } = globalThis;
 
@@ -36,34 +35,39 @@ export type DashboardMessage = FailedMessage | SuccessMessage | UnsolvableMessag
 
 interface CCTSDashboardProps {
     messageBus: MessageBus<DashboardMessage>;
-    ns: NS;
+    formatNumber: (number: number) => string;
 }
 
 export function CCTSDashboard(props: CCTSDashboardProps) {
-    const { messageBus, ns } = props;
+    const { messageBus, formatNumber } = props;
 
     const [rep, setRep] = React.useState(new Map<string, number>());
     const [money, setMoney] = React.useState(0);
 
     const [failed, setFailed] = React.useState(new Map<string, [string, string][]>());
-    const [unsolvable, setUnsolvable] = React.useState(new Set<string>());
+    const [unsolvable, setUnsolvable] = React.useState(new Map<string, Set<string>>());
 
     React.useEffect(() => {
         const handler = (message: DashboardMessage) => {
-            if (message.type === CCTSMessageType.Success) {
-                if (message.reward.type === ContractRewardType.Money) {
-                    setMoney(money + message.reward.amount);
-                } else {
-                    for (const target of message.reward.targets) {
+            const { type } = message;
+    
+            if (type === CCTSMessageType.Success) {
+                const { reward } = message;
+                const { type: rewardType } = reward;
+                if (rewardType === ContractRewardType.Money) {
+                    const { amount } = reward;
+                    setMoney(money + amount);
+                } else if (rewardType === ContractRewardType.Reputation) {
+                    for (const target of (message.reward as ReputationReward).targets) {
                         const oldRep = rep.get(target) ?? 0;
-                        rep.set(target, oldRep + message.reward.amountPerTarget);
+                        rep.set(target, oldRep + (message.reward as ReputationReward).amountPerTarget);
                     }
-
-                    setRep(rep);
+    
+                    setRep(new Map(rep));
                 }
-            } else if (message.type === CCTSMessageType.Failed) {
+            } else if (type === CCTSMessageType.Failed) {
                 let arr: [string, string][];
-
+    
                 if (failed.has(message.contractType)) {
                     arr = failed.get(message.contractType)!;
                 } else {
@@ -71,20 +75,21 @@ export function CCTSDashboard(props: CCTSDashboardProps) {
                     failed.set(message.contractType, array);
                     arr = array;
                 }
-
+    
                 arr.push([message.hostname, message.filename])
+    
+                setFailed(new Map(failed));
+            } else if (type === CCTSMessageType.Unsolvable) {
+                let changed;
+                
+                const set = unsolvable.get(message.contractType) ?? new Set();
+                const old = set.size;
+                
+                set.add(`${message.hostname}:${message.filename}`);
+                changed = old < set.size;
+                unsolvable.set(message.contractType, set);
 
-                while (arr.length > 20) {
-                    arr.shift();
-                }
-
-                setFailed(failed);
-            } else {
-                const oldSize = unsolvable.size;
-                unsolvable.add(`${message.hostname}:${message.filename} (${message.contractType})`);
-                if (oldSize < unsolvable.size) {
-                    setUnsolvable(unsolvable);
-                }
+                if (changed) setUnsolvable(new Map(unsolvable));
             }
         }
 
@@ -93,16 +98,32 @@ export function CCTSDashboard(props: CCTSDashboardProps) {
         return () => {
             messageBus.unsubscribe(handler);
         }
-    }, [messageBus]); 
+    });
 
+    // TODO: style, specifically borders
     return <div style={{display: "flex", flexDirection: "column"}}>
-        <div>
-            Total money earned: ${ns.formatNumber(money)}
-            Total rep earned: ${ns.formatNumber([...rep.values()].reduce((acc, curr) => acc + curr, 0))}
-        </div>
-        <hr/>
         <div style={{display: "flex", flexDirection: "column"}}>
-            {[...unsolvable].map(text => <span>{text}</span>)}
+            <span>Total money earned: <span>${formatNumber(money)}</span></span>
+            <details>
+                <summary>
+                <span>Total reputation earned: <span>{formatNumber([...rep.values()].reduce((acc, curr) => acc + curr, 0))}</span></span>
+                </summary>
+                <div style={{display: "flex", flexDirection: "column"}}>
+                    {[...rep].map((faction, amount) => <span>{faction}: {formatNumber(amount)}</span>)}
+                </div>
+            </details>
         </div>
+        <hr style={{width: "100%"}}/>
+        <details>
+            <summary>{unsolvable.size} Unsolvable CCT Types</summary>
+            <div style={{display: "flex", flexDirection: "column"}}>
+                {[...unsolvable.entries()].map(([type, entries]) => <details>
+                    <summary>{type}: {entries.size}</summary>
+                    <div style={{display: "flex", flexDirection: "column"}}>
+                        {[...entries].map(text => <span>{text}</span>)}
+                    </div>
+                </details>)}
+            </div>
+        </details>
     </div>
 }

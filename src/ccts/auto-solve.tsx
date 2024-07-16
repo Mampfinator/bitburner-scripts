@@ -2,103 +2,10 @@
 import { NS } from "@ns";
 import { findCcts } from "ccts/find.js";
 import { MessageBus } from "/lib/messages";
-import { CCTSDashboard, DashboardMessage } from "./dashboard";
+import { CCTSDashboard, CCTSMessageType, DashboardMessage } from "./dashboard";
+import { parseRewardString } from "./consts";
 
 const { React } = globalThis;
-
-export enum ContractRewardType {
-    Money,
-    Reputation,
-}
-
-interface MoneyReward {
-    type: ContractRewardType.Money;
-    amount: number;
-}
-
-enum ReputationRewardTargetType {
-    Company,
-    Faction,
-}
-
-interface ReputationReward {
-    type: ContractRewardType.Reputation;
-    targetType: ReputationRewardTargetType;
-    amountPerTarget: number;
-    targets: string[];
-}
-
-export type ContractReward = MoneyReward | ReputationReward;
-
-// TODO: there has to be a more generic way of doing this. But this is fine for now.
-const MULTIPLIERS = ["", "k", "m", "b", "t", "q", "Q"];
-
-/**
- * Attempt to parse a number formatted with `ns.formatNumber`.
- */
-export function unformatNumber(string: string): number | null {
-    const [, numStr, , letter] = /([0-9]+(\.[0-9]+)?)([A-Za-z])*/.exec(string.trim())!;
-
-    const multIndex = MULTIPLIERS.indexOf(letter);
-    if (multIndex < 0) return null;
-    
-    return Number(numStr) * (1000 ** multIndex);
-}
-
-const MONEY_REGEX = /(?<=\$).+\b/
-
-/**
- * Parse a reward string returned from `ns.codingcontract.attempt`.
- */
-function parseRewardString(reward: string) : ContractReward | null {
-    reward = reward.trim();
-    if (reward.length === 0) return null;
-
-    if (MONEY_REGEX.test(reward)) {
-        const moneyString = reward.match(MONEY_REGEX)![0];
-        const amount = unformatNumber(moneyString);
-
-        if (!amount) return null;
-
-        return {
-            type: ContractRewardType.Money,
-            amount
-        }
-    } else if (reward.includes("reputation")) {
-        const amountStr = reward.split(" ")[1];
-        const amount = unformatNumber(amountStr);
-
-        if (!amount) return null;
-
-        if (reward.includes("each of the")) {
-            const factions = reward.split(":")[1].split(", ");
-            return {
-                type: ContractRewardType.Reputation,
-                targetType: ReputationRewardTargetType.Faction,
-                targets: factions,
-                amountPerTarget: amount,
-            }
-        } else {
-            let targetType: ReputationRewardTargetType;
-            if (reward.includes("company")) {
-                targetType = ReputationRewardTargetType.Company;
-            } else {
-                targetType = ReputationRewardTargetType.Faction;
-            }
-
-            const [target] = reward.match(/(?<=for ).*?(?=\.)/)!;
-
-            return {
-                type: ContractRewardType.Reputation,
-                targetType,
-                amountPerTarget: amount,
-                targets: [target!]
-            }
-        }
-    } else {
-        return null;
-    }
-}
 
 export async function main(ns: NS) {
     ns.disableLog("ALL");
@@ -106,7 +13,7 @@ export async function main(ns: NS) {
 
     const messageBus = new MessageBus<DashboardMessage>();
 
-    ns.printRaw(<CCTSDashboard messageBus={messageBus} ns={ns}/>);
+    ns.printRaw(<CCTSDashboard messageBus={messageBus} formatNumber={(number) => ns.formatNumber(number)}/>);
 
     const contractTypes = new Map<string, string>();
     const solvers = new Map<string, (data: any) => any>();
@@ -137,15 +44,40 @@ export async function main(ns: NS) {
         }
     }
 
-    function reportUnsolvable(hostname: string, file: string, type: string) {}
+    function reportUnsolvable(hostname: string, file: string, type: string) {
+        messageBus.send({
+            type: CCTSMessageType.Unsolvable,
+            hostname,
+            filename: file,
+            contractType: type,
+        });
+    }
     function reportError(hostname: string, file: string, type: string, remaining: number, data: any, solution: any) {
         ns.toast(`Failed to solve ${hostname}:${file} (${type}). Remaining tries: ${remaining}. Check console for more details.`, "warning");
         console.warn(`Failed to solve ${hostname}:${file} (${type}).`, data, solution);
+
+        messageBus.send({
+            type: CCTSMessageType.Failed,
+            filename: file,
+            hostname, 
+            contractType: type,
+            remaining,
+            solution,
+            data
+        });
     }
     function reportSuccess(hostname: string, file: string, type: string, rewardString: string) {
         const reward = parseRewardString(rewardString);
         if (!reward) return;
         // TODO report to dashboard
+
+        messageBus.send({
+            type: CCTSMessageType.Success,
+            hostname, 
+            filename: file,
+            contractType: type,
+            reward
+        })
     }
 
     while (true) {
@@ -178,6 +110,6 @@ export async function main(ns: NS) {
         }
 
         // sleep 5 minutes
-        await ns.sleep(1000 * 60 * 5);
+        await ns.asleep(1000 * 60 * 5);
     }
 }
