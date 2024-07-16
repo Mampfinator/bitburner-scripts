@@ -99,7 +99,7 @@ export async function main(ns: NS) {
         // Return 0 instead; we're not interested in this server for now.
         if (requiredThreads === 0) return 0;
 
-        return ((server.moneyMax ?? 0) * hackRatio) / requiredThreads;
+        return (((server.moneyMax ?? 0) / (server.minDifficulty ?? 100)) * hackRatio) / requiredThreads;
     }
 
     for (const server of getServers(ns).filter(
