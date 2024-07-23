@@ -1,6 +1,6 @@
 import { NS } from "@ns";
 import { calcThreads } from "/lib/network-threads";
-import { Worker, WorkerOptions } from "./worker";
+import { Worker, WorkerOptions, WorkResult } from "./worker";
 import {
     POOL_MESSAGE_PORT_BASE,
     WORKER_MESSAGE_PORT,
@@ -59,12 +59,7 @@ export class WorkerPool {
         globalThis.eventEmitter.register(
             ns,
             "worker:done",
-            (data: {
-                pid: number;
-                target: string;
-                mode: string;
-                result: number;
-            }) => {
+            (data: WorkResult &  {pid: number} ) => {
                 this.byPids.get(data.pid)?.done({ ...data });
             },
         );
@@ -168,7 +163,7 @@ export class WorkerPool {
      */
     reserveGroup(
         numThreads: number,
-        options: WorkerOptions,
+        options: Omit<WorkerOptions, "threads">,
     ): WorkerGroup | null {
         if (numThreads === 0) return null;
 
@@ -180,9 +175,13 @@ export class WorkerPool {
         const workers = new Set<Worker>();
         for (const reservation of reservations) {
             try {
+                const size = globalThis.system.memory.sizeOf(reservation)!;
+                const workerThreads = Math.floor(size / this.workerRam[options.mode]);
+
                 workers.add(
                     new Worker(this.ns, this, {
                         ...options,
+                        threads: workerThreads,
                         useReservation: reservation,
                     }),
                 );
@@ -190,6 +189,7 @@ export class WorkerPool {
                 for (const worker of workers) worker.kill();
                 for (const reservation of reservations)
                     globalThis.system.memory.free(reservation);
+                return null;
             }
         }
 
@@ -251,7 +251,7 @@ export class WorkerPool {
      */
     reserveBatch(
         hostname: string,
-        options: { hackRatio?: number; groupOptions: WorkerOptions },
+        options: { hackRatio?: number; groupOptions: Omit<WorkerOptions, "threads" | "mode"> },
     ): HWGWWorkerBatch | null {
         if (
             this.ns.getServerMinSecurityLevel(hostname) !==
@@ -272,16 +272,16 @@ export class WorkerPool {
             ...options.groupOptions,
         };
 
-        const hackGroup = this.reserveGroup(hackThreads, groupOptions);
+        const hackGroup = this.reserveGroup(hackThreads, {...groupOptions, mode: WorkerMode.Hack});
         const hackWeakenGroup = this.reserveGroup(
             hackWeakenThreads,
-            groupOptions,
+            {...groupOptions, mode: WorkerMode.Weaken},
         );
 
-        const growGroup = this.reserveGroup(growThreads, groupOptions);
+        const growGroup = this.reserveGroup(growThreads, {...groupOptions, mode: WorkerMode.Grow});
         const growWeakenGroup = this.reserveGroup(
             growWeakenThreads,
-            groupOptions,
+            {...groupOptions, mode: WorkerMode.Weaken},
         );
 
         if (

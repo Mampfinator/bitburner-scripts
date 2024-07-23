@@ -1,18 +1,25 @@
 import { NS } from "@ns";
 import { WorkerMode } from "./consts";
 import { WorkerPool } from "./pool";
-import { Worker } from "./worker";
+import { Worker, WorkResult } from "./worker";
 
 export class WorkerGroup {
     workers: Set<Worker>;
     ns: NS;
     pool: WorkerPool;
+    mode: WorkerMode;
 
     [Symbol.toPrimitive]() {
         return `WorkerGroup(${[...this.workers.values()].map((w) => w.pid).join()})`;
     }
 
     constructor(workers: Set<Worker>) {
+        if (workers.size <= 0)
+            throw new Error(`Invalid Worker set for WorkerGroup.`);
+
+        const mode = [...workers.values()][0].mode;
+        this.mode = mode;
+
         this.workers = workers;
 
         if (workers.size <= 0)
@@ -31,32 +38,29 @@ export class WorkerGroup {
     }
 
     get ram() {
-        return this.threads * this.pool.workerRam;
+        return this.threads * this.pool.workerRam[this.mode];
     }
 
     /**
-     * @param {string} target
-     * @param { "hack" | "weaken" | "grow" } mode
-     * @param { boolean } autoContinue
-     * @returns {Promise<boolean>} Whether starting the group was successful. If this is false, all workers have already been freed and this group can no longer be used.
+     * @returns {Promise<boolean>}
      */
-    async start(
-        target: string,
-        mode: WorkerMode,
-        autoContinue: boolean = false,
-    ) {
-        const result = await Promise.all(
+    async work(): Promise<null | WorkResult[]> {
+        const result = await Promise.allSettled(
             [...this.workers.values()].map((worker) =>
-                worker.work(target, mode, autoContinue),
+                worker.work(),
             ),
         );
 
         // if any single worker failed starting, we abort here and free all workers.
-        if (result.some((res) => !res)) {
+        if (result.some((res) => res.status === "rejected" || res.value === null)) {
             for (const worker of this.workers) {
                 worker.kill();
             }
+
+            return null;
         }
+
+        return result.map((res) => (res as PromiseFulfilledResult<WorkResult>).value);
     }
 
     async nextDone() {

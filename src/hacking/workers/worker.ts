@@ -1,8 +1,14 @@
 import { NS } from "@ns";
 import { WORKER_MESSAGE_PORT, WORKER_SCRIPTS, WorkerMode } from "./consts";
 import { WorkerPool } from "./pool";
-import { run } from "../../system/proc/processes";
+import { run } from "../../system/proc/run";
 import { Reservation } from "/system/memory";
+
+export interface WorkResult {
+    target: string;
+    mode: WorkerMode;
+    result: number;
+}
 
 export interface WorkerOptions {
     /**
@@ -85,14 +91,10 @@ export class Worker {
         return this.awaitDone();
     }
 
-    #nextDonePromise: null | Promise<{
-        target: string;
-        mode: string;
-        result: number;
-    }> = null;
+    #nextDonePromise: null | Promise<WorkResult> = null;
     #nextDoneRes:
         | null
-        | ((result: { target: string; mode: string; result: number }) => void) =
+        | ((result: WorkResult) => void) =
         null;
 
     /**
@@ -100,13 +102,9 @@ export class Worker {
      */
     awaitDone() {
         if (!this.#nextDonePromise) {
-            this.#nextDonePromise = new Promise<{
-                target: string;
-                mode: string;
-                result: number;
-            }>((resolve) => {
-                this.#nextDoneRes = resolve;
-            });
+            const {promise, resolve} = Promise.withResolvers<WorkResult>();
+            this.#nextDonePromise = promise;
+            this.#nextDoneRes = resolve;
         }
 
         return this.#nextDonePromise;
@@ -115,7 +113,7 @@ export class Worker {
     /**
      * @param result the worker's reported result.
      */
-    done(result: { target: string; mode: string; result: number }) {
+    done(result: WorkResult) {
         this.#nextDoneRes?.(result);
         this.#nextDonePromise = null;
         this.#nextDoneRes = null;

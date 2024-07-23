@@ -173,14 +173,14 @@ export async function main(ns: NS) {
 
         if (!!weakenGroup) {
             ns.print(`Starting weakening on ${hostLog}.`);
-            weakenGroup.start(hostname, WorkerMode.Weaken);
+            weakenGroup.work();
             donePromises.push(weakenGroup.nextDone());
             await ns.asleep(weakenTime - growTime - 3000);
         }
 
         if (!!growGroup) {
             ns.print(`Starting growing on ${hostLog}.`);
-            growGroup.start(hostname, WorkerMode.Grow);
+            growGroup.work();
             donePromises.push(growGroup.nextDone());
         }
 
@@ -229,7 +229,7 @@ export async function main(ns: NS) {
         );
 
         let { free: freeWorkerThreads } = calcThreads(ns);
-        freeWorkerThreads -= pool.reservedThreads;
+
         freeWorkerThreads -= 1;
 
         let targetServers = getServers(ns)
@@ -316,7 +316,7 @@ export async function main(ns: NS) {
 
                 let weakenGroup = undefined;
                 if (weaken > 0) {
-                    weakenGroup = pool.reserveGroup(weaken);
+                    weakenGroup = pool.reserveGroup(weaken, { mode: WorkerMode.Weaken, target: server.hostname });
                 }
 
                 if (weaken > 0 && !weakenGroup) {
@@ -329,7 +329,7 @@ export async function main(ns: NS) {
 
                 let growGroup;
                 if (grow > 0) {
-                    growGroup = pool.reserveGroup(grow);
+                    growGroup = pool.reserveGroup(grow, { mode: WorkerMode.Grow, target: server.hostname });
                 }
 
                 if (grow > 0 && !growGroup) {
@@ -370,7 +370,7 @@ export async function main(ns: NS) {
                 ns.print(
                     `INFO: Reserving workers targeting ${hostLog} for a hack ratio of ${hackRatio}.`,
                 );
-                const batch = pool.reserveBatch(server.hostname, { hackRatio });
+                const batch = pool.reserveBatch(server.hostname, { hackRatio, groupOptions: { target: server.hostname } });
 
                 if (!batch || !batch.runnable) {
                     ns.print(`INFO: Could not reserve workers for ${hostLog}.`);

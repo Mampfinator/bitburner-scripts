@@ -35,18 +35,18 @@ export class HWGWWorkerBatch {
         const weakenTime = this.ns.getWeakenTime(this.target);
         const growTime = this.ns.getGrowTime(this.target);
 
-        this.weakenHack.start(this.target, WorkerMode.Weaken);
+        this.weakenHack.work();
 
         let hackPromise = this.ns
             .asleep(weakenTime - hackTime - DELAY)
-            .then(() => this.hack.start(this.target, WorkerMode.Hack));
+            .then(() => this.hack.work());
 
         await this.ns.asleep(DELAY);
 
-        await this.weakenGrow.start(this.target, WorkerMode.Weaken);
+        await this.weakenGrow.work();
         let growPromise = this.ns
             .asleep(weakenTime - growTime - DELAY)
-            .then(() => this.grow.start(this.target, WorkerMode.Grow));
+            .then(() => this.grow.work());
 
         await Promise.all([hackPromise, growPromise]);
 
@@ -123,7 +123,7 @@ export class HWGWWorkerBatch {
         this.ns.print(`Starting workers for ${this.target}.`);
 
         await this.weakenHack
-            .start(this.target, WorkerMode.Weaken)
+            .work()
             .then((r) => {
                 console.log(
                     `Starting weaken hack workers took ${Date.now() - startedAt}ms.`,
@@ -136,7 +136,7 @@ export class HWGWWorkerBatch {
 
         const hackPromise = this.ns.asleep(startHackDelay).then(async () => {
             const before = Date.now();
-            const r = await this.hack.start(this.target, WorkerMode.Hack);
+            const r = await this.hack.work();
             console.log(`Starting hack workers took ${Date.now() - before}ms`);
             return r;
         });
@@ -145,7 +145,7 @@ export class HWGWWorkerBatch {
         const startGrowDelay = finishGrowAt - growTime;
         const growPromise = this.ns.asleep(startGrowDelay).then(async () => {
             const before = Date.now();
-            const r = await this.grow.start(this.target, WorkerMode.Grow);
+            const r = await this.grow.work();
             console.log(`Starting grow workers took ${Date.now() - before}ms`);
             return r;
         });
@@ -161,10 +161,7 @@ export class HWGWWorkerBatch {
                 console.log(
                     `Grow weaken: started with ${sec} (${this.ns.getServerMinSecurityLevel(this.target)}) security. Expected to take ${t}ms (${weakenTime}ms).`,
                 );
-                const r = await this.weakenGrow.start(
-                    this.target,
-                    WorkerMode.Weaken,
-                );
+                const r = await this.weakenGrow.work();
                 console.log(
                     `Starting weaken grow workers took ${Date.now() - before}ms`,
                 );
