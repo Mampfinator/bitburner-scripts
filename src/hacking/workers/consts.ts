@@ -6,3 +6,9 @@ export enum WorkerMode {
     Grow = "grow",
     Weaken = "weaken",
 }
+
+export const WORKER_SCRIPTS = {
+    [WorkerMode.Hack]: "hacking/worker-scripts/hack.js",
+    [WorkerMode.Grow]: "hacking/worker-scripts/grow.js",
+    [WorkerMode.Weaken]: "hacking/worker-scripts/weaken.js",
+};

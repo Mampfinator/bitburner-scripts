@@ -47,7 +47,7 @@ export class WorkerGroup {
     ) {
         const result = await Promise.all(
             [...this.workers.values()].map((worker) =>
-                worker.start(target, mode, autoContinue),
+                worker.work(target, mode, autoContinue),
             ),
         );
 
@@ -61,7 +61,7 @@ export class WorkerGroup {
 
     async nextDone() {
         const results = await Promise.all(
-            [...this.workers].map((worker) => worker.nextDone()),
+            [...this.workers].map((worker) => worker.awaitDone()),
         );
         return {
             target: results[0].target,

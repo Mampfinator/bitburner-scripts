@@ -68,7 +68,7 @@ export async function main(ns: NS) {
     }
     function reportSuccess(hostname: string, file: string, type: string, rewardString: string) {
         const reward = parseRewardString(rewardString);
-        if (!reward) return;
+        if (!reward) return console.log(`Failed to parse contract reward, but contract was completed.`, rewardString);
         // TODO report to dashboard
 
         messageBus.send({
@@ -77,7 +77,9 @@ export async function main(ns: NS) {
             filename: file,
             contractType: type,
             reward
-        })
+        });
+
+
     }
 
     while (true) {

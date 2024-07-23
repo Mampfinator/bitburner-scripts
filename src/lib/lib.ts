@@ -90,3 +90,32 @@ export class SparseArray<T> {
         return this.array.values();
     }
 }
+
+export function formatTime(time: number): string {
+    const milliseconds = Math.floor(time % 1000);
+
+    time /= 1000;
+    const seconds = Math.floor(time % 60);
+
+    time /= 60;
+    const minutes = Math.floor(time % 60);
+
+    time /= 60;
+    const hours = Math.floor(time % 24);
+
+    time /= 24;
+    const days = Math.floor(time);
+
+    const units = ([
+        [milliseconds, "ms"],
+        [seconds, "s"], 
+        [minutes, "m"], 
+        [hours, "h"],
+        [days, "d"]
+    ] as const)
+    .filter(([unit]) => unit > 0)
+    .reverse();
+
+    if (units.length === 0) return "0s";
+    return units.map(input => input.join("")).join("");
+}

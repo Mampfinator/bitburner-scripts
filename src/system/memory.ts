@@ -1,5 +1,5 @@
 import { NS, Server } from "@ns";
-import { SparseArray } from "/lib";
+import { SparseArray } from "/lib/lib";
 
 const MEMORY_MAP = new Map<string, MemInfo>();
 
@@ -77,6 +77,13 @@ class MemInfo {
     }
 
     private readonly reservations = new SparseArray<number>();
+
+    /**
+     * Get the size of a reservation.
+     */
+    reserved(index: number): number | undefined {
+        return this.reservations.get(index);
+    }
 
     /**
      * Reserve a chunk.
@@ -177,6 +184,37 @@ export function reserve(amount: number, onServer?: string): Reservation | null {
     }
 }
 
+
+export function reserveTotal(memory: number): null | Reservation[] {
+    if ([...MEMORY_MAP.values()].reduce((acc, curr) => acc + curr.available, 0) < memory) return null;
+
+    const reservations: Reservation[] = [];
+
+    const servers = [...MEMORY_MAP.values()];
+
+    while (memory > 0 && servers.length > 0) {
+        const server = servers.shift()!;
+        const reserve = Math.min(memory, server.available);
+        const chunkIndex = server.reserve(reserve);
+        if (chunkIndex < 1) continue;
+
+        memory -= reserve;
+
+        reservations.push({
+            hostname: server.hostname, chunkIndex
+        });
+    }
+
+    if (memory !== 0) {
+        for (const res of reservations) {
+            free(res);
+        }
+        return null;
+    }
+
+    return reservations;
+}
+
 /**
  * Reserve `chunks` sections of memory with size `chunkSize`.
  * @returns the reserved chunks, or `null` if reservation failed.
@@ -261,6 +299,8 @@ declare global {
              * @returns whether growing the allocation was successful.
              */
             function grow(reservation: Reservation, amount: number): boolean;
+
+            function reserveTotal(memory: number): Reservation[] | null;
         }
     }
 }
@@ -276,5 +316,6 @@ export async function load(ns: NS) {
         reserveChunks,
         free,
         grow,
+        reserveTotal,
     };
 }

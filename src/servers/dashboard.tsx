@@ -59,7 +59,7 @@ function AutoBuyConfiguration(props: AutobuyProps) {
                 onToggleAuto();
             }}
         >Automatically buy new servers: {auto ? "Enabled" : "Disabled"}</button>
-        <label htmlFor="min-ram">`Minimum RAM for new servers: {ns.formatRam(2 ** minRam)}</label>
+        <label htmlFor="min-ram">Minimum RAM for new servers: {ns.formatRam(2 ** minRam)}</label>
         <input 
             type="range" 
             id="min-ram" 

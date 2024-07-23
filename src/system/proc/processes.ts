@@ -1,5 +1,5 @@
 import { NS, RunOptions as BaseRunOptions, ScriptArg } from "@ns";
-import { Reservation } from "./memory";
+import { Reservation, reserve } from "../memory";
 
 const PROCESSES = new Set<number>();
 const RUN_PROMISES = new Map<
@@ -68,45 +68,6 @@ export function killed(pidOrNs: number | NS): void {
     }
 }
 
-interface RunOptions extends BaseRunOptions {
-    hostname?: string;
-}
-
-/**
- * Run a script. This automatically manages Reservations via {@link globalThis.system.memory.reserve | reserve} and subsequent `free`-ing as well.
- * For optimal performance, scripts started this way should add
- * ```ts
- * ns.atExit(() => {
- *  gloablThis.system.proc.killed(ns);
- * })
- * ```
- * to them. A check for killed programs is performed every 50ms otherwise.
- * @returns the script's PID, and a Promise that resolves when the script exists or null if the script couldn't start.
- */
-export function run(
-    ns: NS,
-    scriptPath: string,
-    options: RunOptions,
-    ...args: ScriptArg[]
-): [number, Promise<void> | null] {
-    const cost =
-        options.ramOverride ?? ns.getScriptRam(scriptPath, options.hostname);
-    const hostname = options.hostname ?? ns.getHostname();
-
-    const reservation = globalThis.system.memory.reserve(cost, hostname);
-    if (!reservation) return [0, null];
-
-    const pid = ns.run(scriptPath, options, ...args);
-
-    if (pid < 0) {
-        globalThis.system.memory.free(reservation);
-        return [pid, null];
-    }
-
-    assign(pid, reservation);
-    return [pid, started(pid)];
-}
-
 declare global {
     namespace system {
         namespace proc {
@@ -133,7 +94,7 @@ declare global {
     }
 }
 
-export function load(_: NS) {
+export async function load(_: NS) {
     globalThis.system.proc ??= {
         started,
         assign: assign as any,

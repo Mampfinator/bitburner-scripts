@@ -1,8 +1,7 @@
 import { NS } from "@ns";
-import { getServers } from "/lib/servers/servers";
 import { calcThreads } from "/lib/network-threads";
 import { Worker, WorkerOptions } from "./worker";
-import { POOL_MESSAGE_PORT_BASE, WORKER_MESSAGE_PORT } from "./consts";
+import { POOL_MESSAGE_PORT_BASE, WORKER_MESSAGE_PORT, WORKER_SCRIPTS, WorkerMode } from "./consts";
 import { HWGWWorkerBatch } from "./batch";
 import { WorkerGroup } from "./group";
 
@@ -19,10 +18,7 @@ export class WorkerPool {
     }
 
     ns: NS;
-    /**
-     * How much RAM is needed to run a single Worker.
-     */
-    workerRam: number;
+
     options: PoolOptions;
     /**
      * PIDs of running Workers.
@@ -35,15 +31,13 @@ export class WorkerPool {
     startResolvers = new Map<number, (started: boolean) => void>();
     resumeResolvers = new Map<number, (resumed: boolean) => void>();
 
+    workerRam: Record<WorkerMode, number>;
+
     get reservedRam() {
         return Object.values(this.options?.reserveRam ?? {}).reduce(
             (total, current) => total + current,
             0,
         );
-    }
-
-    get reservedThreads() {
-        return Math.ceil(this.reservedRam / this.workerRam);
     }
 
     /**
@@ -52,48 +46,35 @@ export class WorkerPool {
      */
     constructor(ns: NS, options?: PoolOptions) {
         this.ns = ns;
-        this.workerRam = this.ns.getScriptRam("hacking/worker.js");
-
-        const registeredEvents: { id: number; name: string }[] = [];
 
         this.ns.atExit(() => {
             this.killAll();
-
-            for (const { name, id } of registeredEvents) {
-                globalThis.eventEmitter.remove(name, id);
-            }
         }, "workerpool-cleanup");
 
-        const doneId = globalThis.eventEmitter.on("worker:done", (data) => {
-            this.byPids.get(data.pid)?.done({ ...data, pid: undefined });
+        globalThis.eventEmitter.register(
+            ns,
+            "worker:done", (data: { pid: number, target: string, mode: string, result: number }) => {
+            this.byPids.get(data.pid)?.done({ ...data});
         });
-        registeredEvents.push({ id: doneId, name: "worker:done" });
 
-        const stoppedId = globalThis.eventEmitter.on(
-            "worker:stopped",
-            ({ pid }: { pid: number }) => {
-                // TODO
-            },
-        );
-        registeredEvents.push({ id: stoppedId, name: "worker:stopped" });
-
-        const resumedId = globalThis.eventEmitter.on(
+        globalThis.eventEmitter.register(
+            ns,
             "worker:resumed",
             ({ pid }: { pid: number }) => {
                 this.resumeResolvers.get(pid)?.(true);
             },
         );
-        registeredEvents.push({ id: resumedId, name: "worker:resumed" });
 
-        const startedId = globalThis.eventEmitter.on(
+        globalThis.eventEmitter.register(
+            ns,
             "worker:started",
             ({ pid }: { pid: number }) => {
                 this.startResolvers.get(pid)?.(true);
             },
         );
-        registeredEvents.push({ id: startedId, name: "worker:started" });
 
-        const killedId = globalThis.eventEmitter.on(
+        globalThis.eventEmitter.register(
+            this.ns,
             "worker:killed",
             ({ pid }: { pid: number }) => {
                 if (this.ns.isRunning(pid)) {
@@ -112,12 +93,14 @@ export class WorkerPool {
                 this.byPids.delete(pid);
             },
         );
-        registeredEvents.push({ id: killedId, name: "worker:killed" });
-
-        if (this.workerRam === 0)
-            throw new Error(`Could not find worker script.`);
 
         this.options = options ?? {};
+
+        this.workerRam = {
+            [WorkerMode.Hack]: ns.getScriptRam(WORKER_SCRIPTS[WorkerMode.Hack]),
+            [WorkerMode.Grow]: ns.getScriptRam(WORKER_SCRIPTS[WorkerMode.Grow]),
+            [WorkerMode.Weaken]: ns.getScriptRam(WORKER_SCRIPTS[WorkerMode.Weaken])
+        }
     }
 
     get listenPort() {
@@ -171,64 +154,22 @@ export class WorkerPool {
      */
     reserveGroup(
         numThreads: number,
-        options?: WorkerOptions,
+        options: WorkerOptions,
     ): WorkerGroup | null {
         if (numThreads === 0) return null;
 
-        const servers = getServers(this.ns).filter((server) => {
-            return (
-                server.hasAdminRights &&
-                server.maxRam -
-                    server.ramUsed -
-                    (this.options.reserveRam?.[server.hostname] ?? 0) >
-                    this.workerRam &&
-                !this.options.excludeServers?.has(server.hostname)
-            );
-        });
+        const totalMem = numThreads * this.workerRam[options.mode];
+        const reservations = globalThis.system.memory.reserveTotal(totalMem);
 
-        let remainingThreads = numThreads;
-
-        const workerNodes: [string, number][] = [];
-
-        for (const server of servers) {
-            if (remainingThreads === 0) break;
-
-            const useThreads = Math.min(
-                Math.floor(
-                    (server.maxRam -
-                        server.ramUsed -
-                        (this.options.reserveRam?.[server.hostname] ?? 0)) /
-                        this.workerRam,
-                ),
-                remainingThreads,
-            );
-
-            workerNodes.push([server.hostname, useThreads]);
-
-            remainingThreads -= useThreads;
-        }
-
-        // there aren't enough threads available to spawn this group.
-        if (remainingThreads > 0) return null;
+        if (!reservations) return null;
 
         const workers = new Set<Worker>();
-
-        for (const [hostname, threads] of workerNodes) {
+        for (const reservation of reservations) {
             try {
-                const worker = new Worker(
-                    this.ns,
-                    this,
-                    hostname,
-                    threads,
-                    options,
-                );
-                workers.add(worker);
-            } catch {
-                for (const worker of workers) {
-                    worker.kill();
-                }
-
-                return null;
+                workers.add(new Worker(this.ns, this, {...options, useReservation: reservation}))
+            } catch (e) {
+                for (const worker of workers) worker.kill();
+                for (const reservation of reservations) globalThis.system.memory.free(reservation);
             }
         }
 
@@ -287,11 +228,10 @@ export class WorkerPool {
 
     /**
      * @param hostname target hostname
-     * @param hackRatio how much (in %) of the server's money to hack in each cycle.
      */
     reserveBatch(
         hostname: string,
-        options?: { hackRatio?: number; groupOptions?: WorkerOptions },
+        options: { hackRatio?: number; groupOptions: WorkerOptions },
     ): HWGWWorkerBatch | null {
         if (
             this.ns.getServerMinSecurityLevel(hostname) !==
@@ -309,7 +249,7 @@ export class WorkerPool {
 
         const groupOptions = {
             autoContinue: false,
-            ...(options?.groupOptions ?? {}),
+            ...options.groupOptions,
         };
 
         const hackGroup = this.reserveGroup(hackThreads, groupOptions);
@@ -350,7 +290,6 @@ export class WorkerPool {
                 groupOptions,
                 calcThreads(this.ns),
                 this.reservedRam,
-                this.reservedThreads,
             );
 
             hackGroup?.kill();

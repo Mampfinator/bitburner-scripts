@@ -5,7 +5,7 @@ declare global {
 }
 
 export async function main(ns: NS) {
-    ns.run("system/load.js", { temporary: true });
+    ns.run("system/load.js");
 
     // reset monitoring
     ns.run("monitoring/cli.js", { temporary: true }, "reset");

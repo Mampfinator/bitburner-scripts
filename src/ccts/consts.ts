@@ -29,20 +29,22 @@ const MULTIPLIERS = ["", "k", "m", "b", "t", "q", "Q"];
  * Attempt to parse a number formatted with `ns.formatNumber`.
  */
 export function unformatNumber(string: string): number | null {
-    const [, numStr, , letter] = /([0-9]+(\.[0-9]+)?)([A-Za-z])*/.exec(string.trim())!;
+    const [, numStr, , letter] = /([0-9]+(\.[0-9]+)?)([A-Za-z])*/.exec(
+        string.trim(),
+    )!;
 
     const multIndex = MULTIPLIERS.indexOf(letter);
     if (multIndex < 0) return null;
-    
-    return Number(numStr) * (1000 ** multIndex);
+
+    return Number(numStr) * 1000 ** multIndex;
 }
 
-const MONEY_REGEX = /(?<=\$).+\b/
+const MONEY_REGEX = /(?<=\$).+\b/;
 
 /**
  * Parse a reward string returned from `ns.codingcontract.attempt`.
  */
-export function parseRewardString(reward: string) : ContractReward | null {
+export function parseRewardString(reward: string): ContractReward | null {
     reward = reward.trim();
     if (reward.length === 0) return null;
 
@@ -54,8 +56,8 @@ export function parseRewardString(reward: string) : ContractReward | null {
 
         return {
             type: ContractRewardType.Money,
-            amount
-        }
+            amount,
+        };
     } else if (reward.includes("reputation")) {
         const amountStr = reward.split(" ")[1];
         const amount = unformatNumber(amountStr);
@@ -69,7 +71,7 @@ export function parseRewardString(reward: string) : ContractReward | null {
                 targetType: ReputationRewardTargetType.Faction,
                 targets: factions,
                 amountPerTarget: amount,
-            }
+            };
         } else {
             let targetType: ReputationRewardTargetType;
             if (reward.includes("company")) {
@@ -84,8 +86,8 @@ export function parseRewardString(reward: string) : ContractReward | null {
                 type: ContractRewardType.Reputation,
                 targetType,
                 amountPerTarget: amount,
-                targets: [target!]
-            }
+                targets: [target!],
+            };
         }
     } else {
         return null;
