@@ -3,14 +3,15 @@
 		"scope": "typescript",
 		"prefix": "bbm",
 		"body": [
-			"import { NS } from \"@ns\"",
+			"import { NS } from \"@ns\";",
 			"import { auto } from \"system/proc/auto\";",
 			"",
 			"export async function main(ns: NS) {",
 			"    auto(ns);",
 			"",
 			"    ${0://main function here}",
-			"}"
+			"}",
+			""
 		],
 		"description": ""
 	}
