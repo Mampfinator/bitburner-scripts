@@ -1,4 +1,5 @@
 import { NS } from "@ns";
+import { run } from "./system/proc/run";
 
 declare global {
     var NS: NS;
@@ -7,19 +8,18 @@ declare global {
 export async function main(ns: NS) {
     ns.run("system/load.js");
 
-    // reset monitoring
-    ns.run("monitoring/cli.js", { temporary: true }, "reset");
+    run(ns, "monitoring/cli.js", { hostname: "home", temporary: true }, "reset");
 
-    ns.run("auto-nuke.js", { temporary: true });
-    ns.run("ccts/auto-solve.js", { temporary: true });
-    const monitoringPid = ns.run("monitoring/monitor.js", { temporary: true });
+    run(ns, "auto-nuke.js", { hostname: "home", temporary: true });
+    run(ns, "ccts/auto-solve.js", { hostname: "home", temporary: true });
+    const [monitoringPid] = run(ns, "monitoring/monitor.js", { hostname: "home", temporary: true });
     ns.tail(monitoringPid);
-    const serversPid = ns.run("servers/dashboard.js", { temporary: true });
+    const [serversPid] = run(ns, "servers/dashboard.js", { hostname: "home", temporary: true });
     ns.tail(serversPid);
 
     await ns.asleep(1000);
 
-    if (!ns.isRunning("hacking/supervisor.js")) ns.run("hacking/supervisor.js");
+    if (!ns.isRunning("hacking/supervisor.js")) run(ns, "hacking/supervisor.js", { hostname: "home" });
 
-    ns.run("gangs/await-start.js", { temporary: true });
+    run(ns, "gangs/await-start.js", { temporary: true, hostname: "home" });
 }

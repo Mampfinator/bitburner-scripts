@@ -8,6 +8,13 @@ const RUN_PROMISES = new Map<
 >();
 const RESERVATIONS = new Map<number, Reservation>();
 
+export function getReservation(ns: NS): Reservation | null;
+export function getReservation(pid: number): Reservation | null;
+export function getReservation(nsOrPid: NS | number): Reservation | null {
+    const pid = typeof nsOrPid === "number" ? nsOrPid : nsOrPid.pid;
+    return RESERVATIONS.get(pid) ?? null;
+}
+
 /**
  * Report a script as having been started.
  * @param late whether startup of this script was discovered late. This prevents `process:started` from being emitted.

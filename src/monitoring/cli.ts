@@ -1,7 +1,9 @@
 import { NS } from "@ns";
 import { MONITORING_PORT } from "monitoring/monitor";
+import { auto } from "/system/proc/auto";
 
 export async function main(ns: NS) {
+    auto(ns);
     const event = ns.args[0];
 
     if (event === "add" || event === "remove") {

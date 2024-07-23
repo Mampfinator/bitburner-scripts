@@ -1,4 +1,5 @@
 import { GangTaskStats, NS } from "@ns";
+import { auto } from "/system/proc/auto";
 
 const { React } = globalThis;
 
@@ -32,6 +33,8 @@ function findMax<T>(
 }
 
 export async function main(ns: NS) {
+    auto(ns);
+
     if (!globalThis.eventEmitter) {
         throw new Error(
             `This script requires globalThis.eventEmitter to work. Run events.js on "home" to set it up.`,

@@ -1,11 +1,13 @@
 import { NS } from "@ns";
 import { reserve } from "../memory";
-import { assign, killed } from "./processes";
+import { assign, getReservation, killed } from "./processes";
 
 /**
  * Set up a script for automatic management.
  */
 export function auto(ns: NS, ramOverride?: number) {
+    if (getReservation(ns)) return;
+
     const reservation = reserve(
         ramOverride ?? ns.getScriptRam(ns.getScriptName()),
     );

@@ -5,6 +5,7 @@ import { WorkerPool } from "./workers/pool";
 import { MONITORING_PORT } from "monitoring/monitor.js";
 import { getServers } from "/lib/servers/servers";
 import { calcThreads } from "/lib/network-threads";
+import { auto } from "/system/proc/auto";
 
 export interface SupervisorSettings {
     limitServers?: number;
@@ -14,6 +15,7 @@ export interface SupervisorSettings {
 }
 
 export async function main(ns: NS) {
+    auto(ns);
     const startedAt = Math.floor(Date.now() / 1000);
     const settingsText = ns.read("hacking/supervisor-settings.json");
     const settings: SupervisorSettings = JSON.parse(

@@ -4,10 +4,13 @@ import { findCcts } from "ccts/find.js";
 import { MessageBus } from "/lib/messages";
 import { CCTSDashboard, CCTSMessageType, DashboardMessage } from "./dashboard";
 import { parseRewardString } from "./consts";
+import { auto } from "/system/proc/auto";
 
 const { React } = globalThis;
 
 export async function main(ns: NS) {
+    auto(ns);
+
     ns.disableLog("ALL");
     ns.clearLog();
 

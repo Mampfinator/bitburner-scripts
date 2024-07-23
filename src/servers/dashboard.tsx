@@ -1,6 +1,7 @@
 import { NS } from "@ns";
 import { getServers } from "/lib/servers/servers";
 import { register } from "/system/memory";
+import { auto } from "/system/proc/auto";
 
 const { React } = globalThis;
 
@@ -143,25 +144,26 @@ function ManualBuyMenu(props: ManualBuyProps) {
 }
 
 export async function main(ns: NS) {
+    auto(ns);
     ns.setTitle("Purchase Servers");
     ns.disableLog("ALL");
     ns.clearLog();
 
-    let auto = false;
+    let autoBuy = false;
     let minMoney = 0;
     let minRamExp = 0;
 
     ns.printRaw(<Dashboard 
         ns={ns}
-        initialAuto={auto}
-        onToggleAuto={() => auto = !auto}
+        initialAuto={autoBuy}
+        onToggleAuto={() => autoBuy = !autoBuy}
         onSetMinRam={ramExp => minRamExp = ramExp}
         onSetMinMoney={money => minMoney = money} 
     />);
 
     while (true) {
         await ns.asleep(50);
-        if (!auto) continue;
+        if (!autoBuy) continue;
         if (ns.getServerMoneyAvailable("home") <= minMoney) continue;
 
         const servers = getServers(ns, "home").filter(

@@ -1,6 +1,7 @@
 import { NS } from "@ns";
 import { register } from "./system/memory";
 import { getServerNames } from "./lib/servers/names";
+import { auto } from "./system/proc/auto";
 
 const PORT_CRACKERS: [string, (ns: NS, target: string) => void][] = [
     ["BruteSSH.exe", (ns, target) => ns.brutessh(target)],
@@ -11,6 +12,8 @@ const PORT_CRACKERS: [string, (ns: NS, target: string) => void][] = [
 ];
 
 export async function main(ns: NS) {
+    auto(ns);
+
     while (true) {
         const crackers = new Map(PORT_CRACKERS);
 

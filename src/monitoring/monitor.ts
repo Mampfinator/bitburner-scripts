@@ -2,6 +2,7 @@
 import { NS } from "@ns";
 import { readPort } from "/lib/lib";
 import { calcThreads } from "/lib/network-threads";
+import { auto } from "/system/proc/auto";
 
 export const MONITORING_PORT = 10;
 
@@ -39,6 +40,7 @@ const LOOP_DELAY = 250;
 const SNAPSHOT_SIZE = 4 * 60 * 5;
 
 export async function main(ns: NS) {
+    auto(ns);
     ns.disableLog("ALL");
 
     let servers: Set<string>;
