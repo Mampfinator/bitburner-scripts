@@ -122,14 +122,12 @@ export class HWGWWorkerBatch {
 
         this.ns.print(`Starting workers for ${this.target}.`);
 
-        await this.weakenHack
-            .work()
-            .then((r) => {
-                console.log(
-                    `Starting weaken hack workers took ${Date.now() - startedAt}ms.`,
-                );
-                return r;
-            });
+        await this.weakenHack.work().then((r) => {
+            console.log(
+                `Starting weaken hack workers took ${Date.now() - startedAt}ms.`,
+            );
+            return r;
+        });
 
         const finishHackAt = weakenTime - DELAY;
         const startHackDelay = finishHackAt - hackTime;

@@ -46,13 +46,15 @@ export class WorkerGroup {
      */
     async work(): Promise<null | WorkResult[]> {
         const result = await Promise.allSettled(
-            [...this.workers.values()].map((worker) =>
-                worker.work(),
-            ),
+            [...this.workers.values()].map((worker) => worker.work()),
         );
 
         // if any single worker failed starting, we abort here and free all workers.
-        if (result.some((res) => res.status === "rejected" || res.value === null)) {
+        if (
+            result.some(
+                (res) => res.status === "rejected" || res.value === null,
+            )
+        ) {
             for (const worker of this.workers) {
                 worker.kill();
             }
@@ -60,7 +62,9 @@ export class WorkerGroup {
             return null;
         }
 
-        return result.map((res) => (res as PromiseFulfilledResult<WorkResult>).value);
+        return result.map(
+            (res) => (res as PromiseFulfilledResult<WorkResult>).value,
+        );
     }
 
     async nextDone() {

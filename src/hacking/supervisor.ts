@@ -316,7 +316,10 @@ export async function main(ns: NS) {
 
                 let weakenGroup = undefined;
                 if (weaken > 0) {
-                    weakenGroup = pool.reserveGroup(weaken, { mode: WorkerMode.Weaken, target: server.hostname });
+                    weakenGroup = pool.reserveGroup(weaken, {
+                        mode: WorkerMode.Weaken,
+                        target: server.hostname,
+                    });
                 }
 
                 if (weaken > 0 && !weakenGroup) {
@@ -329,7 +332,10 @@ export async function main(ns: NS) {
 
                 let growGroup;
                 if (grow > 0) {
-                    growGroup = pool.reserveGroup(grow, { mode: WorkerMode.Grow, target: server.hostname });
+                    growGroup = pool.reserveGroup(grow, {
+                        mode: WorkerMode.Grow,
+                        target: server.hostname,
+                    });
                 }
 
                 if (grow > 0 && !growGroup) {
@@ -370,7 +376,10 @@ export async function main(ns: NS) {
                 ns.print(
                     `INFO: Reserving workers targeting ${hostLog} for a hack ratio of ${hackRatio}.`,
                 );
-                const batch = pool.reserveBatch(server.hostname, { hackRatio, groupOptions: { target: server.hostname } });
+                const batch = pool.reserveBatch(server.hostname, {
+                    hackRatio,
+                    groupOptions: { target: server.hostname },
+                });
 
                 if (!batch || !batch.runnable) {
                     ns.print(`INFO: Could not reserve workers for ${hostLog}.`);

@@ -92,17 +92,14 @@ export class Worker {
     }
 
     #nextDonePromise: null | Promise<WorkResult> = null;
-    #nextDoneRes:
-        | null
-        | ((result: WorkResult) => void) =
-        null;
+    #nextDoneRes: null | ((result: WorkResult) => void) = null;
 
     /**
      * Returns a Promise that returns when the Worker finishes its current task.
      */
     awaitDone() {
         if (!this.#nextDonePromise) {
-            const {promise, resolve} = Promise.withResolvers<WorkResult>();
+            const { promise, resolve } = Promise.withResolvers<WorkResult>();
             this.#nextDonePromise = promise;
             this.#nextDoneRes = resolve;
         }

@@ -59,7 +59,7 @@ export class WorkerPool {
         globalThis.eventEmitter.register(
             ns,
             "worker:done",
-            (data: WorkResult &  {pid: number} ) => {
+            (data: WorkResult & { pid: number }) => {
                 this.byPids.get(data.pid)?.done({ ...data });
             },
         );
@@ -176,7 +176,9 @@ export class WorkerPool {
         for (const reservation of reservations) {
             try {
                 const size = globalThis.system.memory.sizeOf(reservation)!;
-                const workerThreads = Math.floor(size / this.workerRam[options.mode]);
+                const workerThreads = Math.floor(
+                    size / this.workerRam[options.mode],
+                );
 
                 workers.add(
                     new Worker(this.ns, this, {
@@ -251,7 +253,10 @@ export class WorkerPool {
      */
     reserveBatch(
         hostname: string,
-        options: { hackRatio?: number; groupOptions: Omit<WorkerOptions, "threads" | "mode"> },
+        options: {
+            hackRatio?: number;
+            groupOptions: Omit<WorkerOptions, "threads" | "mode">;
+        },
     ): HWGWWorkerBatch | null {
         if (
             this.ns.getServerMinSecurityLevel(hostname) !==
@@ -272,17 +277,23 @@ export class WorkerPool {
             ...options.groupOptions,
         };
 
-        const hackGroup = this.reserveGroup(hackThreads, {...groupOptions, mode: WorkerMode.Hack});
-        const hackWeakenGroup = this.reserveGroup(
-            hackWeakenThreads,
-            {...groupOptions, mode: WorkerMode.Weaken},
-        );
+        const hackGroup = this.reserveGroup(hackThreads, {
+            ...groupOptions,
+            mode: WorkerMode.Hack,
+        });
+        const hackWeakenGroup = this.reserveGroup(hackWeakenThreads, {
+            ...groupOptions,
+            mode: WorkerMode.Weaken,
+        });
 
-        const growGroup = this.reserveGroup(growThreads, {...groupOptions, mode: WorkerMode.Grow});
-        const growWeakenGroup = this.reserveGroup(
-            growWeakenThreads,
-            {...groupOptions, mode: WorkerMode.Weaken},
-        );
+        const growGroup = this.reserveGroup(growThreads, {
+            ...groupOptions,
+            mode: WorkerMode.Grow,
+        });
+        const growWeakenGroup = this.reserveGroup(growWeakenThreads, {
+            ...groupOptions,
+            mode: WorkerMode.Weaken,
+        });
 
         if (
             hackGroup === null ||
