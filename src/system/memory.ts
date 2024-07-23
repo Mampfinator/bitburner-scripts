@@ -184,9 +184,14 @@ export function reserve(amount: number, onServer?: string): Reservation | null {
     }
 }
 
-
 export function reserveTotal(memory: number): null | Reservation[] {
-    if ([...MEMORY_MAP.values()].reduce((acc, curr) => acc + curr.available, 0) < memory) return null;
+    if (
+        [...MEMORY_MAP.values()].reduce(
+            (acc, curr) => acc + curr.available,
+            0,
+        ) < memory
+    )
+        return null;
 
     const reservations: Reservation[] = [];
 
@@ -201,7 +206,8 @@ export function reserveTotal(memory: number): null | Reservation[] {
         memory -= reserve;
 
         reservations.push({
-            hostname: server.hostname, chunkIndex
+            hostname: server.hostname,
+            chunkIndex,
         });
     }
 

@@ -30,11 +30,11 @@ export function run(
 
     let reservation;
     if (options.useReservation) {
-        reservation = options.useReservation
+        reservation = options.useReservation;
     } else {
         reservation = globalThis.system.memory.reserve(cost, hostname);
     }
-    
+
     if (!reservation) return [0, null, null];
 
     const pid = ns.run(scriptPath, options, ...args);

@@ -1,7 +1,12 @@
 import { NS } from "@ns";
 import { calcThreads } from "/lib/network-threads";
 import { Worker, WorkerOptions } from "./worker";
-import { POOL_MESSAGE_PORT_BASE, WORKER_MESSAGE_PORT, WORKER_SCRIPTS, WorkerMode } from "./consts";
+import {
+    POOL_MESSAGE_PORT_BASE,
+    WORKER_MESSAGE_PORT,
+    WORKER_SCRIPTS,
+    WorkerMode,
+} from "./consts";
 import { HWGWWorkerBatch } from "./batch";
 import { WorkerGroup } from "./group";
 
@@ -53,9 +58,16 @@ export class WorkerPool {
 
         globalThis.eventEmitter.register(
             ns,
-            "worker:done", (data: { pid: number, target: string, mode: string, result: number }) => {
-            this.byPids.get(data.pid)?.done({ ...data});
-        });
+            "worker:done",
+            (data: {
+                pid: number;
+                target: string;
+                mode: string;
+                result: number;
+            }) => {
+                this.byPids.get(data.pid)?.done({ ...data });
+            },
+        );
 
         globalThis.eventEmitter.register(
             ns,
@@ -99,8 +111,10 @@ export class WorkerPool {
         this.workerRam = {
             [WorkerMode.Hack]: ns.getScriptRam(WORKER_SCRIPTS[WorkerMode.Hack]),
             [WorkerMode.Grow]: ns.getScriptRam(WORKER_SCRIPTS[WorkerMode.Grow]),
-            [WorkerMode.Weaken]: ns.getScriptRam(WORKER_SCRIPTS[WorkerMode.Weaken])
-        }
+            [WorkerMode.Weaken]: ns.getScriptRam(
+                WORKER_SCRIPTS[WorkerMode.Weaken],
+            ),
+        };
     }
 
     get listenPort() {
@@ -166,10 +180,16 @@ export class WorkerPool {
         const workers = new Set<Worker>();
         for (const reservation of reservations) {
             try {
-                workers.add(new Worker(this.ns, this, {...options, useReservation: reservation}))
+                workers.add(
+                    new Worker(this.ns, this, {
+                        ...options,
+                        useReservation: reservation,
+                    }),
+                );
             } catch (e) {
                 for (const worker of workers) worker.kill();
-                for (const reservation of reservations) globalThis.system.memory.free(reservation);
+                for (const reservation of reservations)
+                    globalThis.system.memory.free(reservation);
             }
         }
 

@@ -14,7 +14,7 @@ function getPossibleTargetServers(ns: NS) {
 const WORKER_FILES = [
     "hacking/worker-scripts/grow.js",
     "hacking/worker-scripts/hack.js",
-    "hacking/worker-scripts/weaken.js"
+    "hacking/worker-scripts/weaken.js",
 ];
 
 function copyFiles(ns: NS) {

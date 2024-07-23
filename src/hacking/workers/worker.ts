@@ -34,11 +34,7 @@ export class Worker {
         return `Worker(${this.isRunning ? this.pid : "DEAD"}:${this.mode}=>${this.target})`;
     }
 
-    constructor(
-        ns: NS,
-        pool: WorkerPool,
-        options: WorkerOptions,
-    ) {
+    constructor(ns: NS, pool: WorkerPool, options: WorkerOptions) {
         this.ns = ns;
         this.pool = pool;
 
@@ -47,7 +43,11 @@ export class Worker {
         this.target = options.target;
 
         const scriptPath = WORKER_SCRIPTS[this.mode];
-        const [pid, killed] = run(ns, scriptPath, { threads: this.threads, temporary: true, useReservation: options.useReservation })
+        const [pid, killed] = run(ns, scriptPath, {
+            threads: this.threads,
+            temporary: true,
+            useReservation: options.useReservation,
+        });
 
         if (pid === 0) {
             throw new Error(

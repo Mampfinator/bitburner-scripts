@@ -106,16 +106,18 @@ export function formatTime(time: number): string {
     time /= 24;
     const days = Math.floor(time);
 
-    const units = ([
-        [milliseconds, "ms"],
-        [seconds, "s"], 
-        [minutes, "m"], 
-        [hours, "h"],
-        [days, "d"]
-    ] as const)
-    .filter(([unit]) => unit > 0)
-    .reverse();
+    const units = (
+        [
+            [milliseconds, "ms"],
+            [seconds, "s"],
+            [minutes, "m"],
+            [hours, "h"],
+            [days, "d"],
+        ] as const
+    )
+        .filter(([unit]) => unit > 0)
+        .reverse();
 
     if (units.length === 0) return "0s";
-    return units.map(input => input.join("")).join("");
+    return units.map((input) => input.join("")).join("");
 }

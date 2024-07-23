@@ -21,8 +21,13 @@ export async function main(ns: NS) {
     const pid = ns.pid;
     const port = ns.getPortHandle(WORKER_MESSAGE_PORT_BASE + pid);
 
-    const { autoContinue } = ns.flags([["autoContinue", false]]) as { autoContinue: boolean };
-    if (typeof autoContinue !== "boolean") throw new Error(`Invalid argument. Expected autoContinue to be boolean, got ${typeof autoContinue} (${autoContinue})`);
+    const { autoContinue } = ns.flags([["autoContinue", false]]) as {
+        autoContinue: boolean;
+    };
+    if (typeof autoContinue !== "boolean")
+        throw new Error(
+            `Invalid argument. Expected autoContinue to be boolean, got ${typeof autoContinue} (${autoContinue})`,
+        );
 
     /**
      * Send a message back to the Pool.
@@ -65,7 +70,7 @@ export async function main(ns: NS) {
         send("done", {
             mode: "weaken",
             target,
-            result
+            result,
         });
     }
 }
