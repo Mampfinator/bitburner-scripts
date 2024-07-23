@@ -13,5 +13,5 @@ export function auto(ns: NS, ramOverride?: number) {
 
     ns.atExit(() => {
         killed(ns);
-    });
+    }, "clear-reservation");
 }
