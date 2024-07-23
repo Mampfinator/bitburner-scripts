@@ -5,6 +5,8 @@
 //! - loading initial network state
 import { NS } from "@ns";
 
+import "system/polyfill";
+
 import { load as loadEvents } from "./events";
 import { load as loadMemory } from "./memory";
 import { load as loadProc } from "./proc/processes";
