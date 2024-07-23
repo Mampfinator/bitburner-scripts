@@ -221,6 +221,13 @@ export function reserveTotal(memory: number): null | Reservation[] {
     return reservations;
 }
 
+function sizeOf(res: Reservation): number | undefined {
+    const mem = MEMORY_MAP.get(res.hostname);
+    if (!mem) return undefined;
+
+    return mem.reserved(res.chunkIndex);
+}
+
 /**
  * Reserve `chunks` sections of memory with size `chunkSize`.
  * @returns the reserved chunks, or `null` if reservation failed.
@@ -307,6 +314,7 @@ declare global {
             function grow(reservation: Reservation, amount: number): boolean;
 
             function reserveTotal(memory: number): Reservation[] | null;
+            function sizeOf(reservation: Reservation): number | undefined;
         }
     }
 }
@@ -323,5 +331,6 @@ export async function load(ns: NS) {
         free,
         grow,
         reserveTotal,
+        sizeOf,
     };
 }
