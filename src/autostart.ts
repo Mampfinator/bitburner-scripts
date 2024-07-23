@@ -1,12 +1,14 @@
 import { NS } from "@ns";
 import { run } from "./system/proc/run";
+import { load } from "system/load";
+
 
 declare global {
     var NS: NS;
 }
 
 export async function main(ns: NS) {
-    ns.run("system/load.js");
+    await load(ns);
 
     run(ns, "monitoring/cli.js", { hostname: "home", temporary: true }, "reset");
 

@@ -123,6 +123,4 @@ declare global {
 
 export async function load(_: NS) {
     globalThis.eventEmitter ??= new EventEmitter();
-    // clear callbacks from last reset/reload, if EventEmitter persisted
-    globalThis.eventEmitter.clear();
 }
