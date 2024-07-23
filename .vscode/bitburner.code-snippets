@@ -13,6 +13,16 @@
 			"}",
 			""
 		],
-		"description": ""
+		"description": "Main function with script management."
+	},
+	"BitBurner Kill Cleanup": {
+		"scope": "typescript",
+		"prefix": "bbkc",
+		"body": [
+			"ns.atExit(() => {",
+			"    globalThis.system.proc.killed(ns)",
+			"});"
+		],
+		"description": "Kill cleanup"
 	}
 }
