@@ -7,6 +7,23 @@ This is definitely not intended, but pretty much unavoidable - some changes may 
 
 `🔴` denotes a main breakpoint for a section, all other colors represent optional/recommended additional breakpoints and usually come with explanations.
 
+### Dev Menu - For if everything else is too tiresome
+```tsx
+// webpack:////src/ui/GameRoot.tsx
+
+   202.  let withPopups = true;
+   203.  let bypassGame = false;
+🔴 204.  switch (pageWithContext.page) {
+   205.    case Page.Recovery: {
+   206.      mainPage = <RecoveryRoot softReset={softReset} />;
+   207.      withSidebar = false;
+   208.      withPopups = false;
+   209.      bypassGame = true;
+   210.      break;
+   211.    }
+```
+Change to  another tab, then change `pageWithContext.page` to `Dev` in the debugger.
+
 ### Money, Karma & Stats
 This method is slightly roundabout - but bundles the main things you'd want starting out into one breakpoint.
 ```ts
