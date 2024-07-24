@@ -73,4 +73,4 @@ Additionally, to modify what you get from selling or trading in intel,
 
 🔵: click `Sell for [x]` in the victory screen and adjust `moneyGain` as you see fit.
 
-🟢: select a faction, and click `Trade for [x] reputation`. You have two choices here: adjust `repGain`, or directly mess with `Factions` and their reputation in the debugger. Both work.
+🟢: select a faction, and click `Trade for [x] reputation`. You have two choices here: adjust `repGain`, or directly mess with `Factions` and their reputation in the debugger. Both work, but the latter is more of a hassle - you'll need to find the correct scope (since `Factions` itself seems to be a Proxy or similar) *and* minified variable for this to work. But once you've got it figured out, it's easy enough to get working consistently.
