@@ -31,7 +31,7 @@ export async function main(ns: NS) {
 
     ns.tprint("Found path:");
     ns.tprint(
-        [`\x1b[1m${from}\x1b[0m`, ...path, `\x1b[1m${to}\x1b[0m`].join(" => ")
+        [`\x1b[1m${from}\x1b[0m`, ...path, `\x1b[1m${to}\x1b[0m`].join(" => "),
     );
     ns.tprint("Copied connection string to clipboard.");
     navigator.clipboard.writeText(

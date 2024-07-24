@@ -9,8 +9,10 @@ function shouldStartServerbuyer(ns: NS) {
 
     const servers = ns.getPurchasedServers();
 
-    return servers.length < serverMax &&
-        servers.some(server => ns.getServerMaxRam(server) < ramMax);
+    return (
+        servers.length < serverMax &&
+        servers.some((server) => ns.getServerMaxRam(server) < ramMax)
+    );
 }
 
 export async function main(ns: NS) {

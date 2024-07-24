@@ -122,7 +122,9 @@ export async function main(ns: NS) {
                 try {
                     ns.nuke(server.hostname);
                 } catch {
-                    console.warn(`Port cracker mismatch. Expected to have ${availablePortCrackers} >= ${server.numOpenPortsRequired}.`);
+                    console.warn(
+                        `Port cracker mismatch. Expected to have ${availablePortCrackers} >= ${server.numOpenPortsRequired}.`,
+                    );
                     continue;
                 }
                 register({
