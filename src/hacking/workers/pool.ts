@@ -9,6 +9,7 @@ import {
 } from "./consts";
 import { HWGWWorkerBatch } from "./batch";
 import { WorkerGroup } from "./group";
+import { reserveThreads } from "/system/memory";
 
 export interface PoolOptions {
     reserveRam?: Record<string, number>;
@@ -167,10 +168,15 @@ export class WorkerPool {
     ): WorkerGroup | null {
         if (numThreads === 0) return null;
 
-        const totalMem = numThreads * this.workerRam[options.mode];
-        const reservations = globalThis.system.memory.reserveTotal(totalMem);
+        const threadSize = this.workerRam[options.mode];
+        const reservations = reserveThreads(numThreads, threadSize);
 
-        if (!reservations) return null;
+        if (!reservations) {
+            console.warn(
+                `Could not reserve ${this.ns.formatRam(numThreads * threadSize)} (${this.ns.formatNumber(numThreads)}t) for worker batch. Aborting.`,
+            );
+            return null;
+        }
 
         const workers = new Set<Worker>();
         for (const reservation of reservations) {
@@ -188,6 +194,8 @@ export class WorkerPool {
                     }),
                 );
             } catch (e) {
+                console.error(e);
+
                 for (const worker of workers) worker.kill();
                 for (const reservation of reservations)
                     globalThis.system.memory.free(reservation);

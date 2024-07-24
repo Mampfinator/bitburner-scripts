@@ -1,13 +1,22 @@
 import { NS } from "@ns";
 import { run } from "./system/proc/run";
 import { load } from "system/load";
+import { auto } from "./system/proc/auto";
 
-declare global {
-    var NS: NS;
+function shouldStartServerbuyer(ns: NS) {
+    const serverMax = ns.getPurchasedServerLimit();
+    const ramMax = ns.getPurchasedServerMaxRam();
+
+    const servers = ns.getPurchasedServers();
+
+    return servers.length < serverMax &&
+        servers.some(server => ns.getServerMaxRam(server) < ramMax);
 }
 
 export async function main(ns: NS) {
     await load(ns);
+
+    auto(ns);
 
     run(
         ns,
@@ -23,11 +32,13 @@ export async function main(ns: NS) {
         temporary: true,
     });
     ns.tail(monitoringPid);
-    const [serversPid] = run(ns, "servers/dashboard.js", {
-        hostname: "home",
-        temporary: true,
-    });
-    ns.tail(serversPid);
+    if (shouldStartServerbuyer(ns)) {
+        const [serversPid] = run(ns, "servers/dashboard.js", {
+            hostname: "home",
+            temporary: true,
+        });
+        ns.tail(serversPid);
+    }
 
     await ns.asleep(1000);
 

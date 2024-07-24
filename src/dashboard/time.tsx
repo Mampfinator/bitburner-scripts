@@ -1,43 +1,13 @@
-//! This is kinda the core of 
 import { NS } from "@ns";
-import { compressTime, getCompressionFactor, uncompressTime } from "./compress-time";
-import { MessageBus } from "/lib/messages";
+import { compressTime, getCompressionFactor, uncompressTime } from "/system/compress-time";
 import { formatTime } from "/lib/lib";
 
 const { React } = globalThis;
 
-export interface SystemDashboardProps {
-    ns: NS;
-    messageBus: MessageBus<SystemDashboardMessage>;
-}
-
-export type SystemDashboardMessage = {};
-
-export function SystemDashboard(props: SystemDashboardProps) {
-    const { messageBus, ns } = props;
-
-    const handler =(message: SystemDashboardMessage) => {
-
-    }
-
-    React.useEffect(() => {
-        messageBus.subscribe(handler);
-
-        return () => {
-            messageBus.unsubscribe(handler);
-        }
-    });
-
-    return <div style={{display: "flex", flexDirection: "column", border: "1px 1px 1px 1px rgba(0, 48, 32, 0.85) solid"}}>
-        <MemoryInspector ns={ns}/>
-        <TimeCompression ns={ns}/>
-    </div>
-}
-
 /**
  * Control time compression here.
  */
-function TimeCompression({ns} : {ns: NS}) {
+export function TimeCompression({ns} : {ns: NS}) {
     const [factor, setFactor] = React.useState(getCompressionFactor());
     const [exampleTime, setExampleTime] = React.useState(5 * 60 * 1000);
 
@@ -45,7 +15,7 @@ function TimeCompression({ns} : {ns: NS}) {
 
     const {primary: color, primaryBright} = ns.ui.getTheme();
 
-    return <div style={{display: "flex", flexDirection: "column", border: "1px 1px 1px 1px rgba(0, 48, 32, 0.85) solid"}}>
+    return <div data-dummy={dummystate} style={{display: "flex", flexDirection: "column", border: "2px solid rgba(0, 48, 32, 0.85)"}}>
         <h3 style={{color: primaryBright}}>Time Compression</h3>
         <span>{
             getCompressionFactor() === 1 ? "Time is flowing as normal." : 
@@ -67,28 +37,4 @@ function TimeCompression({ns} : {ns: NS}) {
         </span>
         <button style={{alignSelf: "start"}} onClick={() => { uncompressTime(); setFactor(1); }}>Uncompress time</button>
     </div>
-}
-
-function MemoryInspector({ns}: {ns: NS}) {
-    const [open, setOpen] = React.useState(false);
-
-    return <div>
-        <button onClick={() => setOpen(!open)}>Inspect Memory</button>
-        <dialog open={open}>
-            Hello, world!
-        </dialog>
-    </div>
-}
-
-export async function main(ns: NS) {
-    ns.disableLog("ALL");
-    ns.clearLog();
-
-    const messageBus = new MessageBus();
-
-    ns.printRaw(<SystemDashboard ns={ns} messageBus={messageBus}/>)
-
-    while (true) {
-        await ns.asleep(50000);
-    }
 }

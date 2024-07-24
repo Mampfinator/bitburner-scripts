@@ -12,6 +12,7 @@ import { load as loadMemory } from "./memory";
 import { load as loadProc } from "./proc/processes";
 import { syncServers } from "./sync-servers";
 import { compressTime } from "./compress-time";
+import { run } from "./proc/run";
 
 export async function load(ns: NS) {
     console.log("Loading system namespace...");
@@ -27,7 +28,7 @@ export async function load(ns: NS) {
 
     console.log(`System namespace loaded: `, globalThis.system);
 
-    ns.spawn("system/main.js", { temporary: true, spawnDelay: 1000 });
+    run(ns, "system/main.js", { hostname: "home" });
 }
 
 export async function main(ns: NS) {

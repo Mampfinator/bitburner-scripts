@@ -14,7 +14,7 @@ export function auto(ns: NS, ramOverride?: number) {
             throw new Error(
                 "Failed to reserve memory for automatic process management.",
             );
-    
+
         assign(ns, reservation);
     }
 

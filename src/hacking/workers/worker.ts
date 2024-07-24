@@ -35,6 +35,7 @@ export class Worker {
     mode: WorkerMode;
     threads: number = 0;
     pid: number = 0;
+    awaitKilled: Promise<void>;
 
     [Symbol.toPrimitive]() {
         return `Worker(${this.isRunning ? this.pid : "DEAD"}:${this.mode}=>${this.target})`;
@@ -49,17 +50,35 @@ export class Worker {
         this.target = options.target;
 
         const scriptPath = WORKER_SCRIPTS[this.mode];
-        const [pid, killed] = run(ns, scriptPath, {
-            threads: this.threads,
-            temporary: true,
-            useReservation: options.useReservation,
-        });
+
+        const reservation =
+            options.useReservation ??
+            globalThis.system.memory.reserve(
+                this.pool.workerRam[this.mode] * this.threads,
+            );
+
+        const [pid, killed] = run(
+            ns,
+            scriptPath,
+            {
+                hostname: reservation!.hostname,
+                threads: this.threads,
+                temporary: true,
+                useReservation: options.useReservation,
+            },
+            "--target",
+            this.target,
+        );
 
         if (pid === 0) {
             throw new Error(
                 `Couldn't start ${this}: Failed to start worker.js.`,
             );
         }
+
+        this.awaitKilled = killed!.then(() => {
+            if (this.pid > 0) this.kill();
+        });
 
         this.pid = pid;
         this.pool.byPids.set(this.pid, this);
@@ -77,6 +96,8 @@ export class Worker {
         this.ns.kill(this.pid);
         this.pid = 0;
         this.pool.forget(this);
+
+        return this.awaitKilled;
     }
 
     /**

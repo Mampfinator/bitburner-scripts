@@ -1,5 +1,7 @@
 import { NS } from "@ns";
 import { run } from "/system/proc/run";
+import { auto } from "/system/proc/auto";
+import { reserveThreads } from "/system/memory";
 
 export function autocomplete(data: any, args: any) {
     return [...data.servers];
@@ -19,14 +21,14 @@ function getThreads(multiplier: number): number {
  * @param {NS} ns
  */
 export async function main(ns: NS) {
+    auto(ns);
+
     const workerCost = ns.getScriptRam("share/share.js");
 
     function byThreads(threads: number): number[] | null {
         const pids = [];
 
-        const reservations = globalThis.system.memory.reserveTotal(
-            threads * workerCost,
-        );
+        const reservations = reserveThreads(threads, workerCost);
         if (!reservations) return null;
 
         for (const reservation of reservations) {
@@ -50,7 +52,7 @@ export async function main(ns: NS) {
     }
 
     function byMultiplier(targetMult: number): number[] | null {
-        const threads = getThreads(targetMult);
+        const threads = Math.ceil(getThreads(targetMult));
         return byThreads(threads);
     }
 
@@ -59,8 +61,21 @@ export async function main(ns: NS) {
         ["multiplier", 0],
     ]) as { threads: number; multiplier: number };
 
-    if (threads > 0 && multiplier > 0) {
+    if (threads > 0 && multiplier != 1) {
         ns.tprint("ERROR: only specify one of threads or multiplier.");
+        return;
+    } else if (threads > 0 && multiplier <= 1) {
+        ns.tprint(`ERROR: Specifcy either threads or multiplier.`);
+        return;
+    }
+
+    if (!multiplier && threads < 1) {
+        ns.tprint(`ERROR: "threads" options has to be >= 1.`);
+        return;
+    }
+
+    if (!threads && multiplier <= 1) {
+        ns.tprint(`ERROR: "multiplier" option has to be > 1.`);
         return;
     }
 
@@ -78,10 +93,17 @@ export async function main(ns: NS) {
         const started = byMultiplier(multiplier);
         if (!started)
             return ns.tprint(
-                `ERROR: failed to reserve enough threads for a share multiplier of ${multiplier} (${getThreads(multiplier)}t)`,
+                `ERROR: failed to reserve enough threads for a share multiplier of ${multiplier} (${ns.formatNumber(Math.ceil(getThreads(multiplier)))}t)`,
             );
         pids.push(...started);
     }
+
+    const actualThreads = threads ? threads : Math.ceil(getThreads(multiplier));
+    const actualMult = multiplier ? multiplier : getMultiplier(threads);
+
+    ns.tprint(
+        `Sharing ${ns.formatNumber(actualThreads)}t for a reputation multiplier of ${actualMult}x`,
+    );
 
     ns.atExit(() => {
         for (const pid of pids) {

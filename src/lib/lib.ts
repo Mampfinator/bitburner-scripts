@@ -36,9 +36,24 @@ export function splitFilter<T>(
  */
 export class SparseArray<T> {
     private readonly array: (T | undefined)[] = [];
-    freeSlots = new Set<number>();
+    protected readonly freeSlots = new Set<number>();
 
-    constructor(from?: Iterable<T>) {
+    [Symbol.iterator]() {
+        return this.array[Symbol.iterator]();
+    }
+
+    public clone(): SparseArray<T> {
+        const clone = new SparseArray<T>();
+
+        clone.array.push(...this.array);
+        for (const slot of this.freeSlots) {
+            clone.freeSlots.add(slot);
+        }
+
+        return clone;
+    }
+
+    constructor(from?: Iterable<T | undefined>) {
         if (from) this.array.push(...from);
     }
 

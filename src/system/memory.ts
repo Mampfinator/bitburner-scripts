@@ -3,12 +3,16 @@ import { SparseArray } from "/lib/lib";
 
 const MEMORY_MAP = new Map<string, MemInfo>();
 
+export function getMemoryMap() {
+    return new Map([...MEMORY_MAP].map(([key, info]) => [key, info.clone()]));
+}
+
 export type ServerMemInfo = Pick<
     Server,
     "maxRam" | "hostname" | "hasAdminRights"
 >;
 
-class MemInfo {
+export class MemInfo {
     public readonly hostname: string;
 
     private _capacity: number;
@@ -76,7 +80,7 @@ class MemInfo {
         return changed;
     }
 
-    private readonly reservations = new SparseArray<number>();
+    protected reservations = new SparseArray<number>();
 
     /**
      * Get the size of a reservation.
@@ -119,6 +123,18 @@ class MemInfo {
         this.lastFree! -= growBy;
 
         return true;
+    }
+
+    public clone() {
+        const clone = new MemInfo({
+            hostname: this.hostname,
+            maxRam: this._capacity,
+            hasAdminRights: this._hasAdminRights,
+        });
+
+        clone.reservations = this.reservations.clone();
+
+        return clone;
     }
 }
 
@@ -184,37 +200,64 @@ export function reserve(amount: number, onServer?: string): Reservation | null {
     }
 }
 
-export function reserveTotal(memory: number): null | Reservation[] {
-    if (
-        [...MEMORY_MAP.values()].reduce(
-            (acc, curr) => acc + curr.available,
-            0,
-        ) < memory
-    )
-        return null;
+export function reserveThreads(
+    threads: number,
+    threadSize: number,
+): Reservation[] | null {
+    const available = [...MEMORY_MAP.values()].reduce(
+        (acc, curr) => acc + curr.available,
+        0,
+    );
+
+    if (available < threads * threadSize) return null;
 
     const reservations: Reservation[] = [];
 
-    const servers = [...MEMORY_MAP.values()];
-
-    while (memory > 0 && servers.length > 0) {
-        const server = servers.shift()!;
-        const reserve = Math.min(memory, server.available);
-        const chunkIndex = server.reserve(reserve);
-        if (chunkIndex < 1) continue;
-
-        memory -= reserve;
-
-        reservations.push({
-            hostname: server.hostname,
-            chunkIndex,
-        });
+    function cleanup() {
+        for (const res of reservations) free(res);
+        return null;
     }
 
-    if (memory !== 0) {
-        for (const res of reservations) {
-            free(res);
+    const servers = [...MEMORY_MAP.values()].filter(
+        (server) => server.available >= threadSize,
+    );
+
+    while (threads > 0 && servers.length > 0) {
+        const server = servers.shift()!;
+
+        const freeThreads = Math.floor(server.available / threadSize);
+        if (freeThreads <= 0) continue;
+        const useThreads = Math.min(freeThreads, threads);
+
+        const reservation = reserve(useThreads * threadSize, server.hostname);
+
+        if (!reservation) {
+            console.error(
+                `Something be funky: ${threads}, ${threadSize}, ${useThreads}`,
+                server,
+            );
+            return cleanup();
         }
+
+        reservations.push(reservation);
+        threads -= useThreads;
+    }
+
+    if (threads > 0) {
+        const availablePreCleanup = [...MEMORY_MAP.values()].reduce(
+            (acc, curr) => acc + curr.available,
+            0,
+        );
+        cleanup();
+
+        const availablePostCleanup = [...MEMORY_MAP.values()].reduce(
+            (acc, curr) => acc + curr.available,
+            0,
+        );
+
+        console.warn(
+            `Apparently not enough memory available for ${threads}x${threadSize}GB: ${availablePostCleanup} - ${threads * threadSize} = ${availablePostCleanup - threads * threadSize} | attempted to use ${(((availablePostCleanup - availablePreCleanup) / threads) * threadSize * 100).toFixed(2)}% of available memory.`,
+        );
         return null;
     }
 
@@ -312,8 +355,6 @@ declare global {
              * @returns whether growing the allocation was successful.
              */
             function grow(reservation: Reservation, amount: number): boolean;
-
-            function reserveTotal(memory: number): Reservation[] | null;
             function sizeOf(reservation: Reservation): number | undefined;
         }
     }
@@ -330,7 +371,6 @@ export async function load(ns: NS) {
         reserveChunks,
         free,
         grow,
-        reserveTotal,
         sizeOf,
     };
 }

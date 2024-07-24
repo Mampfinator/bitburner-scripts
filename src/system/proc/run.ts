@@ -24,20 +24,29 @@ export function run(
     options: RunOptions,
     ...args: ScriptArg[]
 ): [number, Promise<void>, Reservation] | [0, null, null] {
-    const cost =
-        options.ramOverride ?? ns.getScriptRam(scriptPath, options.hostname);
-    const hostname = options.hostname;
-
     let reservation;
     if (options.useReservation) {
         reservation = options.useReservation;
-    } else {
-        reservation = globalThis.system.memory.reserve(cost, hostname);
+    } else if (!options.hostname && options.ramOverride) {
+        reservation = globalThis.system.memory.reserve(options.ramOverride);
+    } else if (options.hostname) {
+        const cost =
+            options.ramOverride ??
+            ns.getScriptRam(scriptPath, options.hostname);
+        reservation = globalThis.system.memory.reserve(cost, options.hostname);
     }
 
-    if (!reservation) return [0, null, null];
+    if (!reservation) {
+        console.warn(
+            `Failed to get reservation for ${scriptPath}@${options?.hostname}.`,
+            options,
+        );
+        return [0, null, null];
+    }
 
-    const pid = ns.run(scriptPath, options, ...args);
+    const { hostname } = reservation;
+
+    const pid = ns.exec(scriptPath, hostname, options, ...args);
 
     if (pid <= 0) {
         globalThis.system.memory.free(reservation);

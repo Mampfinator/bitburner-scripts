@@ -21,13 +21,21 @@ export async function main(ns: NS) {
     const pid = ns.pid;
     const port = ns.getPortHandle(WORKER_MESSAGE_PORT_BASE + pid);
 
-    const { autoContinue } = ns.flags([["autoContinue", false]]) as {
+    const { autoContinue, target } = ns.flags([
+        ["autoContinue", false],
+        ["target", ""],
+    ]) as {
         autoContinue: boolean;
+        target: string;
     };
     if (typeof autoContinue !== "boolean")
         throw new Error(
             `Invalid argument. Expected autoContinue to be boolean, got ${typeof autoContinue} (${autoContinue})`,
         );
+
+    if (typeof target !== "string" || target === "") {
+        throw new Error(`Invalid target: ${target}.`);
+    }
 
     /**
      * Send a message back to the Pool.
@@ -45,13 +53,11 @@ export async function main(ns: NS) {
     });
 
     let stopped = true;
-    let target: string | undefined = undefined;
 
     while (true) {
         for (const { event, data } of readPort(port)) {
             if (event === "start") {
                 stopped = false;
-                if (data?.target) target = data.target as string;
             } else {
                 console.error("Unknown event in grow worker.");
                 console.error(event, data);
