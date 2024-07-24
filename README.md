@@ -10,11 +10,22 @@ This is definitely not intended, but pretty much unavoidable - some changes may 
 ### Money, Karma & Stats
 This method is slightly roundabout - but bundles the main things you'd want starting out into one breakpoint.
 ```ts
-
+   61.    let gains = scaleWorkStats(this.earnings(), focusBonus, false);
+   62.    let karma = crime.karma;
+🔴 63.    const success = determineCrimeSuccess(crime.type);
+   64.    if (success) {
+   65.      Player.gainMoney(gains.money, "crime");
+   66.      Player.numPeopleKilled += crime.kills;
+   67.      Player.gainIntelligenceExp(gains.intExp);
+   68.    } else {
+   69.      gains = scaleWorkStats(gains, 0.25);
+   70.      karma /= 4;
+   71.    }
 ```
 Process: 
 - Go to `the Slums` and start any crime (specific crime does *not* matter. Pick `Mug`, since it's the fastest).
-- Wait for the crime to succeed (or alternatively, move )
+- Wait for the crime to finish; set `success` to true in the debugger.
+- Adjust every field in `gains` as you see fit.
 
 ### Purchased servers
 This is particularly useful after clearing a BitNode, since it allows your server auto-upgrade script to buy everything in one go (and also fully upgrade your `home`) right at the start.
@@ -33,8 +44,33 @@ Set `BaseCostFor1GBOfRamHome` & `BaseCostFor1GBOfRamServer` to `0`. Other values
 
 Remember to unset the breakpoint before the next reload.
 
-### Infiltrations
+### Infiltrations (Money, Reputation)
 Allows you to instantly finish an infiltration. To earn more reputation, see the 2nd breakpoint.
 ```tsx
+// webpack:///src/Infiltration/ui/Game.tsx
 
+   120.
+🔴 121.  let stageComponent: React.ReactNode;
+   122.  switch (stage) {
+   123.    case Stage.Countdown:
 ```
+- Set `stage` to 3 (or, if changed in the future, whatever the value of `Stage.Sell` further up in the file is).
+
+Additionally, to modify what you get from selling or trading in intel,
+```tsx
+// webpack:///src/Infiltration/ui/Victory.tsx
+
+   45.  function sell(): void {
+🔵 46.    Player.gainMoney(moneyGain, "infiltration");
+   47.    quitInfiltration();
+   48.  }
+   49.
+   50.  function trade(): void {
+   51.    if (!getEnumHelper("FactionName").isMember(factionName)) return;
+🟢 52.    Factions[factionName].playerReputation += repGain;
+   53.    quitInfiltration();
+   54.  }
+```
+
+🔵: click `Sell for [x]` in the victory screen and adjust `moneyGain` as you see fit.
+🟢: select a faction, and click `Trade for [x] reputation`. You have two choices here: adjust `repGain`, or directly mess with `Factions` and their reputation in the debugger. Both work.
