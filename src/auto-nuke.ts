@@ -29,7 +29,11 @@ async function doBackdoor(
         if (!success) {
             const message = `Unable to connect from "${singularity.getCurrentServer()}" to ${server}.`;
             ns.print(`ERROR: ${message}`);
-            console.warn(`${message}`, path, graph);
+            console.warn(message, path, graph);
+            // we can at least attempt to kind of recover here.
+            // in the future, we may want to store the currently traversed path
+            // and walk it back.
+            singularity.connect(startedAt); 
             return false;
         }
     }
@@ -38,8 +42,12 @@ async function doBackdoor(
     try {
         await singularity.installBackdoor();
         graph.addEdge(startedAt, server);
+        // we're assuming `startedAt` to be backdoor'd or owned by us, which it's *most likely* gonna be, but it may not.
+        singularity.connect(startedAt);
         return true;
-    } catch {
+    } catch (e) {
+        console.error(`Failed to backdoor ${server}.`, e);
+        singularity.connect(startedAt);
         return false;
     }
 }
@@ -56,18 +64,7 @@ async function catchup(ns: NS) {
     for (const server of [...graph.nodes]
         .map((server) => ns.getServer(server))
         .filter((server) => !server.backdoorInstalled)) {
-        const path = graph.path("home", server.hostname);
-        if (!path) {
-            console.warn(`No path found from "home" to "${server.hostname}".`);
-            continue;
-        }
-
-        for (const server of path) singularity.connect(server);
-        singularity.connect(server.hostname);
-        try {
-            await singularity.installBackdoor();
-            graph.addEdge("home", server.hostname);
-        } catch {}
+            await doBackdoor(ns, server.hostname, graph);
     }
 
     if (original === "home") return;
@@ -111,8 +108,7 @@ export async function main(ns: NS) {
                     (!server.hasAdminRights &&
                         (server.requiredHackingSkill ?? 0) <= hackingSkill &&
                         (server.numOpenPortsRequired ?? 0) <=
-                            availablePortCrackers) ||
-                    !server.backdoorInstalled,
+                            availablePortCrackers)
             )) {
             if (!server.hasAdminRights) {
                 ns.toast(`Nuking ${server}.`, "info");
@@ -134,7 +130,7 @@ export async function main(ns: NS) {
                 });
             }
 
-            await doBackdoor(ns, server.hostname, graph);
+            if (!server.backdoorInstalled) await doBackdoor(ns, server.hostname, graph);
         }
 
         await ns.sleep(10000);
