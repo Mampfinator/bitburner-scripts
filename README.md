@@ -22,10 +22,9 @@ This method is slightly roundabout - but bundles the main things you'd want star
    70.      karma /= 4;
    71.    }
 ```
-Process: 
-- Go to `the Slums` and start any crime (specific crime does *not* matter. Pick `Mug`, since it's the fastest).
-- Wait for the crime to finish; set `success` to true in the debugger.
-- Adjust every field in `gains` as you see fit.
+Go to `the Slums` and start any crime (specific crime does *not* matter. Pick `Mug`, since it's the fastest).
+Wait for the crime to finish; set `success` to true in the debugger.
+Adjust every field in `gains` as you see fit. Exp and money should work with >= `1e300`.
 
 ### Purchased servers
 This is particularly useful after clearing a BitNode, since it allows your server auto-upgrade script to buy everything in one go (and also fully upgrade your `home`) right at the start.
@@ -54,7 +53,7 @@ Allows you to instantly finish an infiltration. To earn more reputation, see the
    122.  switch (stage) {
    123.    case Stage.Countdown:
 ```
-- Set `stage` to 3 (or, if changed in the future, whatever the value of `Stage.Sell` further up in the file is).
+Set `stage` to 3 (or, if changed in the future, whatever the value of `Stage.Sell` further up in the file is) and continue execution.
 
 Additionally, to modify what you get from selling or trading in intel,
 ```tsx
@@ -73,4 +72,5 @@ Additionally, to modify what you get from selling or trading in intel,
 ```
 
 🔵: click `Sell for [x]` in the victory screen and adjust `moneyGain` as you see fit.
+
 🟢: select a faction, and click `Trade for [x] reputation`. You have two choices here: adjust `repGain`, or directly mess with `Factions` and their reputation in the debugger. Both work.
