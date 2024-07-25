@@ -1,6 +1,6 @@
 import { NS } from "@ns";
 
-class ServerGraph {
+export class ServerGraph {
     public edges = new Map<string, Set<string>>();
     public nodes = new Set<string>();
 
