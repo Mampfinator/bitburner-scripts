@@ -24,16 +24,21 @@ async function doBackdoor(
     const path = graph.path(startedAt, server);
     if (!path) return false;
 
-    for (const server of path) {
+    const walked = [startedAt];
+
+    while(path.length > 0) {
+        const server = path.shift()!;
+
         const success = singularity.connect(server);
-        if (!success) {
+        
+        if (success) {
+            walked.unshift(server);
+        } else {
             const message = `Unable to connect from "${singularity.getCurrentServer()}" to ${server}.`;
             ns.print(`ERROR: ${message}`);
             console.warn(message, path, graph);
-            // we can at least attempt to kind of recover here.
-            // in the future, we may want to store the currently traversed path
-            // and walk it back.
-            singularity.connect(startedAt); 
+            // walk back the path we came from to recover initial terminal state.
+            for (const server of walked) singularity.connect(server);
             return false;
         }
     }
@@ -42,12 +47,11 @@ async function doBackdoor(
     try {
         await singularity.installBackdoor();
         graph.addEdge(startedAt, server);
-        // we're assuming `startedAt` to be backdoor'd or owned by us, which it's *most likely* gonna be, but it may not.
-        singularity.connect(startedAt);
+        for (const server of walked) singularity.connect(server);
         return true;
     } catch (e) {
         console.error(`Failed to backdoor ${server}.`, e);
-        singularity.connect(startedAt);
+        for (const server of walked) singularity.connect(server);
         return false;
     }
 }
