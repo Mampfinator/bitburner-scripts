@@ -1,27 +1,27 @@
 import { NS } from "@ns";
-import { getServers } from "/lib/servers/servers";
 import { register } from "/system/memory";
-import { auto } from "/system/proc/auto";
+import { MessageBus } from "/lib/messages";
 
 const { React } = globalThis;
+
+export type ServerBuyMessage = 
+    { name: "toggleAuto" } |
+    { name: "setMinRam", exp: number } |
+    { name: "setMinMoney", money: number };
 
 interface DashboardProps {
     ns: NS;
     initialAuto?: boolean;
-    onToggleAuto: () => void;
-    onSetMinRam: (ramExp: number) => void;
-    onSetMinMoney: (money: number) => void;
+    messageBus: MessageBus<ServerBuyMessage>;
 }
 
-function Dashboard(props: DashboardProps) {
-    const { ns, onToggleAuto, onSetMinRam, onSetMinMoney } = props;
+export function ServerBuyDashboard(props: DashboardProps) {
+    const { ns, messageBus } = props;
 
     return <div>
         <AutoBuyConfiguration 
             ns={ns}
-            onToggleAuto={onToggleAuto}
-            onSetMinMoney={onSetMinMoney}
-            onSetMinRam={onSetMinRam}
+            messageBus={messageBus}
         />
         <hr style={{width: "100%"}}/>
         <ManualBuyMenu ns={ns}/>
@@ -31,13 +31,11 @@ function Dashboard(props: DashboardProps) {
 interface AutobuyProps {
     ns: NS;
     initialAuto?: boolean;
-    onToggleAuto: () => void;
-    onSetMinRam: (ramExp: number) => void;
-    onSetMinMoney: (money: number) => void;
+    messageBus: MessageBus<ServerBuyMessage>;
 }
 
 function AutoBuyConfiguration(props: AutobuyProps) {
-    const { ns, onToggleAuto, initialAuto, onSetMinRam, onSetMinMoney } = props;
+    const { ns, initialAuto, messageBus } = props;
 
     const [auto, setAuto] = React.useState(initialAuto ?? false);
     const [minRam, setMinRam] = React.useState(0);
@@ -57,7 +55,7 @@ function AutoBuyConfiguration(props: AutobuyProps) {
             }} 
             onClick={() => {
                 setAuto(!auto);
-                onToggleAuto();
+                messageBus.send({name: "toggleAuto"})
             }}
         >Automatically buy new servers: {auto ? "Enabled" : "Disabled"}</button>
         <label htmlFor="min-ram">Minimum RAM for new servers: {ns.formatRam(2 ** minRam)}</label>
@@ -70,7 +68,7 @@ function AutoBuyConfiguration(props: AutobuyProps) {
             onInput={(event) => {
                 const exp = Number(event.currentTarget.value);
                 setMinRam(exp);
-                onSetMinRam(exp);
+                messageBus.send({name: "setMinRam", exp})
             }}
         />
         <label htmlFor="min-money">Keep at least ${ns.formatNumber(minMoney)}</label>
@@ -80,7 +78,7 @@ function AutoBuyConfiguration(props: AutobuyProps) {
             onInput={(event) => {
                 const money = Number(event.currentTarget.value);
                 setMinMoney(money);
-                onSetMinMoney(money);
+                messageBus.send({name: "setMinMoney", money});
             }}
             value={minMoney}
         />
@@ -141,93 +139,4 @@ function ManualBuyMenu(props: ManualBuyProps) {
         <input id="server-name" type="text" placeholder="Server Name (defaults to home)" value={name} onInput={e => setName(e.currentTarget.value)}/>
         <input type="submit" value="Manually Buy"/>
     </form>
-}
-
-export async function main(ns: NS) {
-    auto(ns);
-    ns.setTitle("Purchase Servers");
-    ns.disableLog("ALL");
-    ns.clearLog();
-
-    let autoBuy = false;
-    let minMoney = 0;
-    let minRamExp = 0;
-
-    ns.printRaw(<Dashboard 
-        ns={ns}
-        initialAuto={autoBuy}
-        onToggleAuto={() => autoBuy = !autoBuy}
-        onSetMinRam={ramExp => minRamExp = ramExp}
-        onSetMinMoney={money => minMoney = money} 
-    />);
-
-    while (true) {
-        await ns.asleep(50);
-        if (!autoBuy) continue;
-        if (ns.getServerMoneyAvailable("home") <= minMoney) continue;
-
-        const servers = getServers(ns, "home").filter(
-            (server) => server.purchasedByPlayer && server.hostname !== "home",
-        );
-
-        const maxRam = ns.getPurchasedServerMaxRam();
-        for (const server of servers.filter(
-            (server) => server.maxRam < maxRam,
-        )) {
-            const newRam = server.maxRam * 2;
-
-            const upgradeCost = ns.getPurchasedServerUpgradeCost(
-                server.hostname,
-                newRam,
-            );
-
-            if (
-                minMoney === 0 ||
-                ns.getServerMoneyAvailable("home") - upgradeCost > minMoney
-            ) {
-                ns.upgradePurchasedServer(server.hostname, newRam);
-                register({hostname: server.hostname, maxRam: newRam, hasAdminRights: true});
-            }
-        }
-
-        while (
-            (minMoney === 0 || ns.getServerMoneyAvailable("home") > minMoney) &&
-            ns.getServerMoneyAvailable("home") > ns.getPurchasedServerCost(1) &&
-            servers.length < ns.getPurchasedServerLimit()
-        ) {
-            let ram = 2 ** minRamExp;
-
-            ram = 1;
-            while (ram < maxRam) {
-                const newRam = ram * 2;
-                if (
-                    ns.getServerMoneyAvailable("home") -
-                        ns.getPurchasedServerCost(newRam) >
-                    minMoney
-                ) {
-                    ram = newRam;
-                } else {
-                    break;
-                }
-            }
-
-            const name = ns.purchaseServer(
-                `home${ns.getPurchasedServers().length}`,
-                ram,
-            );
-            const success = name.length > 0;
-
-            if (!success) {
-                ns.toast(
-                    `Attempted to a buy server with ${ram} GB of RAM, but failed.`,
-                    "warning",
-                );
-                // something is wrong, so we bail for now.
-                break;
-            } else {
-                ns.toast(`Bought ${name} with ${ram} GB of RAM.`, "success");
-                register({hostname: name, maxRam: ram, hasAdminRights: true});
-            }
-        }
-    }
 }
