@@ -1,11 +1,17 @@
-import { NS } from "@ns";
+import { NS, Server } from "@ns";
 import { ServerBuyMessage, ServerBuyDashboard } from "./dashboard";
 import { MessageBus } from "/lib/messages";
 import { register } from "/system/memory";
 import { auto } from "/system/proc/auto";
-import { getServers } from "/lib/servers/servers";
+import { JSONSettings } from "/lib/settings";
 
 const { React } = globalThis;
+
+class ServerBuySettings extends JSONSettings {
+    public autoBuy = false;
+    public minMoney = 0;
+    public minRamExp = 0;
+}
 
 export async function main(ns: NS) {
     auto(ns);
@@ -13,63 +19,66 @@ export async function main(ns: NS) {
     ns.disableLog("ALL");
     ns.clearLog();
 
-    let autoBuy = false;
-    let minMoney = 0;
-    let minRamExp = 0;
+    const settings = new ServerBuySettings(ns, "servers/settings.json");
 
     const messageBus = new MessageBus<ServerBuyMessage>();
 
     messageBus.subscribe(message => {
         switch (message.name) {
             case "setMinMoney":
-                minMoney = message.money;
+                settings.minMoney = message.money;
                 break;
             case "setMinRam":
-                minRamExp = message.exp;
+                settings.minRamExp = message.exp;
                 break;
             case "toggleAuto":
-                autoBuy = !autoBuy;
+                settings.autoBuy = !settings.autoBuy;
                 break;
         }
     });
 
-    ns.printRaw(<ServerBuyDashboard ns={ns} messageBus={messageBus} initialAuto={autoBuy}/>);
+    ns.printRaw(<ServerBuyDashboard ns={ns} messageBus={messageBus} initialAuto={settings.autoBuy}/>);
+
+    function getUpgradeCost(server: Server): number {
+        if (server.hostname === "home") return ns.singularity.getUpgradeHomeRamCost();
+        else return ns.getPurchasedServerUpgradeCost(server.hostname, server.maxRam * 2);
+    }
+
+    function upgradeOnce(server: Server): boolean {
+        if (server.hostname === "home") return ns.singularity.upgradeHomeRam();
+        else return ns.upgradePurchasedServer(server.hostname, server.maxRam * 2);
+    }
+
 
     while (true) {
         await ns.asleep(50);
-        if (!autoBuy) continue;
-        if (ns.getServerMoneyAvailable("home") <= minMoney) continue;
+        if (!settings.autoBuy) continue;
+        if (ns.getServerMoneyAvailable("home") <= settings.minMoney) continue;
 
-        const servers = getServers(ns, "home").filter(
-            (server) => server.purchasedByPlayer && server.hostname !== "home",
-        );
-
+        const servers = ns.getPurchasedServers()
+            .map(server => ns.getServer(server));
         const maxRam = ns.getPurchasedServerMaxRam();
-        for (const server of servers.filter(
-            (server) => server.maxRam < maxRam,
-        )) {
-            const newRam = server.maxRam * 2;
 
-            const upgradeCost = ns.getPurchasedServerUpgradeCost(
-                server.hostname,
-                newRam,
-            );
+        for (const server of servers.filter(
+            (server) => (server.hostname !== "home" && server.maxRam < maxRam) || (server.hostname !== "home" && server.maxRam < 2 ** 32),
+        )) {
+            const upgradeCost = getUpgradeCost(server);
 
             if (
-                minMoney === 0 ||
-                ns.getServerMoneyAvailable("home") - upgradeCost > minMoney
+                settings.minMoney === 0 ||
+                (ns.getServerMoneyAvailable("home") - upgradeCost) > settings.minMoney
             ) {
-                ns.upgradePurchasedServer(server.hostname, newRam);
-                register({hostname: server.hostname, maxRam: newRam, hasAdminRights: true});
+                const success = upgradeOnce(server)
+                if (success) register({hostname: server.hostname, maxRam: ns.getServer(server.hostname).maxRam, hasAdminRights: true});
             }
         }
 
         while (
-            (minMoney === 0 || ns.getServerMoneyAvailable("home") > minMoney) &&
-            ns.getServerMoneyAvailable("home") > ns.getPurchasedServerCost(1) &&
-            servers.length < ns.getPurchasedServerLimit()
+            ns.getPurchasedServers().length < ns.getPurchasedServerLimit() &&
+            (settings.minMoney === 0 || ns.getServerMoneyAvailable("home") > settings.minMoney) &&
+            ns.getServerMoneyAvailable("home") > ns.getPurchasedServerCost(2 ** settings.minRamExp)
         ) {
-            let ram = 2 ** minRamExp;
+            let ram = 2 ** settings.minRamExp;
 
             ram = 1;
             while (ram < maxRam) {
@@ -77,7 +86,7 @@ export async function main(ns: NS) {
                 if (
                     ns.getServerMoneyAvailable("home") -
                         ns.getPurchasedServerCost(newRam) >
-                    minMoney
+                    settings.minMoney
                 ) {
                     ram = newRam;
                 } else {
