@@ -18,14 +18,14 @@ import { run } from "./proc/run";
 export async function load(ns: NS) {
     console.log("Loading system namespace...");
 
-    globalThis.system ??= {} as any;
+    await loadTime(ns);
+    compressTime(-1);
 
-    compressTime(100000000000);
+    globalThis.system ??= {} as any;
 
     await loadEvents(ns);
     await loadMemory(ns);
     await loadProc(ns);
-    await loadTime(ns);
     syncServers(ns);
 
     console.log(`System namespace loaded: `, globalThis.system);
