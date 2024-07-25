@@ -26,11 +26,11 @@ async function doBackdoor(
 
     const walked = [startedAt];
 
-    while(path.length > 0) {
+    while (path.length > 0) {
         const server = path.shift()!;
 
         const success = singularity.connect(server);
-        
+
         if (success) {
             walked.unshift(server);
         } else {
@@ -68,7 +68,7 @@ async function catchup(ns: NS) {
     for (const server of [...graph.nodes]
         .map((server) => ns.getServer(server))
         .filter((server) => !server.backdoorInstalled)) {
-            await doBackdoor(ns, server.hostname, graph);
+        await doBackdoor(ns, server.hostname, graph);
     }
 
     if (original === "home") return;
@@ -109,10 +109,9 @@ export async function main(ns: NS) {
             .map((server) => ns.getServer(server))
             .filter(
                 (server) =>
-                    (!server.hasAdminRights &&
-                        (server.requiredHackingSkill ?? 0) <= hackingSkill &&
-                        (server.numOpenPortsRequired ?? 0) <=
-                            availablePortCrackers)
+                    !server.hasAdminRights &&
+                    (server.requiredHackingSkill ?? 0) <= hackingSkill &&
+                    (server.numOpenPortsRequired ?? 0) <= availablePortCrackers,
             )) {
             if (!server.hasAdminRights) {
                 ns.toast(`Nuking ${server}.`, "info");
@@ -134,7 +133,8 @@ export async function main(ns: NS) {
                 });
             }
 
-            if (!server.backdoorInstalled) await doBackdoor(ns, server.hostname, graph);
+            if (!server.backdoorInstalled)
+                await doBackdoor(ns, server.hostname, graph);
         }
 
         await ns.sleep(10000);
