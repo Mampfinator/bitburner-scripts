@@ -2,7 +2,10 @@ import { type TestContext } from "../test-context";
 
 export async function test(ctx: TestContext) {
     const { sleep } = await ctx.import<typeof import("lib/lib")>("lib/lib");
-    const { compressTime, uncompressTime, getCompressionFactor } = await ctx.import<typeof import("system/compress-time")>("system/compress-time");
+    const { compressTime, uncompressTime, getCompressionFactor } =
+        await ctx.import<typeof import("system/compress-time")>(
+            "system/compress-time",
+        );
 
     ctx.beforeEach(() => {
         uncompressTime();
@@ -28,7 +31,7 @@ export async function test(ctx: TestContext) {
 
         ctx.assert(
             // 5% error because of how timeouts work.
-            Math.abs((compressedBy * factor) - 1) < 0.05,
+            Math.abs(compressedBy * factor - 1) < 0.05,
             `Expected to sleep for about 1s, slept for ${sleptFor}ms.`,
         );
     });

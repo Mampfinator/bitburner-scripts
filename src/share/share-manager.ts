@@ -4,7 +4,6 @@ import { getServerNames } from "/lib/servers/names";
 import { col } from "/lib/termcol";
 import { share } from "./share";
 
-
 /**
  * @param {NS} ns
  */

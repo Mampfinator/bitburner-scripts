@@ -49,7 +49,7 @@ export class TestContext {
     private beforeEachCallback?: () => Awaitable<void>;
     private afterEachCallback?: () => Awaitable<void>;
     private afterAllCallback?: () => Awaitable<void>;
-    
+
     readonly tests: Test[] = [];
 
     constructor(readonly ns: NS) {}
@@ -91,7 +91,9 @@ export class TestContext {
                         `${" ".repeat(depth * 2)}${col().red("x")} ${test.name}: ${col().red(result.error.message)}`,
                     );
                 } else {
-                    this.ns.tprint(`${" ".repeat(depth * 2)}${col().cyan("✓")} ${test.name}`);
+                    this.ns.tprint(
+                        `${" ".repeat(depth * 2)}${col().cyan("✓")} ${test.name}`,
+                    );
                 }
             } catch (e) {
                 let message = `${" ".repeat(depth * 2)}${col().red("x")} ${test.name}`;

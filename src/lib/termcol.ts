@@ -167,5 +167,3 @@ export interface TermCol {
 export function col() {
     return new TermCol();
 }
-
-console.log(col().black.background.yellow.italic.bold("hi"));

@@ -8,14 +8,17 @@ type Awaitable<T> = T | Promise<T>;
 export async function main(ns: NS) {
     ns.disableLog("ALL");
 
-    const { scripts } = ns.flags([
-        ["scripts", []],
-    ]) as {
-        scripts?: string[],
+    const { scripts } = ns.flags([["scripts", []]]) as {
+        scripts?: string[];
     };
 
-    const scriptNames = (scripts && scripts.length > 0) ? scripts : ns.ls(ns.getHostname(), ".test.js");
-    ns.tprint(`Running ${scriptNames.length} ${pluralize("test suite", "test suites", scriptNames.length)}...`);
+    const scriptNames =
+        scripts && scripts.length > 0
+            ? scripts
+            : ns.ls(ns.getHostname(), ".test.js");
+    ns.tprint(
+        `Running ${scriptNames.length} ${pluralize("test suite", "test suites", scriptNames.length)}...`,
+    );
 
     let success = 0;
     let failure = 0;
@@ -29,10 +32,15 @@ export async function main(ns: NS) {
         try {
             await test(ctx);
 
-            ns.tprint(`Running ${ctx.tests.length} ${pluralize("test", "tests", ctx.tests.length)} in ${col().yellow(scriptName)}:`);
+            ns.tprint(
+                `Running ${ctx.tests.length} ${pluralize("test", "tests", ctx.tests.length)} in ${col().yellow(scriptName)}:`,
+            );
             const results = await ctx.run(2);
 
-            const [succeeded, failed] = splitFilter(results, (result) => result.success);
+            const [succeeded, failed] = splitFilter(
+                results,
+                (result) => result.success,
+            );
             success += succeeded.length;
             failure += failed.length;
         } catch (e) {
@@ -42,9 +50,11 @@ export async function main(ns: NS) {
                 ),
             );
             console.error(e);
-            failure += ctx.tests?.length ?? 1; 
+            failure += ctx.tests?.length ?? 1;
         }
     }
 
-    ns.tprint(`${col().cyan(success)} ${pluralize("test", "tests", success)} succeeded, ${col().red(failure)} ${pluralize("test", "tests", failure)} failed.`);
+    ns.tprint(
+        `${col().cyan(success)} ${pluralize("test", "tests", success)} succeeded, ${col().red(failure)} ${pluralize("test", "tests", failure)} failed.`,
+    );
 }
