@@ -10,6 +10,7 @@ import "system/polyfill";
 import { load as loadEvents } from "./events";
 import { load as loadMemory } from "./memory";
 import { load as loadProc } from "./proc/processes";
+import { load as loadTime } from "./compress-time";
 import { syncServers } from "./sync-servers";
 import { compressTime } from "./compress-time";
 import { run } from "./proc/run";
@@ -24,6 +25,7 @@ export async function load(ns: NS) {
     await loadEvents(ns);
     await loadMemory(ns);
     await loadProc(ns);
+    await loadTime(ns);
     syncServers(ns);
 
     console.log(`System namespace loaded: `, globalThis.system);

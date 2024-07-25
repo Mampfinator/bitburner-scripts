@@ -1,3 +1,5 @@
+import { NS } from "@ns";
+
 declare global {
     /**
      * Original `setTimeout` function.
@@ -44,7 +46,6 @@ export function compressTime(by: number) {
 
     const newTimeout = makeCompressedTimeout(by);
 
-    globalThis.originalSetTimeout = globalThis.setTimeout;
     globalThis.setTimeout = newTimeout;
 }
 
@@ -54,4 +55,12 @@ export function compressTime(by: number) {
 export function uncompressTime() {
     if (globalThis.setTimeout.name === "setTimeout") return;
     globalThis.setTimeout = globalThis.originalSetTimeout;
+}
+
+export async function load(_: NS) {
+    if (
+        !globalThis.originalSetTimeout &&
+        globalThis.setTimeout.name === "setTimeout"
+    )
+        globalThis.originalSetTimeout = setTimeout;
 }
