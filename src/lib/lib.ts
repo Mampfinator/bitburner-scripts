@@ -1,4 +1,4 @@
-import { NetscriptPort } from "@ns";
+import { NetscriptPort, NS } from "@ns";
 
 export function* readPort(port: NetscriptPort) {
     if (port.empty()) return;
@@ -7,6 +7,23 @@ export function* readPort(port: NetscriptPort) {
         if (message === "NULL PORT DATA") return;
         yield message;
     }
+}
+
+/**
+ * Sleeps for `ms` milliseconds.
+ *
+ * @param ms number of milliseconds to sleep.
+ * @param forceUncompressed if `true`, circumvents time compression.
+ */
+export function sleep(ms: number, forceUncompressed?: boolean) {
+    return new Promise((resolve) => {
+        if (!forceUncompressed) setTimeout(resolve, ms);
+        else
+            (globalThis.originalSetTimeout ?? globalThis.setTimeout)(
+                resolve,
+                ms,
+            );
+    });
 }
 
 /**
@@ -104,6 +121,22 @@ export class SparseArray<T> {
     public values() {
         return this.array.values();
     }
+}
+
+/**
+ * Load a script dynamically.
+ * Scripts loaded this way are **not** cached, and cannot be type inferred.
+ *
+ * @returns the script's exports
+ */
+export async function dynamicImport<T = any>(ns: NS, path: string): Promise<T> {
+    const script = ns.read(path);
+    const scriptUri = `data:text/javascript;base64,` + btoa(script);
+    return (await import(scriptUri)) as T;
+}
+
+export function pluralize(singular: string, plural: string, amount: number) {
+    return amount === 1 ? singular : plural;
 }
 
 export function formatTime(time: number): string {
