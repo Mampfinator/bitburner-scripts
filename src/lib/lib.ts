@@ -55,6 +55,13 @@ export class SparseArray<T> {
     private readonly array: (T | undefined)[] = [];
     protected readonly freeSlots = new Set<number>();
 
+    /**
+     * Length of the underlying array.
+     */
+    get length() {
+        return this.array.length;
+    }
+
     [Symbol.iterator]() {
         return this.array[Symbol.iterator]();
     }
@@ -79,7 +86,7 @@ export class SparseArray<T> {
             return this.array.push(item) - 1;
         }
 
-        const slot = [...this.freeSlots].sort().shift()!;
+        const slot: number = this.freeSlots.values().next().value;
         this.array[slot] = item;
         this.freeSlots.delete(slot);
         return slot;
@@ -120,6 +127,27 @@ export class SparseArray<T> {
 
     public values() {
         return this.array.values();
+    }
+}
+
+export class SimpleSparseArray<T> extends Array<T> {
+    /**
+     * Push an item into the Array.
+     * If there are no empty slots, grows the Array.
+     *
+     * @returns the index of the inserted item.
+     */
+    override push(item: T): number {
+        let index = this.findIndex((item) => item === undefined);
+        if (index === -1) index = this.length;
+
+        this[index] = item;
+
+        return index;
+    }
+
+    public delete(index: number): void {
+        delete this[index];
     }
 }
 
