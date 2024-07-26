@@ -10,16 +10,23 @@ export class TestError extends Error {
     }
 }
 
-type TestResult = { success: true } | { success: false; error: TestError };
+type TestReturn =
+    | { success: true; meta?: any }
+    | { success: false; error: TestError };
 
-export class Test {
+interface Test {
+    name: string;
+    run(): Awaitable<TestReturn>;
+}
+
+export class BasicTest implements Test {
     constructor(
         readonly ns: NS,
         readonly name: string,
         readonly callback: () => Awaitable<void>,
     ) {}
 
-    public async run(): Promise<TestResult> {
+    public async run(): Promise<TestReturn> {
         try {
             await this.callback();
             return { success: true };
@@ -28,6 +35,7 @@ export class Test {
             if (e instanceof TestError) {
                 error = e;
             } else if (e instanceof Error) {
+                console.error(e);
                 error = new TestError(e.message);
             } else {
                 error = new TestError("Unknown error");
@@ -40,6 +48,82 @@ export class Test {
         }
     }
 }
+
+export class TimingTest implements Test {
+    constructor(
+        readonly ns: NS,
+        readonly name: string,
+        readonly callback: () => Awaitable<void>,
+        readonly iterations: number,
+    ) {}
+
+    public async run(): Promise<TestReturn> {
+        try {
+            const times: number[] = [];
+            for (let i = 0; i < this.iterations; i++) {
+                const now = Date.now();
+                await this.callback();
+                const time = Date.now() - now;
+
+                times.push(time);
+            }
+
+            return {
+                success: true,
+                meta: { times },
+            };
+        } catch (e) {
+            let error: TestError;
+            if (e instanceof TestError) {
+                error = e;
+            } else if (e instanceof Error) {
+                error = new TestError(e.message);
+                console.error(e);
+            } else {
+                error = new TestError("Unknown error");
+            }
+
+            return {
+                success: false,
+                error,
+            };
+        }
+    }
+}
+
+interface TestRunOptions {
+    filter?: string;
+}
+
+interface TestFailedResult {
+    name: string;
+    success: false;
+    time: number;
+    type: "timing" | "default";
+    error: TestError;
+}
+
+interface TimingTestSuccessResult {
+    name: string;
+    success: true;
+    type: "timing";
+    time: number;
+    min: number;
+    avg: number;
+    max: number;
+}
+
+interface DefaultTestSuccessResult {
+    name: string;
+    success: true;
+    type: "default";
+    time: number;
+}
+
+type TestResult =
+    | TestFailedResult
+    | TimingTestSuccessResult
+    | DefaultTestSuccessResult;
 
 /**
  * Test context for one suite of tests.
@@ -71,47 +155,92 @@ export class TestContext {
     }
 
     async test(name: string, callback: () => Awaitable<void>) {
-        this.tests.push(new Test(this.ns, name, callback));
+        this.tests.push(new BasicTest(this.ns, name, callback));
     }
 
-    async run(depth: number = 0): Promise<TestResult[]> {
+    async time(
+        name: string,
+        callback: () => Awaitable<void>,
+        iterations: number,
+    ) {
+        this.tests.push(new TimingTest(this.ns, name, callback, iterations));
+    }
+
+    // TODO: Make async generator
+    async *run(options: TestRunOptions): AsyncGenerator<TestResult> {
+        const { filter } = options;
         await this.beforeAllCallback?.();
 
-        const results: TestResult[] = [];
-
         for (const test of this.tests) {
+            if (filter && filter.length > 0 && !test.name.includes(filter)) continue;
             await this.beforeEachCallback?.();
-            try {
-                const result = await test.run();
 
-                results.push(result);
+            const type =
+                test instanceof TimingTest ? "timing" : ("default" as const);
+            const name = test.name;
+
+            try {
+                const before = Date.now();
+                const result = await test.run();
+                const time = Date.now() - before;
 
                 if (!result.success) {
-                    this.ns.tprint(
-                        `${" ".repeat(depth * 2)}${col().red("x")} ${test.name}: ${col().red(result.error.message)}`,
-                    );
+                    yield {
+                        success: false,
+                        name,
+                        type,
+                        error: result.error,
+                        time,
+                    };
                 } else {
-                    this.ns.tprint(
-                        `${" ".repeat(depth * 2)}${col().cyan("✓")} ${test.name}`,
-                    );
+                    if (type === "timing") {
+                        const times: number[] = result.meta.times;
+
+                        let sum = 0;
+                        let min = Infinity;
+                        let max = 0;
+
+                        for (const time of times) {
+                            sum += time;
+                            if (time < min) min = time;
+                            if (time > max) max = time;
+                        }
+
+                        const avg = sum / times.length;
+
+                        yield {
+                            name,
+                            success: true,
+                            type,
+                            time,
+                            min,
+                            avg,
+                            max,
+                        };
+                    } else {
+                        yield { name, success: true, type, time }
+                    }
                 }
             } catch (e) {
-                let message = `${" ".repeat(depth * 2)}${col().red("x")} ${test.name}`;
+                let message = "";
                 if ((e as any)?.message) {
-                    message += `: ${col().red((e as any).message)}. Check console for details.`;
+                    message += `${col().red((e as any).message)}. Check console for details.`;
                 } else {
-                    message += `: Unknown error. Check console for details.`;
+                    message += `Unknown error. Check console for details.`;
                 }
 
-                results.push({ success: false, error: new TestError(message) });
-                this.ns.tprint(message);
+                yield {
+                    name,
+                    success: false,
+                    type,
+                    time: 0,
+                    error: new TestError(message),
+                };
             }
             await this.afterEachCallback?.();
         }
 
         await this.afterAllCallback?.();
-
-        return results;
     }
 
     public async import<T = any>(path: string): Promise<T> {

@@ -8,8 +8,12 @@ type Awaitable<T> = T | Promise<T>;
 export async function main(ns: NS) {
     ns.disableLog("ALL");
 
-    const { scripts } = ns.flags([["scripts", []]]) as {
+    const { scripts, filter } = ns.flags([
+        ["scripts", []],
+        ["filter", ""],
+    ]) as {
         scripts?: string[];
+        filter: string;
     };
 
     const scriptNames =
@@ -33,18 +37,40 @@ export async function main(ns: NS) {
             await test(ctx);
 
             ns.tprint(
-                `Running ${ctx.tests.length} ${pluralize("test", "tests", ctx.tests.length)} in ${col().yellow(scriptName)}:`,
+                `Running ${ctx.tests.filter((t) => t.name.includes(filter)).length} ${pluralize("test", "tests", ctx.tests.length)} in ${col().yellow(scriptName)}:`,
             );
-            const results = await ctx.run(2);
 
-            const [succeeded, failed] = splitFilter(
-                results,
-                (result) => result.success,
-            );
-            success += succeeded.length;
-            failure += failed.length;
+            for await (const result of ctx.run({ filter })) {
+                console.log(result);
+
+                if (!result.success) {
+                    const { name, time, error } = result;
+
+                    console.log("Printing result.")
+                    ns.tprint(
+                        `${" ".repeat(4)}${col().red("x")} ${name} (${time}ms): ${col().red(error.message)}`,
+                    );
+
+                    failure++;
+                    continue;
+                }
+
+                success++;
+
+                if (result.type === "timing") {
+                    const { name, min, avg, max } = result;
+                    ns.tprint(
+                        `${" ".repeat(4)}${col().cyan("✓")} ${name} (${min}ms min./${avg}ms avg./${max}ms max.)`,
+                    );
+                } else if (result.type === "default") {
+                    const { name, time } = result;
+                    ns.tprint(
+                        `${" ".repeat(4)}${col().cyan("✓")} ${name} (${time}ms)`,
+                    );
+                }
+            }
         } catch (e) {
-            ns.tprintRaw(
+            ns.tprint(
                 col().red(
                     `Test ${col().yellow(scriptName)} threw an unknown error. Check the console for details.`,
                 ),
