@@ -1,17 +1,28 @@
-import { NS } from "@ns";
+import { AutocompleteData, NS, ScriptArg } from "@ns";
 import { TestContext } from "./test-context";
 import { col } from "/lib/termcol";
 import { dynamicImport, pluralize, splitFilter } from "/lib/lib";
 
 type Awaitable<T> = T | Promise<T>;
 
+const FLAGS = [
+    ["scripts", [] as string[]],
+    ["filter", ""],
+] as [string, string | number | boolean | string[]][];
+
+export function autocomplete(data: AutocompleteData, args: ScriptArg[]) {
+    if (args.at(-2) === "--scripts") {
+        return data.scripts.filter(file => file.endsWith(".test.js"));
+    } else {
+        data.flags(FLAGS);
+        return [];
+    }
+}
+
 export async function main(ns: NS) {
     ns.disableLog("ALL");
 
-    const { scripts, filter } = ns.flags([
-        ["scripts", []],
-        ["filter", ""],
-    ]) as {
+    const { scripts, filter } = ns.flags(FLAGS) as {
         scripts?: string[];
         filter: string;
     };
@@ -41,12 +52,8 @@ export async function main(ns: NS) {
             );
 
             for await (const result of ctx.run({ filter })) {
-                console.log(result);
-
                 if (!result.success) {
                     const { name, time, error } = result;
-
-                    console.log("Printing result.");
                     ns.tprint(
                         `${" ".repeat(4)}${col().red("x")} ${name} (${time}ms): ${col().red(error.message)}`,
                     );
