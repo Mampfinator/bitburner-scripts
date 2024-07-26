@@ -61,20 +61,20 @@ export class HWGWWorkerBatch {
             }),
             this.weakenHack.nextDone().then((res) => {
                 if (!hackingDone)
-                    this.ns.toast(
+                    /*this.ns.toast(
                         `${this.target}: Weaken Hack finished before hacking completed.`,
                         "error",
                         null,
-                    );
+                    );*/
                 return res;
             }),
             this.weakenGrow.nextDone().then((res) => {
                 if (!growingDone)
-                    this.ns.toast(
+                    /*this.ns.toast(
                         `${this.target}: Weaken Grow finished before growing completed.`,
                         "error",
                         null,
-                    );
+                    );*/
                 return res;
             }),
         ]);
