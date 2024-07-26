@@ -3,47 +3,170 @@ import { NS } from "@ns";
 
 const doc = eval("document") as Document;
 
-function makeScript(src: string, id: string) {
-    const element = doc.createElement("script");
+const IMPORT_MAP = {
+    imports: {},
+} as { imports: Record<string, string> };
 
-    element.src = src;
-    element.id = id;
+function join(base: string, uri: string) {
+    if (base.endsWith(".js")) base = base.replace(/(?<=\/)(?:.(?!\/))+$/, "");
+    return new URL(uri, base).href;
+}
+
+async function makeScript(dep: ScriptDependency, element: HTMLScriptElement) {
+    let source = await fetch(dep.src).then((res) => res.text());
+
+    if (dep.type) element.type = dep.type;
+    if (dep.type === "module") {
+        source = source.replaceAll(
+            /(?<=import *.+ *from *\")(.+?)(?=\")/g,
+            (match: string) => {
+                const replacer = IMPORT_MAP.imports[match];
+                if (replacer) {
+                    console.log(`Replacing ${match} with ${replacer}.`);
+                    return replacer;
+                }
+
+                // if import is relative, make it absolute.
+                if (match.startsWith(".")) {
+                    return join(dep.src, match);
+                }
+
+                return match;
+            },
+        );
+    }
+
+    if (dep.append) {
+        if (!source.endsWith(";")) source += ";";
+        source += `\n${dep.append}`;
+    }
+
+    element.textContent = source;
+
+    console.log(`Modified source for ${dep.src}.`);
 
     return element;
 }
 
-function makeStyleSheet(href: string, id: string) {
-    const element = doc.createElement("link");
+async function makeRawScript(dep: RawScriptDependency, element: HTMLScriptElement) {
+    element.textContent = dep.src;
+    if (dep.type) element.type = dep.type;
+}
 
-    element.id = id;
-    element.href = href;
+async function makeStyleSheet(dep: StylesheetDependency, element: HTMLLinkElement) {
+    element.href = dep.href;
     element.rel = "stylesheet";
+}
 
-    return element;
+async function makeRawStyleSheet(dep: RawStyleSheetDependency, element: HTMLLinkElement) {
+    let text = "";
+    for (const [key, style] of Object.entries(dep.style)) {
+        text += `${key} {`;
+        for (const [key, value] of Object.entries(style)) {
+            text += `${key}: ${value};`;
+        }
+        text += "}\n";
+    }
+
+    element.textContent = text;
+    element.rel = "stylesheet";
+    element.type = "text/css";
+}
+
+interface ScriptDependency {
+    node: "script";
+    id: string;
+    src: string;
+    append?: string;
+    type?: "module";
+}
+interface RawScriptDependency {
+    node: "rawScript";
+    id: string;
+    src: string;
+    type?: "module";
+}
+interface StylesheetDependency {
+    node: "stylesheet";
+    id: string;
+    href: string;
+}
+interface RawStyleSheetDependency {
+    node: "rawStylesheet";
+    id: string;
+    style: Record<string, React.CSSProperties>;
 }
 
 type Dependency =
-    | { type: "script"; id: string; src: string }
-    | { type: "stylesheet"; id: string; href: string };
+    | ScriptDependency
+    | RawScriptDependency
+    | StylesheetDependency
+    | RawStyleSheetDependency;
 
 const DEPENDENCIES: Dependency[] = [];
 
+/**
+ * Register an external scripts/stylesheet.
+ */
+export function register({
+    dependency,
+    imports,
+}: {
+    dependency?: Dependency;
+    imports?: Record<string, string>;
+}) {
+    if (dependency) DEPENDENCIES.push(dependency);
+    if (imports) {
+        IMPORT_MAP.imports = {
+            ...IMPORT_MAP.imports,
+            ...imports,
+        };
+    }
+}
+
+export async function apply(dep: Dependency) {
+    const oldElement = doc.querySelector(`#${dep.id}`);
+
+    let element;
+    if (oldElement) element = oldElement;
+    else {
+        element = doc.createElement(dep.node.toLowerCase().includes("script") ? "script" : "link");
+        element.id = dep.id;
+    }
+    
+    if (dep.node === "script")
+        await makeScript(dep, element as HTMLScriptElement);
+    else if (dep.node === "stylesheet")
+        await makeStyleSheet(dep, element as HTMLLinkElement);
+    else if (dep.node === "rawScript")
+        await makeRawScript(dep, element as HTMLScriptElement);
+    else if (dep.node === "rawStylesheet")
+        await makeRawStyleSheet(dep, element as HTMLLinkElement);
+
+    if (!oldElement) {
+        doc.head.appendChild(element);
+    }
+
+}
+
 export async function load(_: NS) {
-    const head = doc.querySelector("head")!;
+    register({
+        dependency: {
+            node: "script",
+            id: "chalk",
+            src: "https://cdn.jsdelivr.net/npm/chalk@5.3.0/source/index.min.js",
+            append: "globalThis.chalk = chalk",
+            type: "module",
+        },
+        imports: {
+            "#ansi-styles":
+                "https://cdn.jsdelivr.net/npm/chalk@5.3.0/source/vendor/ansi-styles/index.min.js",
+            "#supports-color":
+                "https://cdn.jsdelivr.net/npm/chalk@5.3.0/source/vendor/supports-color/browser.min.js",
+        },
+    });
 
     for (const dependency of DEPENDENCIES) {
-        if (doc.querySelector(`#${dependency.id}`)) continue;
-
-        let element;
-        if (dependency.type === "script")
-            element = makeScript(dependency.src, dependency.id);
-        else if (dependency.type === "stylesheet")
-            element = makeStyleSheet(dependency.href, dependency.id);
-        else
-            throw new Error(
-                `Unknown dependency type: ${JSON.stringify(dependency)}`,
-            );
-
-        head.appendChild(element);
+        await apply(dependency);
     }
 }

@@ -1,4 +1,5 @@
 import type * as ReactNamespace from "react";
+import chalk from "chalk";
 
 declare global {
     interface PromiseConstructor {
@@ -13,6 +14,7 @@ declare global {
 declare global {
     interface Global {
         React: typeof ReactNamespace;
+        chalk: typeof chalk;
     }
 }
 
