@@ -172,7 +172,8 @@ export class TestContext {
         await this.beforeAllCallback?.();
 
         for (const test of this.tests) {
-            if (filter && filter.length > 0 && !test.name.includes(filter)) continue;
+            if (filter && filter.length > 0 && !test.name.includes(filter))
+                continue;
             await this.beforeEachCallback?.();
 
             const type =
@@ -218,7 +219,7 @@ export class TestContext {
                             max,
                         };
                     } else {
-                        yield { name, success: true, type, time }
+                        yield { name, success: true, type, time };
                     }
                 }
             } catch (e) {

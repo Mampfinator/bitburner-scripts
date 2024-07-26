@@ -67,7 +67,9 @@ async function catchup(ns: NS) {
 
     for (const server of [...graph.nodes]
         .map((server) => ns.getServer(server))
-        .filter((server) => !server.backdoorInstalled)) {
+        .filter(
+            (server) => server.hasAdminRights && !server.backdoorInstalled,
+        )) {
         await doBackdoor(ns, server.hostname, graph);
     }
 

@@ -46,7 +46,7 @@ export async function main(ns: NS) {
                 if (!result.success) {
                     const { name, time, error } = result;
 
-                    console.log("Printing result.")
+                    console.log("Printing result.");
                     ns.tprint(
                         `${" ".repeat(4)}${col().red("x")} ${name} (${time}ms): ${col().red(error.message)}`,
                     );
