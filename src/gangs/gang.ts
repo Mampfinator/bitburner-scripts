@@ -1,8 +1,6 @@
 import { GangTaskStats, NS } from "@ns";
 import { auto } from "/system/proc/auto";
 
-const { React } = globalThis;
-
 /**
  * Current mode the gang operates in.
  */

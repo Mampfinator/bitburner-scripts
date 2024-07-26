@@ -1,7 +1,7 @@
 import { AutocompleteData, NS, ScriptArg } from "@ns";
 import { TestContext } from "./test-context";
 import { col } from "/lib/termcol";
-import { dynamicImport, pluralize, splitFilter } from "/lib/lib";
+import { dynamicImport, pluralize } from "/lib/lib";
 
 type Awaitable<T> = T | Promise<T>;
 
@@ -12,7 +12,7 @@ const FLAGS = [
 
 export function autocomplete(data: AutocompleteData, args: ScriptArg[]) {
     if (args.at(-2) === "--scripts") {
-        return data.scripts.filter(file => file.endsWith(".test.js"));
+        return data.scripts.filter((file) => file.endsWith(".test.js"));
     } else {
         data.flags(FLAGS);
         return [];

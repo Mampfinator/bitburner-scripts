@@ -1,7 +1,7 @@
-import { NS } from "@ns";
+import { AutocompleteData, NS, ScriptArg } from "@ns";
 import { getServerGraph } from "/lib/servers/graph";
 
-export function autocomplete(data: any, args: any) {
+export function autocomplete(data: AutocompleteData, _: ScriptArg[]) {
     return [...data.servers];
 }
 

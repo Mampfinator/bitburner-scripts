@@ -1,5 +1,5 @@
-import { NS, RunOptions as BaseRunOptions, ScriptArg } from "@ns";
-import { Reservation, reserve } from "../memory";
+import { NS } from "@ns";
+import { Reservation } from "../memory";
 
 const PROCESSES = new Set<number>();
 const RUN_PROMISES = new Map<

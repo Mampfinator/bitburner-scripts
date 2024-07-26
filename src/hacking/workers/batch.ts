@@ -1,6 +1,5 @@
 import { NS } from "@ns";
 import { WorkerGroup } from "./group";
-import { WorkerMode } from "./consts";
 
 export const DELAY = 200;
 
@@ -28,8 +27,6 @@ export class HWGWWorkerBatch {
             );
             return null;
         }
-
-        let startedAt = Date.now();
 
         const hackTime = this.ns.getHackTime(this.target);
         const weakenTime = this.ns.getWeakenTime(this.target);
@@ -63,11 +60,21 @@ export class HWGWWorkerBatch {
                 return res;
             }),
             this.weakenHack.nextDone().then((res) => {
-                //if (!hackingDone) this.ns.toast(`${this.target}: Weaken Hack finished before hacking completed.`, "error", null);
+                if (!hackingDone)
+                    this.ns.toast(
+                        `${this.target}: Weaken Hack finished before hacking completed.`,
+                        "error",
+                        null,
+                    );
                 return res;
             }),
             this.weakenGrow.nextDone().then((res) => {
-                //if (!growingDone) this.ns.toast(`${this.target}: Weaken Grow finished before growing completed.`, "error", null);
+                if (!growingDone)
+                    this.ns.toast(
+                        `${this.target}: Weaken Grow finished before growing completed.`,
+                        "error",
+                        null,
+                    );
                 return res;
             }),
         ]);

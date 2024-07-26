@@ -1,8 +1,8 @@
-import { NS } from "@ns";
+import { AutocompleteData, NS, ScriptArg } from "@ns";
 import { getServers } from "/lib/servers/servers";
 import { getPortCrackersAvailable } from "./crackers";
 
-export function autocomplete(data: any, args: any) {
+export function autocomplete(_data: AutocompleteData, _args: ScriptArg[]) {
     return ["owned", "unnuked", "weird", "cycle-threads", "unowned"];
 }
 

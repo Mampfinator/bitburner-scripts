@@ -1,4 +1,4 @@
-//! This is kinda the core of 
+//! WIP central dashboard to (eventually) control the entire game from.
 import { NS } from "@ns";
 import { MessageBus } from "/lib/messages";
 import { TimeCompression } from "./time";
@@ -16,7 +16,7 @@ export type SystemDashboardMessage = {};
 export function SystemDashboard(props: SystemDashboardProps) {
     const { messageBus, ns } = props;
 
-    const handler = (message: SystemDashboardMessage) => {
+    const handler = (_: SystemDashboardMessage) => {
 
     }
 

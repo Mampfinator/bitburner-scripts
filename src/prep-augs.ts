@@ -1,17 +1,7 @@
 import { NS } from "@ns";
 
-const MAX_FAVOR = 35331;
-
 function clamp(n: number, min = 0, max = Infinity) {
     return Math.min(Math.max(n, min), max);
-}
-
-function repToFavor(reputation: number) {
-    return clamp(
-        Math.log(reputation / 25000 + 1) / Math.log(1.02),
-        0,
-        MAX_FAVOR,
-    );
 }
 
 function favorToRep(favor: number) {

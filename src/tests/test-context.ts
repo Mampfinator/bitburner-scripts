@@ -166,7 +166,6 @@ export class TestContext {
         this.tests.push(new TimingTest(this.ns, name, callback, iterations));
     }
 
-    // TODO: Make async generator
     async *run(options: TestRunOptions): AsyncGenerator<TestResult> {
         const { filter } = options;
         await this.beforeAllCallback?.();
