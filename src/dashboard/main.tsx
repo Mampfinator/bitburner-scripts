@@ -13,7 +13,7 @@ export async function main(ns: NS) {
     ns.tail();
     ns.resizeTail(1000, 600);
 
-    ns.printRaw(<SystemDashboard ns={ns} messageBus={messageBus}/>)
+    ns.printRaw(<SystemDashboard ns={ns} messageBus={messageBus} />);
 
     while (true) {
         await ns.asleep(50000);

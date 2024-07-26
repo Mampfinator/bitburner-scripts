@@ -8,7 +8,7 @@
     "watch:init": "node build/init.js",
     "watch:all": "concurrently npm:watch:transpile npm:watch:local npm:watch:remote",
     "watch": "npm run watch:init && npm run watch:all",
-    "format": "npx prettier --write src/**/*.{js,ts}"
+    "format": "npx prettier --write src/**/*.{js,jsx,ts,tsx}"
   },
   "author": "hydroflame, Hoekstraa, based on work by SlyCedix",
   "devDependencies": {

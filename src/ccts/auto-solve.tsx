@@ -16,7 +16,12 @@ export async function main(ns: NS) {
 
     const messageBus = new MessageBus<DashboardMessage>();
 
-    ns.printRaw(<CCTSDashboard messageBus={messageBus} formatNumber={(number) => ns.formatNumber(number)}/>);
+    ns.printRaw(
+        <CCTSDashboard
+            messageBus={messageBus}
+            formatNumber={(number) => ns.formatNumber(number)}
+        />,
+    );
 
     const contractTypes = new Map<string, string>();
     const solvers = new Map<string, (data: any) => any>();
@@ -29,11 +34,15 @@ export async function main(ns: NS) {
             if (knownScripts.has(script)) {
                 knownScripts.delete(script);
                 continue;
+            }
+
+            const scriptUri =
+                `data:text/javascript;base64,` + btoa(ns.read(script));
+            const { contractType, solve } = (await import(scriptUri)) as {
+                contractType: string;
+                solve: (data: any) => any;
             };
 
-            const scriptUri = `data:text/javascript;base64,` + btoa(ns.read(script));
-            const {contractType, solve} = await import(scriptUri) as {contractType: string, solve: (data: any) => any};
-            
             contractTypes.set(script, contractType);
             solvers.set(contractType, solve);
         }
@@ -55,34 +64,55 @@ export async function main(ns: NS) {
             contractType: type,
         });
     }
-    function reportError(hostname: string, file: string, type: string, remaining: number, data: any, solution: any) {
-        ns.toast(`Failed to solve ${hostname}:${file} (${type}). Remaining tries: ${remaining}. Check console for more details.`, "warning");
-        console.warn(`Failed to solve ${hostname}:${file} (${type}).`, data, solution);
+    function reportError(
+        hostname: string,
+        file: string,
+        type: string,
+        remaining: number,
+        data: any,
+        solution: any,
+    ) {
+        ns.toast(
+            `Failed to solve ${hostname}:${file} (${type}). Remaining tries: ${remaining}. Check console for more details.`,
+            "warning",
+        );
+        console.warn(
+            `Failed to solve ${hostname}:${file} (${type}).`,
+            data,
+            solution,
+        );
 
         messageBus.send({
             type: CCTSMessageType.Failed,
             filename: file,
-            hostname, 
+            hostname,
             contractType: type,
             remaining,
             solution,
-            data
+            data,
         });
     }
-    function reportSuccess(hostname: string, file: string, type: string, rewardString: string) {
+    function reportSuccess(
+        hostname: string,
+        file: string,
+        type: string,
+        rewardString: string,
+    ) {
         const reward = parseRewardString(rewardString);
-        if (!reward) return console.log(`Failed to parse contract reward, but contract was completed.`, rewardString);
+        if (!reward)
+            return console.log(
+                `Failed to parse contract reward, but contract was completed.`,
+                rewardString,
+            );
         // TODO report to dashboard
 
         messageBus.send({
             type: CCTSMessageType.Success,
-            hostname, 
+            hostname,
             filename: file,
             contractType: type,
-            reward
+            reward,
         });
-
-
     }
 
     while (true) {
@@ -103,11 +133,25 @@ export async function main(ns: NS) {
             const data = ns.codingcontract.getData(filename, hostname);
             const solution = solve(data);
 
-            const reward = ns.codingcontract.attempt(solution, filename, hostname);
+            const reward = ns.codingcontract.attempt(
+                solution,
+                filename,
+                hostname,
+            );
 
             if (reward === "") {
-                const remaining = ns.codingcontract.getNumTriesRemaining(filename, hostname);
-                reportError(hostname, filename, type, remaining, data, solution);
+                const remaining = ns.codingcontract.getNumTriesRemaining(
+                    filename,
+                    hostname,
+                );
+                reportError(
+                    hostname,
+                    filename,
+                    type,
+                    remaining,
+                    data,
+                    solution,
+                );
                 continue;
             }
 
