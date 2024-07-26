@@ -66,7 +66,7 @@ export class HWGWWorkerBatch {
                         "error",
                         null,
                     );*/
-                return res;
+                    return res;
             }),
             this.weakenGrow.nextDone().then((res) => {
                 if (!growingDone)
@@ -75,7 +75,7 @@ export class HWGWWorkerBatch {
                         "error",
                         null,
                     );*/
-                return res;
+                    return res;
             }),
         ]);
 

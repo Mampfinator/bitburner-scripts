@@ -19,7 +19,7 @@ async function doBackdoor(
     const { singularity } = ns;
     const startedAt = singularity.getCurrentServer();
 
-    if (!graph) graph = getServerGraph(ns, startedAt);
+    if (!graph) graph = getServerGraph(ns, { startFrom: startedAt });
 
     const path = graph.path(startedAt, server);
     if (!path) return false;

@@ -1,6 +1,5 @@
 //! Load external dependencies.
 import { NS } from "@ns";
-
 const doc = eval("document") as Document;
 
 const IMPORT_MAP = {
@@ -48,17 +47,26 @@ async function makeScript(dep: ScriptDependency, element: HTMLScriptElement) {
     return element;
 }
 
-async function makeRawScript(dep: RawScriptDependency, element: HTMLScriptElement) {
+async function makeRawScript(
+    dep: RawScriptDependency,
+    element: HTMLScriptElement,
+) {
     element.textContent = dep.src;
     if (dep.type) element.type = dep.type;
 }
 
-async function makeStyleSheet(dep: StylesheetDependency, element: HTMLLinkElement) {
+async function makeStyleSheet(
+    dep: StylesheetDependency,
+    element: HTMLLinkElement,
+) {
     element.href = dep.href;
     element.rel = "stylesheet";
 }
 
-async function makeRawStyleSheet(dep: RawStyleSheetDependency, element: HTMLLinkElement) {
+async function makeRawStyleSheet(
+    dep: RawStyleSheetDependency,
+    element: HTMLLinkElement,
+) {
     let text = "";
     for (const [key, style] of Object.entries(dep.style)) {
         text += `${key} {`;
@@ -130,10 +138,12 @@ export async function apply(dep: Dependency) {
     let element;
     if (oldElement) element = oldElement;
     else {
-        element = doc.createElement(dep.node.toLowerCase().includes("script") ? "script" : "link");
+        element = doc.createElement(
+            dep.node.toLowerCase().includes("script") ? "script" : "link",
+        );
         element.id = dep.id;
     }
-    
+
     if (dep.node === "script")
         await makeScript(dep, element as HTMLScriptElement);
     else if (dep.node === "stylesheet")
@@ -146,7 +156,6 @@ export async function apply(dep: Dependency) {
     if (!oldElement) {
         doc.head.appendChild(element);
     }
-
 }
 
 export async function load(_: NS) {
@@ -163,6 +172,38 @@ export async function load(_: NS) {
                 "https://cdn.jsdelivr.net/npm/chalk@5.3.0/source/vendor/ansi-styles/index.min.js",
             "#supports-color":
                 "https://cdn.jsdelivr.net/npm/chalk@5.3.0/source/vendor/supports-color/browser.min.js",
+        },
+    });
+
+    register({
+        dependency: {
+            node: "script",
+            id: "reactflow",
+            src: "https://cdn.jsdelivr.net/npm/reactflow@11.11.4/dist/umd/index.min.js",
+        },
+    });
+
+    register({
+        dependency: {
+            node: "stylesheet",
+            id: "reactflow-style",
+            href: "https://cdn.jsdelivr.net/npm/reactflow@11.11.4/dist/style.min.css",
+        },
+    });
+
+    register({
+        dependency: {
+            node: "script",
+            id: "d3",
+            src: "https://d3js.org/d3.v7.min.js",
+        },
+    });
+
+    register({
+        dependency: {
+            node: "script",
+            id: "d3-force",
+            src: "https://cdn.jsdelivr.net/npm/d3-force@3",
         },
     });
 

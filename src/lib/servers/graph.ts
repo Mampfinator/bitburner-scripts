@@ -45,10 +45,15 @@ export class ServerGraph {
     }
 }
 
-export function getServerGraph(ns: NS, startFrom = "home") {
+interface GraphOptions {
+    startFrom?: string;
+    backdoorIsHomeLink?: boolean;
+}
+
+export function getServerGraph(ns: NS, options?: GraphOptions) {
     const graph = new ServerGraph();
 
-    const queue = [startFrom];
+    const queue = [options?.startFrom ?? "home"];
 
     while (queue.length > 0) {
         const current = queue.shift()!;
@@ -57,7 +62,12 @@ export function getServerGraph(ns: NS, startFrom = "home") {
             if (!graph.nodes.has(to)) queue.push(to);
 
             const server = ns.getServer(to);
-            if (server.backdoorInstalled) graph.addEdge("home", to);
+            if (
+                (typeof options?.backdoorIsHomeLink === "undefined" ||
+                    options.backdoorIsHomeLink) &&
+                server.backdoorInstalled
+            )
+                graph.addEdge("home", to);
             graph.addEdge(current, to);
         }
     }
