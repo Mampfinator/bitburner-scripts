@@ -11,11 +11,14 @@ import { load as loadEvents } from "./events";
 import { load as loadMemory } from "./memory";
 import { load as loadProc } from "./proc/processes";
 import { load as loadTime } from "./compress-time";
+import { load as loadDependencies } from "./dependencies";
 import { syncServers } from "./sync-servers";
 import { compressTime } from "./compress-time";
 import { run } from "./proc/run";
 
 export async function load(ns: NS) {
+    await loadDependencies(ns);
+
     console.log("Loading system namespace...");
 
     await loadTime(ns);
