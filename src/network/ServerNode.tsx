@@ -34,13 +34,14 @@ function getClassName(server: Server): string {
     return classes.join(" ");
 }
 
-export const SERVER_NODE_STYLE: Record<string, React.CSSProperties> =  {
+export const SERVER_NODE_STYLE =  {
     ".server-node": {
         color: "#799973",
         padding: "5px",
         paddingTop: 0,
         paddingBottom: 0,
         border: "1px solid green",
+        width: "170px",
     },
     ".server-node.default": {
         background: "#2f4858",
@@ -60,7 +61,37 @@ export const SERVER_NODE_STYLE: Record<string, React.CSSProperties> =  {
     ".server-node.backdoor": {
         background: "#005f74",
     },
+    ".server-content": {
+        top: 0,
+        left: 0,
+        bottom: 0,
+        right: 0,
+        display: "flex",
+        "flex-direction": "column",
+        "justify-items": "center",
+        "align-items": "center",
+    },
+    ".server-name": {
+        top: 0,
+        bottom: 0,
+        margin: 0,
+        "margin-block": 0,
+    }
+} as Record<string, React.CSSProperties>;
 
+interface BarProps {
+    capacity: number;
+    usage: { color: string, amount: number }[];
+    width?: string;
+    height?: string;
+    borderColor?: string;
+    defaultColor?: string;
+}
+
+function MemoryBar({ usage, width, height, borderColor, defaultColor, capacity }: BarProps): React.ReactElement {
+    return <div style={{width, height, border: `1px solid ${borderColor ?? "green"}`, background: capacity && defaultColor}}>
+        { usage.filter(({amount}) => amount > 0).map(({color, amount}) => <div style={{height, width: `${(amount / capacity) * 100}%`, background: color}}></div> )}
+    </div>
 }
 
 
@@ -68,11 +99,14 @@ export function ServerNode({ data: {server, handles} }: ServerNodeProps): React.
     const className = getClassName(server);
 
     return (
-        <>
+        <div>
             { handles && handles.map(([type, position], i) => <Handle type={type} position={position} id={`${i}`}/>) }
             <div className={"server-node " + className}>
-                <h3 className={"server-name " + className}>{server.hostname}</h3>
+                <div className={"server-content"}>
+                    <h3 className={"server-name " + className}>{server.hostname.length <= 14 ? server.hostname : <p style={{padding: 0, margin: 0}} title={server.hostname}>{server.hostname.substring(0, 11)}...</p>}</h3>
+                    <MemoryBar capacity={server.maxRam} usage={[{color: "red", amount: server.ramUsed}]} width="95%" height="30px" defaultColor="green"/>
+                </div>
             </div>
-        </>
+        </div>
     );
 }

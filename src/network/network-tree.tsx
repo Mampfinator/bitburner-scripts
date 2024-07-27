@@ -3,10 +3,11 @@ import { SERVER_NODE_STYLE, ServerNode } from "./ServerNode";
 import { apply } from "/system/dependencies";
 import { getServerGraph, TreeNode } from "/lib/servers/graph";
 import { Edge, Node, Position } from "reactflow";
+import { auto } from "/system/proc/auto";
 
 const WIDTH = 1500;
 const HEIGHT = 1250;
-const SPACE_X = 50;
+const SPACE_X = 230;
 const SPACE_Y = 115;
 
 const {
@@ -14,6 +15,7 @@ const {
     ReactFlow: { 
         ReactFlowProvider, 
         ReactFlow, 
+        Controls,
         useNodesState, 
         useEdgesState,
         Position: PositionEnum
@@ -48,7 +50,7 @@ function NetworkTree({ns}: {ns: NS}): React.ReactElement {
     // purchased servers are all connected to home, and should be laid out to the *left* of it,
     // growing downwards
     let y = 0;
-    let x = WIDTH / 2 - ((3 * SPACE_X) + "home".length * 10);
+    let x = WIDTH / 2 - (1.5 * SPACE_X);
 
     const maxHeight = [...tree.children.keys()].filter(server => !server.startsWith("home")).length;
 
@@ -65,8 +67,8 @@ function NetworkTree({ns}: {ns: NS}): React.ReactElement {
         pushNode(server, x, y * SPACE_Y, [["target",  PositionEnum.Right]]);
         initialEdges.push({ source: "home", target: server, id: `home-${server}`, sourceHandle: "0" });
 
-        const width = server.length * 10;
-        if (currentMaxX < width) currentMaxX = width;
+        /*const width = server.length * 10;
+        if (currentMaxX < width) currentMaxX = width;*/
 
         y += 1;
         if (y >= maxHeight) {
@@ -76,11 +78,11 @@ function NetworkTree({ns}: {ns: NS}): React.ReactElement {
         }
     }
 
-    const rows: {source: string, target: string}[][] = [];
+    const rows: {source: string, target: TreeNode}[][] = [];
     function addRow(node: TreeNode, cameFrom: string, row: number = 0) {
         const currentRow = rows[row] ??= [];
 
-        currentRow.push({source: cameFrom, target: node.name});
+        currentRow.push({source: cameFrom, target: node});
         for (const child of node.children.values()) {
             addRow(child, node.name, row + 1);
         }
@@ -91,7 +93,7 @@ function NetworkTree({ns}: {ns: NS}): React.ReactElement {
     }
 
     
-    x = WIDTH / 2 + (3 * SPACE_X + "home".length * 10);
+    x = WIDTH / 2 + (1.5 * SPACE_X);
     //y = 0;
     const startY = 0;
     for (let i = 0; i < rows.length; i++) {
@@ -108,14 +110,14 @@ function NetworkTree({ns}: {ns: NS}): React.ReactElement {
         y = startY;
         let rowMaxWidth = 0;
         for (const node of row) {
-            pushNode(node.target, x, y, handles);
-            initialEdges.push({ ...node, id: `${node.source}-${node.target}`, sourceHandle: i === 0 ? "1" : undefined });
+            pushNode(node.target.name, x, y, handles.filter(handle => node.target.children.size > 0 || handle[0] === "target"));
+            initialEdges.push({ source: node.source, target: node.target.name, id: `${node.source}-${node.target.name}`, sourceHandle: i === 0 ? "1" : undefined });
 
-            const width = node.target.length * 10;
+            const width = node.target.name.length * 10;
             if (width > rowMaxWidth) rowMaxWidth = width;
             y += SPACE_Y;
         }
-        x += SPACE_X + rowMaxWidth;
+        x += SPACE_X /*+ rowMaxWidth*/;
     }
 
     const [nodes, , onNodesChange] = useNodesState(initialNodes);
@@ -127,12 +129,14 @@ function NetworkTree({ns}: {ns: NS}): React.ReactElement {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         nodeTypes={{server: ServerNode}}
+        proOptions={{hideAttribution: true}}
     >
-
+        <Controls position="bottom-left"/>
     </ReactFlow>
 }
 
 export async function main(ns: NS) {
+    auto(ns);
     ns.disableLog("ALL");
     ns.clearLog();
     
