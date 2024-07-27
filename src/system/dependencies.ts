@@ -220,10 +220,9 @@ export async function load(_: NS) {
             src: `
                 import * as dagre from "https://cdn.jsdelivr.net/npm/@dagrejs/dagre@1.1.3/+esm";
                 globalThis.dagre = dagre;
-            `
-        }
+            `,
+        },
     });
-
 
     for (const dependency of DEPENDENCIES) {
         await apply(dependency);

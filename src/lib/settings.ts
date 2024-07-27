@@ -30,9 +30,9 @@ export abstract class Settings {
     constructor(ignoreProperties?: (string | symbol | number)[]) {
         const o = {
             ignoreProperties: [
-                "ignoreProperties", 
-                "loaded", 
-                "loading", 
+                "ignoreProperties",
+                "loaded",
+                "loading",
                 ...(ignoreProperties ?? []),
             ],
         } as unknown as Settings;

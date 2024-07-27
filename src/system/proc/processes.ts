@@ -1,5 +1,5 @@
 import { NS } from "@ns";
-import { Reservation } from "../memory";
+import { info, Reservation } from "../memory";
 
 const PROCESSES = new Set<number>();
 const RUN_PROMISES = new Map<
@@ -52,6 +52,7 @@ export function assign(
     if (RESERVATIONS.has(pid)) return false;
 
     RESERVATIONS.set(pid, reservation);
+    globalThis.eventEmitter.emit("process:assigned", pid, info(reservation));
     return true;
 }
 
@@ -63,15 +64,17 @@ export function killed(pid: number): void;
 export function killed(pidOrNs: number | NS): void {
     const pid = typeof pidOrNs === "number" ? pidOrNs : pidOrNs.pid;
 
-    globalThis.eventEmitter.emit("process:killed", pid);
-
     PROCESSES.delete(pid);
     RUN_PROMISES.get(pid)?.resolve();
     RUN_PROMISES.delete(pid);
     if (RESERVATIONS.has(pid)) {
         const reservation = RESERVATIONS.get(pid)!;
+        globalThis.eventEmitter.emit("process:killed", pid, info(reservation));
+
         globalThis.system.memory.free(reservation);
         RESERVATIONS.delete(pid);
+    } else {
+        globalThis.eventEmitter.emit("process:killed", pid);
     }
 }
 

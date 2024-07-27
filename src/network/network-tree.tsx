@@ -53,7 +53,7 @@ function getLayoutedElements(ns: NS): { nodes: Node[]; edges: Edge[] } {
             },
         });
     }
-    
+
     type GridData = {
         server: string;
         handles?: [HandleType, Position][];
@@ -75,12 +75,16 @@ function getLayoutedElements(ns: NS): { nodes: Node[]; edges: Edge[] } {
         },
         has(x: number, y: number) {
             return this.grid[x]?.[y] !== undefined;
-        }
+        },
     };
 
     function pushGrid(x: number, y: number, data: GridData) {
-        if (grid.has(x, y)) console.warn(`Overriding old grid data at ${x}, ${y}`, grid.grid[x][y]);
-        const row = grid.grid[x] ??= {};
+        if (grid.has(x, y))
+            console.warn(
+                `Overriding old grid data at ${x}, ${y}`,
+                grid.grid[x][y],
+            );
+        const row = (grid.grid[x] ??= {});
         row[y] = data;
 
         grid.minX = Math.min(grid.minX, x);
@@ -91,26 +95,38 @@ function getLayoutedElements(ns: NS): { nodes: Node[]; edges: Edge[] } {
 
     pushGrid(0, 0, {
         server: "home",
-        handles: [["source", PositionEnum.Right], ["source", PositionEnum.Left]],
+        handles: [
+            ["source", PositionEnum.Right],
+            ["source", PositionEnum.Left],
+        ],
     });
 
-    const [purchasedServers, children] = splitFilter([...tree.children.values()], (element => ns.getServer(element.name).purchasedByPlayer));
+    const [purchasedServers, children] = splitFilter(
+        [...tree.children.values()],
+        (element) => ns.getServer(element.name).purchasedByPlayer,
+    );
 
-    const next: [{name: string, x: number, y: number}, TreeNode[]][] = [[{name: "home", x: 0, y: 0}, [...children.values()]]];
+    const next: [{ name: string; x: number; y: number }, TreeNode[]][] = [
+        [{ name: "home", x: 0, y: 0 }, [...children.values()]],
+    ];
     while (next.length > 0) {
         const current = next.shift()!;
-        console.log(current, next)
-        const [{name: parent, x: parentX, y: parentY}, nodes] = current;
+        const [{ name: parent, x: parentX, y: parentY }, nodes] = current;
 
         const x = parentX + 1;
         let y = parentY;
 
         function push(direction: number) {
             for (const node of nodes) {
-                const handles: [HandleType, Position][] = [["target", PositionEnum.Left]];
+                const handles: [HandleType, Position][] = [
+                    ["target", PositionEnum.Left],
+                ];
                 if (node.children.size > 0) {
                     handles.push(["source", PositionEnum.Right]);
-                    next.push([{x, y, name: node.name}, [...node.children.values()]]);
+                    next.push([
+                        { x, y, name: node.name },
+                        [...node.children.values()],
+                    ]);
                 }
 
                 pushGrid(x, y, {
@@ -129,22 +145,36 @@ function getLayoutedElements(ns: NS): { nodes: Node[]; edges: Edge[] } {
         }
 
         let canGrow = true;
-        const lower = { value: y + Math.floor(nodes.length / 2), direction: -1 };
+        const lower = {
+            value: y + Math.floor(nodes.length / 2),
+            direction: -1,
+        };
         const upper = { value: y - Math.floor(nodes.length / 2), direction: 1 };
 
         function contiguousFree(from: number, direction: number) {
-            if (!canGrow && (from + ((nodes.length - 1) * direction) > grid.maxY || from + ((nodes.length - 1) * direction) < grid.minY)) return false;
+            if (
+                !canGrow &&
+                (from + (nodes.length - 1) * direction > grid.maxY ||
+                    from + (nodes.length - 1) * direction < grid.minY)
+            )
+                return false;
             for (let i = 0; i < nodes.length; i++) {
-                if (grid.has(x, from + (i * direction))) return false;
+                if (grid.has(x, from + i * direction)) return false;
             }
             return true;
         }
 
         while (true) {
-            if (!canGrow && (lower.value <= grid.minY || lower.value >= grid.maxY) && (upper.value <= grid.minY || upper.value >= grid.maxY)) {
+            if (
+                !canGrow &&
+                (lower.value <= grid.minY || lower.value >= grid.maxY) &&
+                (upper.value <= grid.minY || upper.value >= grid.maxY)
+            ) {
                 canGrow = true;
             }
-            const [a, b] = [lower, upper].sort((a, b) => Math.abs(a.value) - Math.abs(b.value));
+            const [a, b] = [lower, upper].sort(
+                (a, b) => Math.abs(a.value) - Math.abs(b.value),
+            );
             if (contiguousFree(a.value, a.direction)) {
                 y = a.value;
                 push(a.direction);
@@ -155,28 +185,22 @@ function getLayoutedElements(ns: NS): { nodes: Node[]; edges: Edge[] } {
                 break;
             }
 
-
             if (lower.value > grid.minY || canGrow) {
-                console.log("Lower: ", lower.value, grid.minY);
                 lower.value--;
-            } else {
-                console.log("Lower (failed): ", lower.value, grid.minY, "canGrow", canGrow);
             }
 
             if (upper.value < grid.maxY || canGrow) {
-                console.log("Upper: ", upper.value, grid.maxY);
                 upper.value++;
-            } else {
-                console.log("Upper (failed): ", upper.value, grid.maxY, "canGrow", canGrow);
             }
         }
     }
 
-    const PURCHASED_HANDLES: [HandleType, Position][] = [["target", PositionEnum.Right]];
+    const PURCHASED_HANDLES: [HandleType, Position][] = [
+        ["target", PositionEnum.Right],
+    ];
     let x = -1;
 
     while (purchasedServers.length > 0) {
-
         for (let y = grid.minY; y < grid.maxY; y++) {
             const node = purchasedServers.shift();
             if (!node) break;
@@ -197,44 +221,52 @@ function getLayoutedElements(ns: NS): { nodes: Node[]; edges: Edge[] } {
         x -= 1;
     }
 
-
-    for (const {x, y, data} of grid) {
+    for (const { x, y, data } of grid) {
         pushNode(data.server, x * SPACE_X, y * SPACE_Y, data.handles);
     }
 
-    return {nodes: initialNodes, edges: initialEdges}
+    return { nodes: initialNodes, edges: initialEdges };
 }
 
 // FIXME: Dagre layouting doesn't seem to work.
 // TODO: implement splitting of purchased and other servers similar to normal `getLayoutedElements`.
-function getLayoutedElementsDagre(ns: NS): { nodes: Node[], edges: Edge[] } {
+function getLayoutedElementsDagre(ns: NS): { nodes: Node[]; edges: Edge[] } {
     const tree = getServerGraph(ns).toTree("home");
 
-    function getElements(node: TreeNode, nodes: Node[] = [], edges: Edge[] = []) {
-        nodes.push(...[...node.children.values()].map(child => {
-            const handles = [["target", PositionEnum.Left]];
-            if (child.children.size > 0) handles.push(["source", PositionEnum.Right]);
+    function getElements(
+        node: TreeNode,
+        nodes: Node[] = [],
+        edges: Edge[] = [],
+    ) {
+        nodes.push(
+            ...[...node.children.values()].map((child) => {
+                const handles = [["target", PositionEnum.Left]];
+                if (child.children.size > 0)
+                    handles.push(["source", PositionEnum.Right]);
 
-            return {
-                id: child.name,
-                position: { x: 0, y: 0 },
-                type: "server",
-                data: {
-                    server: ns.getServer(child.name),
-                    ns,
-                    handles,
-                },
-            }
-        }));
+                return {
+                    id: child.name,
+                    position: { x: 0, y: 0 },
+                    type: "server",
+                    data: {
+                        server: ns.getServer(child.name),
+                        ns,
+                        handles,
+                    },
+                };
+            }),
+        );
 
-        edges.push(...[...node.children.values()].map(child => {
-            return {
-                id: `${node.name}-${child.name}`,
-                source: node.name,
-                target: child.name,
-                type: "smoothstep",
-            }
-        }));
+        edges.push(
+            ...[...node.children.values()].map((child) => {
+                return {
+                    id: `${node.name}-${child.name}`,
+                    source: node.name,
+                    target: child.name,
+                    type: "smoothstep",
+                };
+            }),
+        );
 
         for (const child of node.children.values()) {
             const { nodes: childNodes, edges: childEdges } = getElements(child);
@@ -242,8 +274,8 @@ function getLayoutedElementsDagre(ns: NS): { nodes: Node[], edges: Edge[] } {
             nodes.push(...childNodes);
             edges.push(...childEdges);
         }
-        
-        return { nodes, edges }
+
+        return { nodes, edges };
     }
 
     const dagreGraph = new dagre.graphlib.Graph();
@@ -264,11 +296,11 @@ function getLayoutedElementsDagre(ns: NS): { nodes: Node[], edges: Edge[] } {
             handles: [
                 ["source", PositionEnum.Right],
                 ["source", PositionEnum.Left],
-            ]
+            ],
         },
     });
 
-    dagreGraph.setGraph({rankdir: "LR"});
+    dagreGraph.setGraph({ rankdir: "LR" });
 
     for (const node of nodes) {
         dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
@@ -280,7 +312,7 @@ function getLayoutedElementsDagre(ns: NS): { nodes: Node[], edges: Edge[] } {
 
     dagre.layout(dagreGraph);
 
-    const positionedNodes = nodes.map(node => {
+    const positionedNodes = nodes.map((node) => {
         const nodeWithPosition = dagreGraph.node(node.id);
         return {
             ...node,
@@ -290,12 +322,13 @@ function getLayoutedElementsDagre(ns: NS): { nodes: Node[], edges: Edge[] } {
             },
         };
     });
-    
-    return { nodes: positionedNodes, edges }
+
+    return { nodes: positionedNodes, edges };
 }
 
 function NetworkTree({ ns }: { ns: NS }): React.ReactElement {
-    const { nodes: initialNodes, edges: initialEdges } = getLayoutedElements(ns);
+    const { nodes: initialNodes, edges: initialEdges } =
+        getLayoutedElements(ns);
 
     const [nodes] = useNodesState(initialNodes);
     const [edges] = useEdgesState(initialEdges);

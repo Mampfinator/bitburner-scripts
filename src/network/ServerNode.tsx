@@ -1,5 +1,6 @@
 import { NS, Server } from "@ns";
 import { Position } from "reactflow";
+import { ReservationDetails } from "/system/memory";
 
 const {
     React,
@@ -169,7 +170,7 @@ export function ServerNode({
         (reservation) => reservation.tag ?? "unknown",
     );
 
-    const usage = [];
+    const initialUsage = [];
     for (const group of [
         ...GROUP_ORDER,
         ...Object.keys(groups).filter((key) => !GROUP_ORDER.includes(key)),
@@ -178,8 +179,62 @@ export function ServerNode({
         const amount = sum(groups[group]!, (reservation) => reservation.amount);
         const color = COLORS[group as keyof typeof COLORS] ?? randomColor();
 
-        usage.push({ title: group, amount, color });
+        initialUsage.push({ title: group, amount, color });
     }
+
+    const [usage, setUsage] = React.useState(initialUsage);
+
+    React.useEffect(() => {
+        const cleanupFns = [
+            globalThis.eventEmitter.withCleanup(
+                "process:assigned",
+                (_, reservation: ReservationDetails | null | undefined) => {
+                    if (
+                        !reservation ||
+                        reservation.hostname !== server.hostname
+                    )
+                        return;
+
+                    let scriptUsage = usage.find(
+                        ({ title }) => title === (reservation.tag ?? "unknown"),
+                    );
+                    if (!scriptUsage) {
+                        scriptUsage = {
+                            title: reservation.tag ?? "unknown",
+                            amount: 0,
+                            color: randomColor(),
+                        };
+                        usage.push(scriptUsage);
+                    }
+                    scriptUsage.amount += reservation.amount;
+
+                    setUsage([...usage]);
+                },
+            ),
+            globalThis.eventEmitter.withCleanup(
+                "process:killed",
+                (_, reservation: ReservationDetails | null | undefined) => {
+                    if (
+                        !reservation ||
+                        reservation.hostname !== server.hostname
+                    )
+                        return;
+
+                    const scriptUsage = usage.find(
+                        ({ title }) => title === (reservation.tag ?? "unknown"),
+                    );
+                    if (!scriptUsage) return;
+                    scriptUsage.amount -= reservation.amount;
+
+                    setUsage([...usage]);
+                },
+            ),
+        ];
+
+        return () => {
+            cleanupFns.forEach((fn) => fn());
+        };
+    });
 
     return (
         <div>

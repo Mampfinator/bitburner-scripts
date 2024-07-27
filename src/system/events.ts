@@ -115,6 +115,16 @@ export class EventEmitter {
         );
         return callbackId;
     }
+
+    public withCleanup(
+        event: string,
+        listener: (...args: any[]) => void,
+    ): () => void {
+        const callbackId = this.on(event, listener);
+        return () => {
+            this.remove(event, callbackId);
+        };
+    }
 }
 
 declare global {

@@ -142,6 +142,17 @@ export class MemInfo {
         return clone;
     }
 
+    public details(chunkIndex: number): ReservationDetails | null {
+        const reservation = this.reservations.get(chunkIndex);
+        if (!reservation) return null;
+
+        return {
+            hostname: this.hostname,
+            chunkIndex,
+            ...reservation,
+        };
+    }
+
     public list(): ReservationDetails[] {
         return [...this.reservations.entries()]
             .filter((e) => !!e[1])
@@ -398,6 +409,13 @@ export function list(server: string): ReservationDetails[] | null {
     const info = MEMORY_MAP.get(server);
     if (!info) return null;
     return info.list();
+}
+
+export function info(reservation: Reservation): ReservationDetails | null {
+    const info = MEMORY_MAP.get(reservation.hostname);
+    if (!info) return null;
+
+    return info.details(reservation.chunkIndex);
 }
 
 export async function load(ns: NS) {

@@ -16,7 +16,10 @@ declare global {
     }
 
     interface ObjectConstructor {
-        groupBy<K extends PropertyKey, T>(items: Iterable<T>, keySelector: (item: T, index: number) => K): Partial<Record<K, T[]>>
+        groupBy<K extends PropertyKey, T>(
+            items: Iterable<T>,
+            keySelector: (item: T, index: number) => K,
+        ): Partial<Record<K, T[]>>;
     }
 }
 
@@ -42,6 +45,5 @@ Object.groupBy ??= (<T>(arr: T[], callback: (...args: any[]) => string) => {
         return acc;
     }, {});
 }) as any;
-
 
 export default {};
