@@ -1,5 +1,5 @@
 import { NS, Server } from "@ns";
-import { WorkerMode } from "./workers/consts";
+import { WORKER_SCRIPTS, WorkerMode } from "./workers/consts";
 import { type WorkerGroup } from "./workers/group";
 import { WorkerPool } from "./workers/pool";
 import { MONITORING_PORT } from "monitoring/monitor.js";
@@ -112,7 +112,7 @@ export async function main(ns: NS) {
         (server) => server.hasAdminRights,
     )) {
         if (server.hostname === "home") continue;
-        ns.scp("hacking/worker.js", server.hostname, "home");
+        ns.scp(Object.values(WORKER_SCRIPTS), server.hostname, "home");
     }
 
     ns.print("Initialized pool.");

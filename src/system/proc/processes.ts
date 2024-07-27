@@ -97,6 +97,8 @@ declare global {
              * List registered processes.
              */
             function running(): number[];
+
+            function getReservation(nsOrPid: number | NS): Reservation | null;
         }
     }
 }
@@ -107,5 +109,6 @@ export async function load(_: NS) {
         assign: assign as any,
         killed: killed as any,
         running: () => [...PROCESSES],
+        getReservation: getReservation as any,
     };
 }

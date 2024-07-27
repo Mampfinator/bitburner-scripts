@@ -9,7 +9,7 @@ import {
 } from "./consts";
 import { HWGWWorkerBatch } from "./batch";
 import { WorkerGroup } from "./group";
-import { reserveThreads } from "/system/memory";
+import { Reservation, reserveThreads } from "/system/memory";
 
 export interface PoolOptions {
     reserveRam?: Record<string, number>;
@@ -169,7 +169,11 @@ export class WorkerPool {
         if (numThreads === 0) return null;
 
         const threadSize = this.workerRam[options.mode];
-        const reservations = reserveThreads(numThreads, threadSize);
+        const reservations = reserveThreads(
+            numThreads,
+            threadSize,
+            options.mode,
+        );
 
         if (!reservations) {
             console.warn(
@@ -263,7 +267,15 @@ export class WorkerPool {
         hostname: string,
         options: {
             hackRatio?: number;
-            groupOptions: Omit<WorkerOptions, "threads" | "mode">;
+            groupOptions: Omit<
+                WorkerOptions,
+                "threads" | "mode" | "useReservation"
+            > & {
+                reservations?: Record<
+                    "hack" | "hackWeaken" | "grow" | "growWeaken",
+                    Reservation
+                >;
+            };
         },
     ): HWGWWorkerBatch | null {
         if (
@@ -287,19 +299,23 @@ export class WorkerPool {
 
         const hackGroup = this.reserveGroup(hackThreads, {
             ...groupOptions,
+            useReservation: options.groupOptions.reservations?.hack,
             mode: WorkerMode.Hack,
         });
         const hackWeakenGroup = this.reserveGroup(hackWeakenThreads, {
             ...groupOptions,
+            useReservation: options.groupOptions.reservations?.hackWeaken,
             mode: WorkerMode.Weaken,
         });
 
         const growGroup = this.reserveGroup(growThreads, {
             ...groupOptions,
+            useReservation: options.groupOptions.reservations?.grow,
             mode: WorkerMode.Grow,
         });
         const growWeakenGroup = this.reserveGroup(growWeakenThreads, {
             ...groupOptions,
+            useReservation: options.groupOptions.reservations?.growWeaken,
             mode: WorkerMode.Weaken,
         });
 

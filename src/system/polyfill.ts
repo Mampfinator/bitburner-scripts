@@ -14,7 +14,6 @@ declare global {
     }
 }
 
-
 Promise.withResolvers ??= function <T>() {
     let resolve: (value: T | PromiseLike<T>) => void = () => {};
     let reject: (reason?: any) => void = () => {};
@@ -28,5 +27,14 @@ Promise.withResolvers ??= function <T>() {
         reject,
     };
 };
+
+Object.groupBy ??= (<T>(arr: T[], callback: (...args: any[]) => string) => {
+    return arr.reduce<Record<string, T[]>>((acc = {}, ...args) => {
+        const key = callback(...args);
+        acc[key] ??= [];
+        acc[key].push(args[0]);
+        return acc;
+    }, {});
+}) as any;
 
 export default {};

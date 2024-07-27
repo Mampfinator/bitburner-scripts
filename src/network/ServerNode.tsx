@@ -1,4 +1,4 @@
-import { Server } from "@ns";
+import { NS, Server } from "@ns";
 import { Position } from "reactflow";
 
 const {
@@ -9,8 +9,9 @@ const {
 interface ServerNodeProps {
     data: {
         server: Server;
-        handles?: ["target" | "source", Position][]
-    }
+        handles?: ["target" | "source", Position][];
+        ns: NS;
+    };
 }
 
 const SPECIAL_SERVERS = new Set([
@@ -34,7 +35,7 @@ function getClassName(server: Server): string {
     return classes.join(" ");
 }
 
-export const SERVER_NODE_STYLE =  {
+export const SERVER_NODE_STYLE = {
     ".server-node": {
         color: "#799973",
         padding: "5px",
@@ -76,35 +77,138 @@ export const SERVER_NODE_STYLE =  {
         bottom: 0,
         margin: 0,
         "margin-block": 0,
-    }
+    },
 } as Record<string, React.CSSProperties>;
 
 interface BarProps {
     capacity: number;
-    usage: { color: string, amount: number }[];
+    usage: { color: string; amount: number; title: string }[];
     width?: string;
     height?: string;
     borderColor?: string;
     defaultColor?: string;
+    ns: NS;
 }
 
-function MemoryBar({ usage, width, height, borderColor, defaultColor, capacity }: BarProps): React.ReactElement {
-    return <div style={{width, height, border: `1px solid ${borderColor ?? "green"}`, background: capacity && defaultColor}}>
-        { usage.filter(({amount}) => amount > 0).map(({color, amount}) => <div style={{height, width: `${(amount / capacity) * 100}%`, background: color}}></div> )}
-    </div>
+function capitalizeFirst(str: string): string {
+    return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
+function MemoryBar({
+    usage,
+    width,
+    height,
+    borderColor,
+    defaultColor,
+    capacity,
+    ns,
+}: BarProps): React.ReactElement {
+    return (
+        <div
+            style={
+                {
+                    width,
+                    height,
+                    border: `1px solid ${borderColor ?? "green"}`,
+                    background: capacity && defaultColor,
+                    display: "flex",
+                    "flex-direction": "row",
+                } as any
+            }
+        >
+            {usage
+                .filter(({ amount }) => amount > 0)
+                .map(({ color, amount, title }) => (
+                    <p
+                        title={`${capitalizeFirst(title)}: ${ns.formatRam(amount)}`}
+                        style={{
+                            height,
+                            width: `${(amount / capacity) * 100}%`,
+                            padding: 0,
+                            margin: 0,
+                            background: color,
+                        }}
+                    ></p>
+                ))}
+        </div>
+    );
+}
 
-export function ServerNode({ data: {server, handles} }: ServerNodeProps): React.ReactElement {
+const GROUP_ORDER = ["unknown", "hack", "grow", "weaken", "share"];
+
+const COLORS = {
+    unknown: "red",
+    hack: "cyan",
+    grow: "yellow",
+    weaken: "magenta",
+    share: "purple",
+};
+
+function randomColor(): string {
+    const letters = "0123456789ABCDEF";
+    let color = "#";
+    for (let i = 0; i < 6; i++) {
+        color += letters[Math.floor(Math.random() * 16)];
+    }
+    return color;
+}
+
+function sum<T>(arr: T[], accessor: (item: T) => number): number {
+    return arr.reduce((sum, item) => sum + accessor(item), 0);
+}
+
+export function ServerNode({
+    data: { server, handles, ns },
+}: ServerNodeProps): React.ReactElement {
     const className = getClassName(server);
+
+    const reservations = globalThis.system.memory.list(server.hostname) ?? [];
+
+    const groups = Object.groupBy(
+        reservations,
+        (reservation) => reservation.tag ?? "unknown",
+    );
+
+    const usage = [];
+    for (const group of [
+        ...GROUP_ORDER,
+        ...Object.keys(groups).filter((key) => !GROUP_ORDER.includes(key)),
+    ]) {
+        if (!groups[group]) continue;
+        const amount = sum(groups[group]!, (reservation) => reservation.amount);
+        const color = COLORS[group as keyof typeof COLORS] ?? randomColor();
+
+        usage.push({ title: group, amount, color });
+    }
 
     return (
         <div>
-            { handles && handles.map(([type, position], i) => <Handle type={type} position={position} id={`${i}`}/>) }
+            {handles &&
+                handles.map(([type, position], i) => (
+                    <Handle type={type} position={position} id={`${i}`} />
+                ))}
             <div className={"server-node " + className}>
                 <div className={"server-content"}>
-                    <h3 className={"server-name " + className}>{server.hostname.length <= 14 ? server.hostname : <p style={{padding: 0, margin: 0}} title={server.hostname}>{server.hostname.substring(0, 11)}...</p>}</h3>
-                    <MemoryBar capacity={server.maxRam} usage={[{color: "red", amount: server.ramUsed}]} width="95%" height="30px" defaultColor="green"/>
+                    <h3 className={"server-name " + className}>
+                        {server.hostname.length <= 14 ? (
+                            server.hostname
+                        ) : (
+                            <p
+                                style={{ padding: 0, margin: 0 }}
+                                title={server.hostname}
+                            >
+                                {server.hostname.substring(0, 11)}...
+                            </p>
+                        )}
+                    </h3>
+                    <MemoryBar
+                        ns={ns}
+                        capacity={server.maxRam}
+                        usage={usage}
+                        width="95%"
+                        height="30px"
+                        defaultColor="green"
+                    />
                 </div>
             </div>
         </div>

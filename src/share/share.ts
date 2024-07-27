@@ -22,7 +22,7 @@ function spawnThreads(ns: NS, threads: number): number[] | null {
 
     const pids = [];
 
-    const reservations = reserveThreads(threads, workerCost);
+    const reservations = reserveThreads(threads, workerCost, "share");
     if (!reservations) return null;
 
     for (const reservation of reservations) {

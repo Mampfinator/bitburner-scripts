@@ -55,6 +55,7 @@ export class Worker {
             options.useReservation ??
             globalThis.system.memory.reserve(
                 this.pool.workerRam[this.mode] * this.threads,
+                { tag: this.mode },
             );
 
         const [pid, killed] = run(
@@ -69,10 +70,10 @@ export class Worker {
             "--target",
             this.target,
         );
-
         if (pid === 0) {
+            console.warn(`Couldn't start worker: `, this, reservation);
             throw new Error(
-                `Couldn't start ${this}: Failed to start worker.js.`,
+                `Couldn't start ${this}: Failed to start worker script.`,
             );
         }
 

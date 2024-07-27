@@ -12,6 +12,11 @@ export type ServerMemInfo = Pick<
     "maxRam" | "hostname" | "hasAdminRights"
 >;
 
+interface InternalReservation {
+    amount: number;
+    tag?: string;
+}
+
 export class MemInfo {
     public readonly hostname: string;
 
@@ -43,7 +48,7 @@ export class MemInfo {
             const newFree =
                 this.capacity -
                 [...this.reservations.values()].reduce(
-                    (acc, cur) => acc! + (cur ?? 0),
+                    (acc, cur) => acc! + (cur?.amount ?? 0),
                     0,
                 )!;
             this.lastFree = newFree;
@@ -80,23 +85,23 @@ export class MemInfo {
         return changed;
     }
 
-    protected reservations = new SparseArray<number>();
+    protected reservations = new SparseArray<InternalReservation>();
 
     /**
      * Get the size of a reservation.
      */
     reserved(index: number): number | undefined {
-        return this.reservations.get(index);
+        return this.reservations.get(index)?.amount;
     }
 
     /**
      * Reserve a chunk.
      */
-    reserve(amount: number): number {
+    reserve(amount: number, tag?: string): number {
         if (this.available < amount) return -1;
 
         this.lastFree! -= amount;
-        return this.reservations.push(amount);
+        return this.reservations.push({ amount, tag });
     }
 
     /**
@@ -117,9 +122,9 @@ export class MemInfo {
         if (this.available < growBy) return false;
 
         const old = this.reservations.get(chunkIndex);
-        if (typeof old !== "number") return false;
+        if (!old) return false;
 
-        this.reservations.set(chunkIndex, old + growBy);
+        old.amount += growBy;
         this.lastFree! -= growBy;
 
         return true;
@@ -136,6 +141,21 @@ export class MemInfo {
 
         return clone;
     }
+
+    public list(): ReservationDetails[] {
+        return [...this.reservations.entries()]
+            .filter((e) => !!e[1])
+            .map(([chunkIndex, reservation]) => ({
+                hostname: this.hostname,
+                chunkIndex,
+                ...reservation!,
+            })) as ReservationDetails[];
+    }
+}
+
+export interface ReservationDetails extends InternalReservation {
+    hostname: string;
+    chunkIndex: number;
 }
 
 /**
@@ -165,14 +185,22 @@ export interface Reservation {
     chunkIndex: number;
 }
 
+interface ReserveOptions {
+    onServer?: string;
+    tag?: string;
+}
+
 /**
  * Reserve `amount` RAM in GB. Yes this is basically a crude `malloc`.
  * To free this allocation again, see {@link free}.
  * @param amount amount of memory (in GB) to reserve.
- * @param onServer server to reserve RAM on. If not set, reserves on the server with the most available memory.
  * @returns the reservation, or `null` if the reservation failed.
  */
-export function reserve(amount: number, onServer?: string): Reservation | null {
+export function reserve(
+    amount: number,
+    options?: ReserveOptions,
+): Reservation | null {
+    const { onServer, tag } = options ?? {};
     if (typeof onServer !== "undefined") {
         const info = MEMORY_MAP.get(onServer);
         if (!info) {
@@ -182,7 +210,7 @@ export function reserve(amount: number, onServer?: string): Reservation | null {
             return null;
         }
         if (!info.usable) return null;
-        const chunkIndex = info.reserve(amount);
+        const chunkIndex = info.reserve(amount, tag);
         if (chunkIndex < 0) return null;
 
         return { hostname: onServer, chunkIndex };
@@ -190,7 +218,7 @@ export function reserve(amount: number, onServer?: string): Reservation | null {
         for (const info of [...MEMORY_MAP.values()]
             .filter((server) => server.usable)
             .sort((a, b) => b.available - a.available)) {
-            const chunkIndex = info.reserve(amount);
+            const chunkIndex = info.reserve(amount, tag);
             if (chunkIndex < 0) continue;
 
             return { chunkIndex, hostname: info.hostname };
@@ -203,6 +231,7 @@ export function reserve(amount: number, onServer?: string): Reservation | null {
 export function reserveThreads(
     threads: number,
     threadSize: number,
+    tag?: string,
 ): Reservation[] | null {
     const available = [...MEMORY_MAP.values()].reduce(
         (acc, curr) => acc + curr.available,
@@ -218,9 +247,9 @@ export function reserveThreads(
         return null;
     }
 
-    const servers = [...MEMORY_MAP.values()].filter(
-        (server) => server.available >= threadSize,
-    );
+    const servers = [...MEMORY_MAP.values()]
+        .filter((server) => server.available >= threadSize)
+        .sort((a, b) => b.available - a.available);
 
     while (threads > 0 && servers.length > 0) {
         const server = servers.shift()!;
@@ -229,7 +258,10 @@ export function reserveThreads(
         if (freeThreads <= 0) continue;
         const useThreads = Math.min(freeThreads, threads);
 
-        const reservation = reserve(useThreads * threadSize, server.hostname);
+        const reservation = reserve(useThreads * threadSize, {
+            onServer: server.hostname,
+            tag,
+        });
 
         if (!reservation) {
             console.error(
@@ -335,7 +367,7 @@ declare global {
              */
             function reserve(
                 amount: number,
-                onServer?: string,
+                options?: ReserveOptions,
             ): Reservation | null;
             /**
              * Reserve `chunks` sections of memory with size `chunkSize`.
@@ -344,6 +376,7 @@ declare global {
             function reserveChunks(
                 chunks: number,
                 chunkSize: number,
+                tag?: string,
             ): Reservation[] | null;
             /**
              * Free a `Reservation` from {@link globalThis.system.memory.reserve | reserve}.
@@ -356,8 +389,15 @@ declare global {
              */
             function grow(reservation: Reservation, amount: number): boolean;
             function sizeOf(reservation: Reservation): number | undefined;
+            function list(server: string): ReservationDetails[] | null;
         }
     }
+}
+
+export function list(server: string): ReservationDetails[] | null {
+    const info = MEMORY_MAP.get(server);
+    if (!info) return null;
+    return info.list();
 }
 
 export async function load(ns: NS) {
@@ -372,5 +412,6 @@ export async function load(ns: NS) {
         free,
         grow,
         sizeOf,
+        list,
     };
 }

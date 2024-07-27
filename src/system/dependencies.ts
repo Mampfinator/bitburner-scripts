@@ -139,9 +139,11 @@ export async function apply(dep: Dependency) {
         const node = dep.node.toLowerCase();
 
         element = doc.createElement(
-            node.includes("script") ? "script" : 
-            node === "stylesheet" ?"link" :
-            "style",
+            node.includes("script")
+                ? "script"
+                : node === "stylesheet"
+                  ? "link"
+                  : "style",
         );
         element.id = dep.id;
     }

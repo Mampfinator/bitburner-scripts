@@ -45,7 +45,7 @@ export class ServerGraph {
     }
 
     public toTree(root: string = "home"): TreeNode {
-        const rootNode: TreeNode = { name: root, children: new Map(), };
+        const rootNode: TreeNode = { name: root, children: new Map() };
 
         const seen = new Set([root]);
 
@@ -69,10 +69,10 @@ export class ServerGraph {
     }
 }
 
-export interface TreeNode { 
+export interface TreeNode {
     name: string;
     children: Map<string, TreeNode>;
-};
+}
 
 export interface GraphOptions {
     startFrom?: string;

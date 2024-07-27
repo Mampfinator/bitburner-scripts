@@ -5,6 +5,7 @@ import { assign, started } from "./processes";
 interface RunOptions extends BaseRunOptions {
     hostname?: string;
     useReservation?: Reservation;
+    tag?: string;
 }
 
 /**
@@ -28,12 +29,17 @@ export function run(
     if (options.useReservation) {
         reservation = options.useReservation;
     } else if (!options.hostname && options.ramOverride) {
-        reservation = globalThis.system.memory.reserve(options.ramOverride);
+        reservation = globalThis.system.memory.reserve(options.ramOverride, {
+            tag: options.tag,
+        });
     } else if (options.hostname) {
         const cost =
             options.ramOverride ??
             ns.getScriptRam(scriptPath, options.hostname);
-        reservation = globalThis.system.memory.reserve(cost, options.hostname);
+        reservation = globalThis.system.memory.reserve(cost, {
+            onServer: options.hostname,
+            tag: options.tag,
+        });
     }
 
     if (!reservation) {
@@ -45,12 +51,11 @@ export function run(
     }
 
     const { hostname } = reservation;
-    console.log(reservation, ns.formatRam(globalThis.system.memory.sizeOf(reservation)!));
 
     const pid = ns.exec(scriptPath, hostname, options, ...args);
 
     if (pid <= 0) {
-        console.log("Failed to start script.")
+        console.log("Failed to start script.");
         globalThis.system.memory.free(reservation);
         return [0, null, null];
     }

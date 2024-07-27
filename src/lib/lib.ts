@@ -128,6 +128,10 @@ export class SparseArray<T> {
     public values() {
         return this.array.values();
     }
+
+    public entries() {
+        return this.array.entries();
+    }
 }
 
 export class SimpleSparseArray<T> extends Array<T> {
