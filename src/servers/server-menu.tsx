@@ -20,6 +20,7 @@ export async function main(ns: NS) {
     ns.clearLog();
 
     const settings = new ServerBuySettings(ns, "servers/settings.json");
+    settings.load();
 
     const messageBus = new MessageBus<ServerBuyMessage>();
 

@@ -28,19 +28,22 @@ export abstract class Settings {
     ];
 
     constructor(ignoreProperties?: (string | symbol | number)[]) {
-        const o = {} as unknown as Settings;
+        const o = {
+            ignoreProperties: [
+                "ignoreProperties", 
+                "loaded", 
+                "loading", 
+                ...(ignoreProperties ?? []),
+            ],
+        } as unknown as Settings;
         Object.setPrototypeOf(o, new.target.prototype);
-
-        if (ignoreProperties) o.ignoreProperties.push(...ignoreProperties);
 
         // prevent setting `loaded` to true at the end of `load()` triggering a save.
         let loaded = o.loaded;
 
         const proxy = new Proxy(o, {
             set(target, property, value) {
-                if (property === "ns" || property === "filePath") return false;
                 target[property as keyof typeof target] = value;
-
                 if (loaded && !target.loading) target.save();
 
                 loaded ||= o.loaded;
@@ -114,6 +117,6 @@ export abstract class JSONSettings extends Settings {
     }
 
     doSave(data: OmitFunctions<this>) {
-        this.ns.write(this.filePath, JSON.stringify(data));
+        this.ns.write(this.filePath, JSON.stringify(data), "w");
     }
 }
