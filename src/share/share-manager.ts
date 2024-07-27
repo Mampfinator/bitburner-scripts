@@ -2,7 +2,7 @@ import { NS } from "@ns";
 import { auto } from "/system/proc/auto";
 import { getServerNames } from "/lib/servers/names";
 import { col } from "/lib/termcol";
-import { share } from "./share";
+import { share, WORKER_NAME } from "./share";
 
 /**
  * @param {NS} ns
@@ -28,7 +28,7 @@ export async function main(ns: NS) {
     }
 
     for (const server of getServerNames(ns)) {
-        ns.scp("share/share.js", server);
+        ns.scp(WORKER_NAME, server);
     }
 
     const result = share(ns, { threads, multiplier });

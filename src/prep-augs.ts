@@ -1,4 +1,5 @@
 import { NS } from "@ns";
+import { auto } from "./system/proc/auto";
 
 function clamp(n: number, min = 0, max = Infinity) {
     return Math.min(Math.max(n, min), max);
@@ -9,6 +10,7 @@ function favorToRep(favor: number) {
 }
 
 export async function main(ns: NS) {
+    auto(ns);
     const player = ns.getPlayer();
 
     for (const faction of player.factions) {

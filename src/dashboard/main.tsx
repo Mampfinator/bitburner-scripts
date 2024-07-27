@@ -1,10 +1,12 @@
 import { NS } from "@ns";
 import { SystemDashboard } from "./dashboard";
 import { MessageBus } from "/lib/messages";
+import { auto } from "/system/proc/auto";
 
 const { React } = globalThis;
 
 export async function main(ns: NS) {
+    auto(ns);
     ns.disableLog("ALL");
     ns.clearLog();
 

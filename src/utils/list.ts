@@ -1,6 +1,7 @@
 import { AutocompleteData, NS, ScriptArg } from "@ns";
 import { getServers } from "/lib/servers/servers";
 import { getPortCrackersAvailable } from "./crackers";
+import { auto } from "/system/proc/auto";
 
 export function autocomplete(_data: AutocompleteData, _args: ScriptArg[]) {
     return ["owned", "unnuked", "weird", "cycle-threads", "unowned"];
@@ -56,6 +57,7 @@ function calculateBatchRatios(
 
 /** @param {NS} ns */
 export async function main(ns: NS) {
+    auto(ns);
     ns.disableLog("scan");
     const mode = ns.args.shift();
 

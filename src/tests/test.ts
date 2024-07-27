@@ -2,6 +2,7 @@ import { AutocompleteData, NS, ScriptArg } from "@ns";
 import { TestContext } from "./test-context";
 import { col } from "/lib/termcol";
 import { dynamicImport, pluralize } from "/lib/lib";
+import { auto } from "/system/proc/auto";
 
 type Awaitable<T> = T | Promise<T>;
 
@@ -20,6 +21,7 @@ export function autocomplete(data: AutocompleteData, args: ScriptArg[]) {
 }
 
 export async function main(ns: NS) {
+    auto(ns);
     ns.disableLog("ALL");
 
     const { scripts, filter } = ns.flags(FLAGS) as {

@@ -1,6 +1,7 @@
 //! scans a breakdown of how many worker threads are still free across the entire network.
 import { NS } from "@ns";
 import { getServerNames } from "/lib/servers/names";
+import { auto } from "/system/proc/auto";
 
 /**
  * @param {NS} ns
@@ -25,6 +26,7 @@ export function calcThreads(ns: NS, minusRam = 0) {
 }
 
 export async function main(ns: NS) {
+    auto(ns);
     const { total, free } = calcThreads(ns);
 
     ns.tprint(`Free: ${free}. Total in network: ${total}.`);

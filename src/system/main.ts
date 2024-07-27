@@ -2,6 +2,7 @@
 import { NS } from "@ns";
 import { syncServers } from "./sync-servers";
 import { getServerNames } from "/lib/servers/names";
+import { auto } from "./proc/auto";
 
 function listAllProcesses(ns: NS) {
     const processes = [];
@@ -13,6 +14,7 @@ function listAllProcesses(ns: NS) {
 }
 
 export async function main(ns: NS) {
+    auto(ns);
     while (true) {
         // Sync running process list in case any scripts were killed without kill callbacks.
         for (const pid of globalThis.system.proc.running()) {

@@ -1,6 +1,7 @@
 import { NS } from "@ns";
 import { getServers } from "/lib/servers/servers";
 import { getServerGraph } from "/lib/servers/graph";
+import { auto } from "/system/proc/auto";
 
 const SERVERS_TO_BACKDOOR = [
     "CSEC",
@@ -12,6 +13,7 @@ const SERVERS_TO_BACKDOOR = [
 ];
 
 export async function main(ns: NS) {
+    auto(ns);
     const all = ns.args[0];
     if (all !== undefined && typeof all !== "boolean") {
         ns.tprint(`ERROR: optional argument "all" should be a boolean.`);

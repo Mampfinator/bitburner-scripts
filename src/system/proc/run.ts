@@ -45,10 +45,12 @@ export function run(
     }
 
     const { hostname } = reservation;
+    console.log(reservation, ns.formatRam(globalThis.system.memory.sizeOf(reservation)!));
 
     const pid = ns.exec(scriptPath, hostname, options, ...args);
 
     if (pid <= 0) {
+        console.log("Failed to start script.")
         globalThis.system.memory.free(reservation);
         return [0, null, null];
     }

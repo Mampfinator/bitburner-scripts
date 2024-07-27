@@ -2,7 +2,7 @@ import { NS } from "@ns";
 import { run } from "/system/proc/run";
 import { reserveThreads } from "/system/memory";
 
-const WORKER_NAME = "share/share-worker.js";
+export const WORKER_NAME = "share/share-worker.js";
 
 function getMultiplier(threads: number): number {
     const mult = 1 + Math.log(threads) / 25;

@@ -1,11 +1,13 @@
 import { AutocompleteData, NS, ScriptArg } from "@ns";
 import { getServerGraph } from "/lib/servers/graph";
+import { auto } from "/system/proc/auto";
 
 export function autocomplete(data: AutocompleteData, _: ScriptArg[]) {
     return [...data.servers];
 }
 
 export async function main(ns: NS) {
+    auto(ns);
     const to = ns.args[0];
     if (!to || typeof to !== "string" || !ns.serverExists(to)) {
         ns.tprint(`ERROR No such server: ${to}`);

@@ -1,7 +1,9 @@
 import { NS } from "@ns";
 import { getServerNames } from "../lib/servers/names";
+import { auto } from "/system/proc/auto";
 
 export async function main(ns: NS) {
+    auto(ns);
     let searchString = ns.args[0];
     if (typeof searchString === "undefined") {
         ns.tprint(`ERROR: search term needs to be a string.`);

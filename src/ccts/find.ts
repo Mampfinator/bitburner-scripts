@@ -1,12 +1,14 @@
 //! Lists all available contracts from all servers.
 import { NS } from "@ns";
 import { getServerNames } from "/lib/servers/names";
+import { auto } from "/system/proc/auto";
 
 /**
  * Finds all CCTs from all servers. Returns a list of `[hostname, filename]` pairs.
  * @returns {}
  */
 export function findCcts(ns: NS): [string, string][] {
+    auto(ns);
     const contracts: [string, string][] = [];
 
     for (const server of getServerNames(ns, "home")) {
