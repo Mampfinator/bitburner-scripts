@@ -1,7 +1,9 @@
 import * as ReactFlowNS from "reactflow";
+import * as dagreNS from "@dagrejs/dagre";
 
 declare global {
     var ReactFlow: typeof ReactFlowNS;
+    var dagre: typeof dagreNS;
 }
 
 declare global {
@@ -11,6 +13,10 @@ declare global {
             resolve: (value: T | PromiseLike<T>) => void;
             reject: (reason: any) => void;
         };
+    }
+
+    interface ObjectConstructor {
+        groupBy<K extends PropertyKey, T>(items: Iterable<T>, keySelector: (item: T, index: number) => K): Partial<Record<K, T[]>>
     }
 }
 
@@ -36,5 +42,6 @@ Object.groupBy ??= (<T>(arr: T[], callback: (...args: any[]) => string) => {
         return acc;
     }, {});
 }) as any;
+
 
 export default {};

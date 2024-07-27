@@ -11,6 +11,7 @@ function join(base: string, uri: string) {
     return new URL(uri, base).href;
 }
 
+// FIXME: Absolute paths are not supported and will crash the game.
 async function makeScript(dep: ScriptDependency, element: HTMLScriptElement) {
     let source = await fetch(dep.src).then((res) => res.text());
 
@@ -210,6 +211,19 @@ export async function load(_: NS) {
             src: "https://cdn.jsdelivr.net/npm/d3-force@3",
         },
     });
+
+    register({
+        dependency: {
+            node: "rawScript",
+            id: "dagre",
+            type: "module",
+            src: `
+                import * as dagre from "https://cdn.jsdelivr.net/npm/@dagrejs/dagre@1.1.3/+esm";
+                globalThis.dagre = dagre;
+            `
+        }
+    });
+
 
     for (const dependency of DEPENDENCIES) {
         await apply(dependency);
