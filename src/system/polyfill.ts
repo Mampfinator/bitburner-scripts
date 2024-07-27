@@ -1,5 +1,8 @@
-import type * as ReactNamespace from "react";
-import chalk from "chalk";
+import * as ReactFlowNS from "reactflow";
+
+declare global {
+    var ReactFlow: typeof ReactFlowNS;
+}
 
 declare global {
     interface PromiseConstructor {
@@ -11,12 +14,6 @@ declare global {
     }
 }
 
-declare global {
-    interface Global {
-        React: typeof ReactNamespace;
-        chalk: typeof chalk;
-    }
-}
 
 Promise.withResolvers ??= function <T>() {
     let resolve: (value: T | PromiseLike<T>) => void = () => {};

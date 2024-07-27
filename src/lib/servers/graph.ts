@@ -43,9 +43,38 @@ export class ServerGraph {
 
         return null;
     }
+
+    public toTree(root: string = "home"): TreeNode {
+        const rootNode: TreeNode = { name: root, children: new Map(), };
+
+        const seen = new Set([root]);
+
+        const queue: [string, TreeNode][] = [[root, rootNode]];
+
+        while (queue.length > 0) {
+            const [current, currentNode] = queue.shift()!;
+            const neighbors = this.neighors(current);
+
+            for (const neighbor of neighbors) {
+                if (seen.has(neighbor)) continue;
+                seen.add(neighbor);
+
+                const node = { name: neighbor, children: new Map() };
+                currentNode.children.set(neighbor, node);
+                queue.push([neighbor, node]);
+            }
+        }
+
+        return rootNode;
+    }
 }
 
-interface GraphOptions {
+export interface TreeNode { 
+    name: string;
+    children: Map<string, TreeNode>;
+};
+
+export interface GraphOptions {
     startFrom?: string;
     backdoorIsHomeLink?: boolean;
 }
