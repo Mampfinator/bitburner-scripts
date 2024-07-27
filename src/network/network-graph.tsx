@@ -2,10 +2,13 @@ import { NS } from "@ns";
 import type * as ReactFlowNamespace from "reactflow";
 import { getServerGraph } from "/lib/servers/graph";
 import { ServerNode } from "./ServerNode";
+import { apply } from "/system/dependencies";
 
 declare global {
     var ReactFlow: typeof ReactFlowNamespace;
 }
+
+const doc = eval("document") as Document;
 
 const {
     d3: {
@@ -17,7 +20,7 @@ const {
         forceCollide: collide,
     },
     React,
-    React: { useMemo },
+    React: { useMemo, useEffect },
     ReactFlow: {
         ReactFlow,
         ReactFlowProvider,
@@ -67,7 +70,7 @@ const useLayoutedElements = () => {
         const tick = () => {
             getNodes().forEach((node, i) => {
                 const dragging = Boolean(
-                    document.querySelector(`[data-id="${node.id}"].dragging`),
+                    doc.querySelector(`[data-id="${node.id}"].dragging`),
                 );
 
                 // Setting the fx/fy properties of a node tells the simulation to "fix"
@@ -108,6 +111,40 @@ const useLayoutedElements = () => {
 
 // TODO: floating Handles to reduce visual clutter.
 const LayoutFlow = ({ ns }: { ns: NS }) => {
+    useEffect(() => {
+        apply({
+            node: "rawStylesheet",
+            id: "server-graph-styles",
+            style: {
+                ".server-node": {
+                    padding: "5px",
+                },
+                ".server-node.default": {
+                    border: "1px solid darkgreen",
+                    color: "darkgreen",
+                },
+                ".server-node.w0rld_d4em0n": {
+                    border: "1px solid red",
+                    color: "red",
+                },
+                ".server-node.special": {
+                    border: "1px solid orange",
+                    color: "orange",
+                },
+                ".server-node.purchased": {
+                    border: "1px solid blue",
+                    color: "blue",
+                },
+                ".server-node.backdoor": {
+                    border: "1px solid purple",
+                    color: "purple",
+                },
+
+            }
+        })
+    });
+
+
     const graph = getServerGraph(ns, { backdoorIsHomeLink: false });
 
     function isExtraHome(name: string) {
@@ -118,9 +155,9 @@ const LayoutFlow = ({ ns }: { ns: NS }) => {
         .map((serverName) => {
             return {
                 id: serverName,
-                position: { x: Math.random() * 200, y: Math.random() * 200 },
+                position: { x: Math.random() * 1000, y: Math.random() * 1000 },
                 type: "server",
-                data: { name: serverName },
+                data: ns.getServer(serverName),
             };
         })
         .filter((node) => !isExtraHome(node.id));
@@ -169,12 +206,13 @@ const LayoutFlow = ({ ns }: { ns: NS }) => {
     );
 };
 
+
 export async function main(ns: NS) {
     ns.disableLog("ALL");
     ns.clearLog();
 
     ns.tail();
-    ns.resizeTail(1000, 600);
+    ns.resizeTail(1000, 1000);
 
     ns.printRaw(
         <div style={{ height: "1000px", width: "100%" }}>

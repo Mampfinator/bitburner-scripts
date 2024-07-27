@@ -65,7 +65,7 @@ async function makeStyleSheet(
 
 async function makeRawStyleSheet(
     dep: RawStyleSheetDependency,
-    element: HTMLLinkElement,
+    element: HTMLStyleElement,
 ) {
     let text = "";
     for (const [key, style] of Object.entries(dep.style)) {
@@ -76,9 +76,7 @@ async function makeRawStyleSheet(
         text += "}\n";
     }
 
-    element.textContent = text;
-    element.rel = "stylesheet";
-    element.type = "text/css";
+    element.innerHTML = text;
 }
 
 interface ScriptDependency {
@@ -138,8 +136,12 @@ export async function apply(dep: Dependency) {
     let element;
     if (oldElement) element = oldElement;
     else {
+        const node = dep.node.toLowerCase();
+
         element = doc.createElement(
-            dep.node.toLowerCase().includes("script") ? "script" : "link",
+            node.includes("script") ? "script" : 
+            node === "stylesheet" ?"link" :
+            "style",
         );
         element.id = dep.id;
     }
@@ -151,7 +153,7 @@ export async function apply(dep: Dependency) {
     else if (dep.node === "rawScript")
         await makeRawScript(dep, element as HTMLScriptElement);
     else if (dep.node === "rawStylesheet")
-        await makeRawStyleSheet(dep, element as HTMLLinkElement);
+        await makeRawStyleSheet(dep, element as HTMLStyleElement);
 
     if (!oldElement) {
         doc.head.appendChild(element);
