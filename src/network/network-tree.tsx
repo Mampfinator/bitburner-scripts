@@ -1,4 +1,4 @@
-import { NS, Server } from "@ns";
+import { NS } from "@ns";
 import { SERVER_NODE_STYLE, ServerNode } from "./ServerNode";
 import { apply } from "/system/dependencies";
 import { getServerGraph, TreeNode } from "/lib/servers/graph";
@@ -334,11 +334,30 @@ function NetworkTree({ ns }: { ns: NS }): React.ReactElement {
     const { nodes: initialNodes, edges: initialEdges } =
         getLayoutedElements(ns);
 
-    const [nodes, , onNodesChange] = useNodesState(initialNodes);
-    const [edges, , onEdgesChange] = useEdgesState(initialEdges);
+    const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+    const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
     const [serverMenuState, setServerMenuState] = React.useState<{
         server: string;
     } | null>(null);
+
+    React.useEffect(() => {
+        const cleanupFns = [
+            globalThis.eventEmitter.withCleanup("server:added", () => {
+                const {nodes, edges} = getLayoutedElements(ns);
+                setNodes(nodes);
+                setEdges(edges);
+            }, ns),
+            globalThis.eventEmitter.withCleanup("server:deleted", () => {
+                const {nodes, edges} = getLayoutedElements(ns);
+                setNodes(nodes);
+                setEdges(edges);
+            }, ns),
+        ];
+
+        return () => {
+            for (const fn of cleanupFns) fn();
+        }
+    });
 
     for (const node of nodes) {
         if (node.type === "server") {

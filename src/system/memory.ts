@@ -207,6 +207,7 @@ export interface ReservationDetails extends InternalReservation {
  *
  * @fires global#server:rooted
  * @fires global#server:ram-updated
+ * @fires global#server:added
  */
 export function register(server: ServerMemInfo): boolean {
     if (!server.hasAdminRights) return false;
@@ -220,6 +221,11 @@ export function register(server: ServerMemInfo): boolean {
 
     const info = new MemInfo(server);
     MEMORY_MAP.set(server.hostname, info);
+    /**
+     * @event global#server:added
+     * @type {ServerMemInfo}
+     */
+    globalThis.eventEmitter.emit(`server:added`, server);
 
     return true;
 }

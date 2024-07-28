@@ -9,6 +9,7 @@ type EventHandler = {
     handler: (...args: any[]) => void | Promise<void>;
 };
 
+// FIXME: this triggers infinite re-renders. Maybe we need an empty dependency list to un-confuse React? Maybe a different hook?
 export function useEvents(ns: NS, ...handlers: EventHandler[]): void;
 export function useEvents(...handlers: EventHandler[]): void;
 export function useEvents(
