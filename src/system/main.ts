@@ -34,7 +34,7 @@ function syncProcesses(ns: NS) {
 }
 
 export async function main(ns: NS) {
-    auto(ns);
+    auto(ns, { tag: "system" });
 
     const skip = new Set<string>();
 

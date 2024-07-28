@@ -7,6 +7,7 @@ import { auto } from "/system/proc/auto";
 import { splitFilter } from "/lib/lib";
 import { connect } from "/lib/servers/connect";
 import { FileList } from "/components/FileList";
+import { ProcessList } from "/components/ProcessList";
 
 const HEIGHT = 1250;
 const SPACE_X = 230;
@@ -391,6 +392,10 @@ const SERVER_MENU_STYLE = {
     },
     ".server-manu>button:active": {
         background: "#090",
+    },
+    ".process-list": {
+        display: "flex",
+        "flex-direction": "column",
     }
 }
 
@@ -444,6 +449,10 @@ function ServerMenu({ ns, server }: { ns: NS, server: string }) {
 
     const root = parseFileList(files);
 
+    const processes = React.useMemo(() => {
+        return ns.ps(server);
+    }, [server]);
+
     return <Panel position="bottom-right">
         <div className="server-menu">
             <h3 style={{padding: 0, margin: 0}}>{server}</h3>
@@ -462,12 +471,18 @@ function ServerMenu({ ns, server }: { ns: NS, server: string }) {
                     <FileList root={root} />
                 </div>
             </details>
+            <details>
+                <summary>Processes</summary>
+                <div style={{display: "flex", "flex-direction": "column"} as any}>
+                    <ProcessList processes={processes} server={server} ns={ns}/>
+                </div>
+            </details>
         </div>
     </Panel>
 }
 
 export async function main(ns: NS) {
-    auto(ns);
+    auto(ns, { tag: "system" });
     ns.disableLog("ALL");
     ns.clearLog();
 

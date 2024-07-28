@@ -9,7 +9,7 @@ import { auto } from "/system/proc/auto";
 const { React } = globalThis;
 
 export async function main(ns: NS) {
-    auto(ns);
+    auto(ns, { tag: "ccts" });
 
     ns.disableLog("ALL");
     ns.clearLog();

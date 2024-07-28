@@ -434,6 +434,7 @@ declare global {
             function grow(reservation: Reservation, amount: number): boolean;
             function sizeOf(reservation: Reservation): number | undefined;
             function list(server: string): ReservationDetails[] | null;
+            function info(reservation: Reservation): ReservationDetails | null;
         }
     }
 }
@@ -464,5 +465,6 @@ export async function load(ns: NS) {
         grow,
         sizeOf,
         list,
+        info,
     };
 }

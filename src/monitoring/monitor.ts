@@ -40,7 +40,7 @@ const LOOP_DELAY = 250;
 const SNAPSHOT_SIZE = 4 * 60 * 5;
 
 export async function main(ns: NS) {
-    auto(ns);
+    auto(ns, { tag: "hacking" });
     ns.disableLog("ALL");
 
     let servers: Set<string>;

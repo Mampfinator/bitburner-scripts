@@ -2,7 +2,7 @@ import { NS } from "@ns";
 import { auto } from "/system/proc/auto";
 
 export async function main(ns: NS) {
-    auto(ns);
+    auto(ns, { tag: "gang" });
     while (true) {
         await ns.asleep(5000);
 

@@ -18,7 +18,7 @@ function shouldStartServerbuyer(ns: NS) {
 export async function main(ns: NS) {
     await load(ns);
 
-    auto(ns);
+    auto(ns, { tag: "system" });
 
     run(
         ns,

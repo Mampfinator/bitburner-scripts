@@ -31,7 +31,7 @@ function findMax<T>(
 }
 
 export async function main(ns: NS) {
-    auto(ns);
+    auto(ns, { tag: "gang" });
 
     if (!globalThis.eventEmitter) {
         throw new Error(

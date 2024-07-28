@@ -15,7 +15,7 @@ export interface SupervisorSettings {
 }
 
 export async function main(ns: NS) {
-    auto(ns);
+    auto(ns, { tag: "hacking" });
     const startedAt = Math.floor(Date.now() / 1000);
     const settingsText = ns.read("hacking/supervisor-settings.json");
     const settings: SupervisorSettings = JSON.parse(

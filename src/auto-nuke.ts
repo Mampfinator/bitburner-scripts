@@ -82,7 +82,7 @@ async function catchup(ns: NS) {
 }
 
 export async function main(ns: NS) {
-    auto(ns);
+    auto(ns, { tag: "system" });
 
     await catchup(ns);
 

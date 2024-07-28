@@ -8,7 +8,7 @@ import { share, WORKER_NAME } from "./share";
  * @param {NS} ns
  */
 export async function main(ns: NS) {
-    auto(ns);
+    auto(ns, { tag: "share"});
 
     let { threads, multiplier } = ns.flags([
         ["threads", 0],
