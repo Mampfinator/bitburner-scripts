@@ -12,6 +12,7 @@ interface ServerNodeProps {
         server: Server;
         handles?: ["target" | "source", Position][];
         ns: NS;
+        setInfoData: (server: string | null) => void;
     };
 }
 
@@ -176,7 +177,7 @@ function sum<T>(arr: T[], accessor: (item: T) => number): number {
 }
 
 export function ServerNode({
-    data: { server, handles, ns },
+    data: { server, handles, ns, setInfoData },
 }: ServerNodeProps): React.ReactElement {
     const reservations = globalThis.system.memory.list(server.hostname) ?? [];
 
@@ -284,7 +285,7 @@ export function ServerNode({
     });
 
     return (
-        <div>
+        <div onContextMenu={(e) => { e.preventDefault(); setInfoData(server.hostname)}}>
             {handles &&
                 handles.map(([type, position], i) => (
                     <Handle type={type} position={position} id={`${i}`} />

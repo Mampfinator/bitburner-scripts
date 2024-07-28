@@ -1,10 +1,12 @@
-import { NS } from "@ns";
+import { NS, Server } from "@ns";
 import { SERVER_NODE_STYLE, ServerNode } from "./ServerNode";
 import { apply } from "/system/dependencies";
 import { getServerGraph, TreeNode } from "/lib/servers/graph";
 import { Edge, Node, type Position } from "reactflow";
 import { auto } from "/system/proc/auto";
 import { splitFilter } from "/lib/lib";
+import { connect } from "/lib/servers/connect";
+import { FileList } from "/components/FileList";
 
 const HEIGHT = 1250;
 const SPACE_X = 230;
@@ -19,6 +21,7 @@ const {
         useNodesState,
         useEdgesState,
         Position: PositionEnum,
+        Panel,
     },
     dagre,
 } = globalThis;
@@ -330,19 +333,137 @@ function NetworkTree({ ns }: { ns: NS }): React.ReactElement {
     const { nodes: initialNodes, edges: initialEdges } =
         getLayoutedElements(ns);
 
-    const [nodes] = useNodesState(initialNodes);
-    const [edges] = useEdgesState(initialEdges);
+    const [nodes,, onNodesChange] = useNodesState(initialNodes);
+    const [edges,, onEdgesChange] = useEdgesState(initialEdges);
+    const [serverMenuState, setServerMenuState] = React.useState<{server: string} | null>(null);
 
-    return (
+    for (const node of nodes) {
+        if (node.type === "server") {
+            node.data.setInfoData = (server: string) => {
+                if (server) setServerMenuState({server});
+                else setServerMenuState(null);
+            }
+        }
+    }
+
+    return (<>
+        { serverMenuState && <ServerMenu ns={ns} server={serverMenuState.server}/> }
         <ReactFlow
             nodes={nodes}
+            onNodesChange={onNodesChange}
+            nodesDraggable={false}
+            nodesConnectable={false}
             edges={edges}
+            onEdgesChange={onEdgesChange}
             nodeTypes={{ server: ServerNode }}
             proOptions={{ hideAttribution: true }}
         >
             <Controls position="bottom-left" />
         </ReactFlow>
+        </>
     );
+}
+
+const SERVER_MENU_STYLE = {
+    ".server-menu": {
+        background: "black",
+        width: "fit-content",
+        "min-width": "300px",
+        height: "fit-content",
+        "max-height": "600px",
+        "overflow-y": "scroll",
+        margin: "10px",
+        border: "1px solid green",
+        display: "flex",
+        "flex-direction": "column",
+    },
+    ".server-menu>button": {
+        background: "#333",
+        color: "#0f0",
+        border: "1px solid #0f0",
+        transition: "background 0.2s",
+        "padding-bottom": "10px",
+        "padding-top": "10px",
+        "font-size": "16px",
+    },
+    ".server-menu>button:hover": {
+        background: "#000",
+    },
+    ".server-manu>button:active": {
+        background: "#090",
+    }
+}
+
+type File = {name: string, type: "file"};
+type Folder = { name: string; type: "folder", children: Map<string, Folder | File> };
+
+function parseFileList(files: string[]): Folder {
+    const paths = files.map(file => file.split("/"));
+
+    const root = { name: "root", type: "folder" as const, children: new Map<string, Folder | File>() };
+
+    for (const path of paths) {
+        let currentFolder = root;
+        const file = path.pop();
+        if (!file) continue;
+
+        for (const folder of path) {
+            if (!currentFolder.children.has(folder)) {
+                currentFolder.children.set(folder, { name: folder, type: "folder", children: new Map() });
+            }
+            currentFolder = currentFolder.children.get(folder) as Folder;
+        }
+
+        currentFolder.children.set(file, { name: file, type: "file" });
+    }
+
+    return root;
+}
+
+function ServerMenu({ ns, server }: { ns: NS, server: string }) {
+    // .cct
+    const [includeCcts, setCcts] = React.useState(true);
+    // .json, .js
+    const [includeScripts, setScripts] = React.useState(false);
+    // .lit, .txt, .msg
+    const [includeTxts, setTxts] = React.useState(true);
+    // .exe
+    const [includePrograms, setPrograms] = React.useState(true)
+    
+    
+    const files = React.useMemo(() => {
+        return ns.ls(server)
+            .filter(file => {
+                if (!includeCcts && file.endsWith(".cct")) return false;
+                if (!includeScripts && (file.endsWith(".json") || file.endsWith(".js"))) return false;
+                if (!includeTxts && (file.endsWith(".lit") || file.endsWith(".txt") || file.endsWith(".msg"))) return false;
+                if (!includePrograms && file.endsWith(".exe")) return false;
+                return true;
+            });
+    }, [server, includeCcts, includeScripts, includeTxts, includePrograms]);
+
+    const root = parseFileList(files);
+
+    return <Panel position="bottom-right">
+        <div className="server-menu">
+            <h3 style={{padding: 0, margin: 0}}>{server}</h3>
+            <button onClick={() => connect(ns, server)}>Connect</button>
+            <details>
+                <summary>Files</summary>
+                <label htmlFor="ccts">CCTs</label>
+                <input type="checkbox" id="ccts" checked={includeCcts} onChange={() => setCcts(!includeCcts)} />
+                <label htmlFor="scripts">Scripts</label>
+                <input type="checkbox" id="scripts" checked={includeScripts} onChange={() => setScripts(!includeScripts)} />
+                <label htmlFor="txts">Texts</label>
+                <input type="checkbox" id="txts" checked={includeTxts} onChange={() => setTxts(!includeTxts)} />
+                <label htmlFor="programs">Programs</label>
+                <input type="checkbox" id="programs" checked={includePrograms} onChange={() => setPrograms(!includePrograms)} />
+                <div style={{display: "flex", "flex-direction": "column"} as any}>
+                    <FileList root={root} />
+                </div>
+            </details>
+        </div>
+    </Panel>
 }
 
 export async function main(ns: NS) {
@@ -354,6 +475,12 @@ export async function main(ns: NS) {
         node: "rawStylesheet",
         id: "server-graph-styles",
         style: SERVER_NODE_STYLE,
+    });
+
+    await apply({
+        node: "rawStylesheet",
+        id: "server-graph-server-menu-styles",
+        style: SERVER_MENU_STYLE as any,
     });
 
     ns.tail();

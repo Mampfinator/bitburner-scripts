@@ -1,5 +1,6 @@
 import { NS, Server } from "@ns";
 import { getServerGraph, ServerGraph } from "/lib/servers/graph";
+import { connect } from "/lib/servers/connect";
 
 function canBackdoor(server: Server): boolean {
     return server.hasAdminRights;
@@ -18,39 +19,17 @@ async function backdoor(
     const { singularity } = ns;
     const startedAt = singularity.getCurrentServer();
 
-    if (!graph) graph = getServerGraph(ns, { startFrom: startedAt });
+    const [connected, goBack] = connect(ns, server, graph);
+    if (!connected) return false;
 
-    const path = graph.path(startedAt, server);
-    if (!path) return false;
-
-    const walked = [startedAt];
-
-    while (path.length > 0) {
-        const server = path.shift()!;
-
-        const success = singularity.connect(server);
-
-        if (success) {
-            walked.unshift(server);
-        } else {
-            const message = `Unable to connect from "${singularity.getCurrentServer()}" to ${server}.`;
-            ns.print(`ERROR: ${message}`);
-            console.warn(message, path, graph);
-            // walk back the path we came from to recover initial terminal state.
-            for (const server of walked) singularity.connect(server);
-            return false;
-        }
-    }
-
-    singularity.connect(server);
     try {
         await singularity.installBackdoor();
-        graph.addEdge(startedAt, server);
-        for (const server of walked) singularity.connect(server);
+        graph?.addEdge(startedAt, server);
+        goBack();
         return true;
     } catch (e) {
         console.error(`Failed to backdoor ${server}.`, e);
-        for (const server of walked) singularity.connect(server);
+        goBack();
         return false;
     }
 }
