@@ -53,11 +53,7 @@ export async function main(ns: NS) {
     }
 
     function save() {
-        ns.write(
-            "monitoring/servers.json",
-            JSON.stringify({ servers: [...servers] }),
-            "w",
-        );
+        ns.write("monitoring/servers.json", JSON.stringify({ servers: [...servers] }), "w");
     }
 
     ns.atExit(() => {
@@ -70,10 +66,7 @@ export async function main(ns: NS) {
     const profitSnapshots = new Map<string, number[]>();
 
     const prepared = new Set<string>();
-    const threads = new Map<
-        string,
-        { hack: number; grow: number; weaken: number }
-    >();
+    const threads = new Map<string, { hack: number; grow: number; weaken: number }>();
     const ratios = new Map<string, number>();
 
     const port = ns.getPortHandle(MONITORING_PORT);
@@ -91,14 +84,11 @@ export async function main(ns: NS) {
                 const { target } = message.data;
 
                 if (!ns.serverExists(target)) {
-                    ns.toast(
-                        `Failed to monitor ${target}. No such server exists.`,
-                    );
+                    ns.toast(`Failed to monitor ${target}. No such server exists.`);
                     continue;
                 }
                 servers.add(target);
-                if (!profitSnapshots.has(target))
-                    profitSnapshots.set(target, []);
+                if (!profitSnapshots.has(target)) profitSnapshots.set(target, []);
                 save();
             } else if (message.event === "remove") {
                 servers.delete(message.data.target);
@@ -112,12 +102,7 @@ export async function main(ns: NS) {
                 ratios.clear();
                 save();
             } else if (message.event === "setStatus") {
-                const {
-                    target,
-                    status,
-                    threads: usedThreads,
-                    hackRatio,
-                } = message.data;
+                const { target, status, threads: usedThreads, hackRatio } = message.data;
                 statuses.set(target, status);
 
                 if (status === "hack") {
@@ -174,8 +159,7 @@ export async function main(ns: NS) {
 
             const status = statuses.get(server) ?? "idle";
 
-            const serverColor =
-                Mode.Foreground + (STATUS_COLORS[status] ?? Color.Green);
+            const serverColor = Mode.Foreground + (STATUS_COLORS[status] ?? Color.Green);
 
             const line = [];
 
@@ -186,18 +170,10 @@ export async function main(ns: NS) {
             else {
                 const threads = [];
 
-                if (usedThreads.hack !== undefined)
-                    threads.push(
-                        `\x1b[3${Color.Cyan}m${usedThreads.hack}\x1b[0m`,
-                    );
-                if (usedThreads.grow !== undefined)
-                    threads.push(
-                        `\x1b[3${Color.Yellow}m${usedThreads.grow}\x1b[0m`,
-                    );
+                if (usedThreads.hack !== undefined) threads.push(`\x1b[3${Color.Cyan}m${usedThreads.hack}\x1b[0m`);
+                if (usedThreads.grow !== undefined) threads.push(`\x1b[3${Color.Yellow}m${usedThreads.grow}\x1b[0m`);
                 if (usedThreads.weaken !== undefined)
-                    threads.push(
-                        `\x1b[3${Color.Magenta}m${usedThreads.weaken}\x1b[0m`,
-                    );
+                    threads.push(`\x1b[3${Color.Magenta}m${usedThreads.weaken}\x1b[0m`);
 
                 threadsStr += threads.join("/");
             }
@@ -208,22 +184,15 @@ export async function main(ns: NS) {
             if (status === "hack") {
                 const ratio = ratios.get(server);
                 if (!ratio) line.push(" (\x1b[31m?\x1b[0m)");
-                else
-                    line.push(
-                        ` (\x1b[3${Color.Cyan}m${ratio.toFixed(2)}\x1b[0m)`,
-                    );
+                else line.push(` (\x1b[3${Color.Cyan}m${ratio.toFixed(2)}\x1b[0m)`);
             } else {
                 line.push("");
             }
 
             line.push(" | ");
 
-            line.push(
-                `\$${ns.formatNumber(currentMoney)}/\$${ns.formatNumber(maxMoney)}`,
-            );
-            line.push(
-                ` (${ESC}[${moneyColor}m${ns.formatPercent(moneyPercentage)}${ESC}[0m)`,
-            );
+            line.push(`\$${ns.formatNumber(currentMoney)}/\$${ns.formatNumber(maxMoney)}`);
+            line.push(` (${ESC}[${moneyColor}m${ns.formatPercent(moneyPercentage)}${ESC}[0m)`);
 
             line.push(" | ");
 
@@ -235,9 +204,7 @@ export async function main(ns: NS) {
                 }
                 snapshots.push(profit.get(server) ?? 0);
 
-                const serverProfit =
-                    ((snapshots.at(-1) ?? 0) - (snapshots.at(0) ?? 0)) /
-                    (SNAPSHOT_SIZE * LOOP_DELAY);
+                const serverProfit = ((snapshots.at(-1) ?? 0) - (snapshots.at(0) ?? 0)) / (SNAPSHOT_SIZE * LOOP_DELAY);
 
                 line.push(`+\$${ns.formatNumber(serverProfit)}/sec`);
             } else {
@@ -246,9 +213,7 @@ export async function main(ns: NS) {
 
             line.push(" | ");
 
-            line.push(
-                `${ESC}[${secColor}m${currentSec.toFixed(2)}${ESC}[0m/${minSec.toFixed(2)}`,
-            );
+            line.push(`${ESC}[${secColor}m${currentSec.toFixed(2)}${ESC}[0m/${minSec.toFixed(2)}`);
 
             printLines.push(line);
         }
@@ -260,10 +225,7 @@ export async function main(ns: NS) {
 
         for (const part of printLines) {
             for (let i = 0; i < part.length; i++) {
-                const visiblePart = part[i].replaceAll(
-                    /\x1b\[([0-9]+;?)+m/g,
-                    "",
-                );
+                const visiblePart = part[i].replaceAll(/\x1b\[([0-9]+;?)+m/g, "");
 
                 const len = visiblePart.length;
                 if (len > (partLengths[i] ?? 0)) partLengths[i] = len;
@@ -277,10 +239,7 @@ export async function main(ns: NS) {
                 const length = partLengths[i];
                 let segment = part[i];
 
-                const visibleLength = part[i].replaceAll(
-                    /\x1b\[([0-9]+;?)+m/g,
-                    "",
-                ).length;
+                const visibleLength = part[i].replaceAll(/\x1b\[([0-9]+;?)+m/g, "").length;
 
                 for (let j = 0; j < length - visibleLength; j++) {
                     segment += " ";

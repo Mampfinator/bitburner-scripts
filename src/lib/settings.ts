@@ -21,20 +21,11 @@ export abstract class Settings {
     protected loaded = false;
     protected loading = false;
 
-    private readonly ignoreProperties: (string | symbol | number)[] = [
-        "ignoreProperties",
-        "loaded",
-        "loading",
-    ];
+    private readonly ignoreProperties: (string | symbol | number)[] = ["ignoreProperties", "loaded", "loading"];
 
     constructor(ignoreProperties?: (string | symbol | number)[]) {
         const o = {
-            ignoreProperties: [
-                "ignoreProperties",
-                "loaded",
-                "loading",
-                ...(ignoreProperties ?? []),
-            ],
+            ignoreProperties: ["ignoreProperties", "loaded", "loading", ...(ignoreProperties ?? [])],
         } as unknown as Settings;
         Object.setPrototypeOf(o, new.target.prototype);
 
@@ -60,24 +51,17 @@ export abstract class Settings {
 
         const data = this.doLoad();
 
-        for (const [key, value] of Object.entries(data).filter(
-            ([key]) => !this.ignoreProperties.includes(key),
-        )) {
+        for (const [key, value] of Object.entries(data).filter(([key]) => !this.ignoreProperties.includes(key))) {
             this[key as keyof this] = value;
         }
 
         this.loaded = true;
         this.loading = false;
     }
-    protected abstract doLoad(): OmitFunctions<
-        Omit<this, "ns" | "filePath" | "loading">
-    >;
+    protected abstract doLoad(): OmitFunctions<Omit<this, "ns" | "filePath" | "loading">>;
 
     save(): void {
-        if (!this.loaded)
-            throw new Error(
-                `Unloaded settings encountered. Did you forget to call load()?`,
-            );
+        if (!this.loaded) throw new Error(`Unloaded settings encountered. Did you forget to call load()?`);
         const copy = Object.assign({}, this);
 
         for (const key of this.ignoreProperties) {
@@ -103,8 +87,7 @@ export abstract class JSONSettings extends Settings {
         private readonly ns: NS,
         private readonly filePath: string,
     ) {
-        if (!filePath.endsWith(".json"))
-            throw new Error(`Expected path to JSON file, got ${filePath}`);
+        if (!filePath.endsWith(".json")) throw new Error(`Expected path to JSON file, got ${filePath}`);
         super(["ns", "filePath"]);
     }
 

@@ -11,11 +11,7 @@ const PORT_CRACKERS: [string, (ns: NS, target: string) => void][] = [
     ["SQLInject.exe", (ns, target) => ns.sqlinject(target)],
 ];
 
-async function doBackdoor(
-    ns: NS,
-    server: string,
-    graph?: ReturnType<typeof getServerGraph>,
-): Promise<boolean> {
+async function doBackdoor(ns: NS, server: string, graph?: ReturnType<typeof getServerGraph>): Promise<boolean> {
     const { singularity } = ns;
     const startedAt = singularity.getCurrentServer();
 
@@ -67,9 +63,7 @@ async function catchup(ns: NS) {
 
     for (const server of [...graph.nodes]
         .map((server) => ns.getServer(server))
-        .filter(
-            (server) => server.hasAdminRights && !server.backdoorInstalled,
-        )) {
+        .filter((server) => server.hasAdminRights && !server.backdoorInstalled)) {
         await doBackdoor(ns, server.hostname, graph);
     }
 
@@ -135,8 +129,7 @@ export async function main(ns: NS) {
                 });
             }
 
-            if (!server.backdoorInstalled)
-                await doBackdoor(ns, server.hostname, graph);
+            if (!server.backdoorInstalled) await doBackdoor(ns, server.hostname, graph);
         }
 
         await ns.sleep(10000);

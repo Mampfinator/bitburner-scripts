@@ -14,9 +14,7 @@ export function solve(data: [string, number]) {
 
         index -= shiftBy;
 
-        if (index < 0)
-            index +=
-                ALPHABET.length * Math.abs(Math.floor(index / ALPHABET.length));
+        if (index < 0) index += ALPHABET.length * Math.abs(Math.floor(index / ALPHABET.length));
 
         outText += ALPHABET[index];
     }

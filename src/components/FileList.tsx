@@ -24,9 +24,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({ node, prefix, isLast }) => {
             <span>{prefix + branch + node.name}</span>
             {isFolder &&
                 Array.from((node as Folder).children.values())
-                    .sort((a, b) =>
-                        a.type === b.type ? 0 : a.type === "file" ? -1 : 1,
-                    )
+                    .sort((a, b) => (a.type === b.type ? 0 : a.type === "file" ? -1 : 1))
                     .map((child, index, array) => (
                         <TreeNode
                             key={child.name}
@@ -48,16 +46,9 @@ const FolderStructure: React.FC<FolderStructureProps> = ({ root }) => {
         <div>
             <span>{root.name}</span>
             {Array.from(root.children.values())
-                .sort((a, b) =>
-                    a.type === b.type ? 0 : a.type === "file" ? -1 : 1,
-                )
+                .sort((a, b) => (a.type === b.type ? 0 : a.type === "file" ? -1 : 1))
                 .map((child, index, array) => (
-                    <TreeNode
-                        key={child.name}
-                        node={child}
-                        prefix=""
-                        isLast={index === array.length - 1}
-                    />
+                    <TreeNode key={child.name} node={child} prefix="" isLast={index === array.length - 1} />
                 ))}
         </div>
     );

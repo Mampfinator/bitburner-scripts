@@ -21,12 +21,7 @@ export interface ProgressProps {
     fontSize?: string;
 }
 
-export const ProgressBar = ({
-    progress,
-    label,
-    barColor,
-    fontSize,
-}: ProgressProps) => {
+export const ProgressBar = ({ progress, label, barColor, fontSize }: ProgressProps) => {
     return (
         <div style={CONTAINER_STYLE}>
             <div
@@ -36,15 +31,7 @@ export const ProgressBar = ({
                     backgroundColor: barColor ?? "green",
                 }}
             />
-            {label ? (
-                label
-            ) : (
-                <div
-                    style={{ ...VALUE_STYLE, fontSize: fontSize ?? "0.75rem" }}
-                >
-                    {progress}
-                </div>
-            )}
+            {label ? label : <div style={{ ...VALUE_STYLE, fontSize: fontSize ?? "0.75rem" }}>{progress}</div>}
         </div>
     );
 };

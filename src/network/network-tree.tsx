@@ -15,15 +15,7 @@ const SPACE_Y = 115;
 
 const {
     React,
-    ReactFlow: {
-        ReactFlowProvider,
-        ReactFlow,
-        Controls,
-        useNodesState,
-        useEdgesState,
-        Position: PositionEnum,
-        Panel,
-    },
+    ReactFlow: { ReactFlowProvider, ReactFlow, Controls, useNodesState, useEdgesState, Position: PositionEnum, Panel },
     dagre,
 } = globalThis;
 
@@ -40,12 +32,7 @@ function getLayoutedElements(ns: NS): { nodes: Node[]; edges: Edge[] } {
 
     type HandleType = "source" | "target";
 
-    function pushNode(
-        server: string,
-        x: number,
-        y: number,
-        handles?: [HandleType, Position][],
-    ) {
+    function pushNode(server: string, x: number, y: number, handles?: [HandleType, Position][]) {
         initialNodes.push({
             id: server,
             position: { x, y },
@@ -83,11 +70,7 @@ function getLayoutedElements(ns: NS): { nodes: Node[]; edges: Edge[] } {
     };
 
     function pushGrid(x: number, y: number, data: GridData) {
-        if (grid.has(x, y))
-            console.warn(
-                `Overriding old grid data at ${x}, ${y}`,
-                grid.grid[x][y],
-            );
+        if (grid.has(x, y)) console.warn(`Overriding old grid data at ${x}, ${y}`, grid.grid[x][y]);
         const row = (grid.grid[x] ??= {});
         row[y] = data;
 
@@ -122,15 +105,10 @@ function getLayoutedElements(ns: NS): { nodes: Node[]; edges: Edge[] } {
 
         function push(direction: number) {
             for (const node of nodes) {
-                const handles: [HandleType, Position][] = [
-                    ["target", PositionEnum.Left],
-                ];
+                const handles: [HandleType, Position][] = [["target", PositionEnum.Left]];
                 if (node.children.size > 0) {
                     handles.push(["source", PositionEnum.Right]);
-                    next.push([
-                        { x, y, name: node.name },
-                        [...node.children.values()],
-                    ]);
+                    next.push([{ x, y, name: node.name }, [...node.children.values()]]);
                 }
 
                 pushGrid(x, y, {
@@ -158,8 +136,7 @@ function getLayoutedElements(ns: NS): { nodes: Node[]; edges: Edge[] } {
         function contiguousFree(from: number, direction: number) {
             if (
                 !canGrow &&
-                (from + (nodes.length - 1) * direction > grid.maxY ||
-                    from + (nodes.length - 1) * direction < grid.minY)
+                (from + (nodes.length - 1) * direction > grid.maxY || from + (nodes.length - 1) * direction < grid.minY)
             )
                 return false;
             for (let i = 0; i < nodes.length; i++) {
@@ -176,9 +153,7 @@ function getLayoutedElements(ns: NS): { nodes: Node[]; edges: Edge[] } {
             ) {
                 canGrow = true;
             }
-            const [a, b] = [lower, upper].sort(
-                (a, b) => Math.abs(a.value) - Math.abs(b.value),
-            );
+            const [a, b] = [lower, upper].sort((a, b) => Math.abs(a.value) - Math.abs(b.value));
             if (contiguousFree(a.value, a.direction)) {
                 y = a.value;
                 push(a.direction);
@@ -199,9 +174,7 @@ function getLayoutedElements(ns: NS): { nodes: Node[]; edges: Edge[] } {
         }
     }
 
-    const PURCHASED_HANDLES: [HandleType, Position][] = [
-        ["target", PositionEnum.Right],
-    ];
+    const PURCHASED_HANDLES: [HandleType, Position][] = [["target", PositionEnum.Right]];
     let x = -1;
 
     while (purchasedServers.length > 0) {
@@ -237,16 +210,11 @@ function getLayoutedElements(ns: NS): { nodes: Node[]; edges: Edge[] } {
 function getLayoutedElementsDagre(ns: NS): { nodes: Node[]; edges: Edge[] } {
     const tree = getServerGraph(ns).toTree("home");
 
-    function getElements(
-        node: TreeNode,
-        nodes: Node[] = [],
-        edges: Edge[] = [],
-    ) {
+    function getElements(node: TreeNode, nodes: Node[] = [], edges: Edge[] = []) {
         nodes.push(
             ...[...node.children.values()].map((child) => {
                 const handles = [["target", PositionEnum.Left]];
-                if (child.children.size > 0)
-                    handles.push(["source", PositionEnum.Right]);
+                if (child.children.size > 0) handles.push(["source", PositionEnum.Right]);
 
                 return {
                     id: child.name,
@@ -331,8 +299,7 @@ function getLayoutedElementsDagre(ns: NS): { nodes: Node[]; edges: Edge[] } {
 }
 
 function NetworkTree({ ns }: { ns: NS }): React.ReactElement {
-    const { nodes: initialNodes, edges: initialEdges } =
-        getLayoutedElements(ns);
+    const { nodes: initialNodes, edges: initialEdges } = getLayoutedElements(ns);
 
     const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -342,21 +309,29 @@ function NetworkTree({ ns }: { ns: NS }): React.ReactElement {
 
     React.useEffect(() => {
         const cleanupFns = [
-            globalThis.eventEmitter.withCleanup("server:added", () => {
-                const {nodes, edges} = getLayoutedElements(ns);
-                setNodes(nodes);
-                setEdges(edges);
-            }, ns),
-            globalThis.eventEmitter.withCleanup("server:deleted", () => {
-                const {nodes, edges} = getLayoutedElements(ns);
-                setNodes(nodes);
-                setEdges(edges);
-            }, ns),
+            globalThis.eventEmitter.withCleanup(
+                "server:added",
+                () => {
+                    const { nodes, edges } = getLayoutedElements(ns);
+                    setNodes(nodes);
+                    setEdges(edges);
+                },
+                ns,
+            ),
+            globalThis.eventEmitter.withCleanup(
+                "server:deleted",
+                () => {
+                    const { nodes, edges } = getLayoutedElements(ns);
+                    setNodes(nodes);
+                    setEdges(edges);
+                },
+                ns,
+            ),
         ];
 
         return () => {
             for (const fn of cleanupFns) fn();
-        }
+        };
     });
 
     for (const node of nodes) {
@@ -370,9 +345,7 @@ function NetworkTree({ ns }: { ns: NS }): React.ReactElement {
 
     return (
         <>
-            {serverMenuState && (
-                <ServerMenu ns={ns} server={serverMenuState.server} />
-            )}
+            {serverMenuState && <ServerMenu ns={ns} server={serverMenuState.server} />}
             <ReactFlow
                 nodes={nodes}
                 onNodesChange={onNodesChange}
@@ -474,18 +447,8 @@ function ServerMenu({ ns, server }: { ns: NS; server: string }) {
     const files = React.useMemo(() => {
         return ns.ls(server).filter((file) => {
             if (!includeCcts && file.endsWith(".cct")) return false;
-            if (
-                !includeScripts &&
-                (file.endsWith(".json") || file.endsWith(".js"))
-            )
-                return false;
-            if (
-                !includeTxts &&
-                (file.endsWith(".lit") ||
-                    file.endsWith(".txt") ||
-                    file.endsWith(".msg"))
-            )
-                return false;
+            if (!includeScripts && (file.endsWith(".json") || file.endsWith(".js"))) return false;
+            if (!includeTxts && (file.endsWith(".lit") || file.endsWith(".txt") || file.endsWith(".msg"))) return false;
             if (!includePrograms && file.endsWith(".exe")) return false;
             return true;
         });
@@ -505,12 +468,7 @@ function ServerMenu({ ns, server }: { ns: NS; server: string }) {
                 <details>
                     <summary>Files</summary>
                     <label htmlFor="ccts">CCTs</label>
-                    <input
-                        type="checkbox"
-                        id="ccts"
-                        checked={includeCcts}
-                        onChange={() => setCcts(!includeCcts)}
-                    />
+                    <input type="checkbox" id="ccts" checked={includeCcts} onChange={() => setCcts(!includeCcts)} />
                     <label htmlFor="scripts">Scripts</label>
                     <input
                         type="checkbox"
@@ -519,12 +477,7 @@ function ServerMenu({ ns, server }: { ns: NS; server: string }) {
                         onChange={() => setScripts(!includeScripts)}
                     />
                     <label htmlFor="txts">Texts</label>
-                    <input
-                        type="checkbox"
-                        id="txts"
-                        checked={includeTxts}
-                        onChange={() => setTxts(!includeTxts)}
-                    />
+                    <input type="checkbox" id="txts" checked={includeTxts} onChange={() => setTxts(!includeTxts)} />
                     <label htmlFor="programs">Programs</label>
                     <input
                         type="checkbox"
@@ -553,11 +506,7 @@ function ServerMenu({ ns, server }: { ns: NS; server: string }) {
                             } as any
                         }
                     >
-                        <ProcessList
-                            processes={processes}
-                            server={server}
-                            ns={ns}
-                        />
+                        <ProcessList processes={processes} server={server} ns={ns} />
                     </div>
                 </details>
             </div>

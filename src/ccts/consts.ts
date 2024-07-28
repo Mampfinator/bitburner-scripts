@@ -29,9 +29,7 @@ const MULTIPLIERS = ["", "k", "m", "b", "t", "q", "Q"];
  * Attempt to parse a number formatted with `ns.formatNumber`.
  */
 export function unformatNumber(string: string): number | null {
-    const [, numStr, , letter] = /([0-9]+(\.[0-9]+)?)([A-Za-z])*/.exec(
-        string.trim(),
-    )!;
+    const [, numStr, , letter] = /([0-9]+(\.[0-9]+)?)([A-Za-z])*/.exec(string.trim())!;
 
     const multIndex = MULTIPLIERS.indexOf(letter);
     if (multIndex < 0) return null;

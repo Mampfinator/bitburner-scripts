@@ -46,9 +46,7 @@ export async function main(ns: NS) {
 
         const graph = getServerGraph(ns);
 
-        for (const server of [...graph.nodes].map((server) =>
-            ns.getServer(server),
-        )) {
+        for (const server of [...graph.nodes].map((server) => ns.getServer(server))) {
             const processed = await processServer(server, ns, graph);
 
             if (!processed) continue;

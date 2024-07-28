@@ -62,9 +62,7 @@ function AutoBuyConfiguration(props: AutobuyProps) {
             >
                 Automatically buy new servers: {auto ? "Enabled" : "Disabled"}
             </button>
-            <label htmlFor="min-ram">
-                Minimum RAM for new servers: {ns.formatRam(2 ** minRam)}
-            </label>
+            <label htmlFor="min-ram">Minimum RAM for new servers: {ns.formatRam(2 ** minRam)}</label>
             <input
                 type="range"
                 id="min-ram"
@@ -77,9 +75,7 @@ function AutoBuyConfiguration(props: AutobuyProps) {
                     messageBus.send({ name: "setMinRam", exp });
                 }}
             />
-            <label htmlFor="min-money">
-                Keep at least ${ns.formatNumber(minMoney)}
-            </label>
+            <label htmlFor="min-money">Keep at least ${ns.formatNumber(minMoney)}</label>
             <input
                 type="number"
                 min={0}
@@ -108,22 +104,11 @@ function ManualBuyMenu(props: ManualBuyProps) {
     const [name, setName] = React.useState<undefined | string>(undefined);
 
     function buy() {
-        const serverName = ns.purchaseServer(
-            name ?? `home${ns.getPurchasedServers().length}`,
-            2 ** ramExp,
-        );
+        const serverName = ns.purchaseServer(name ?? `home${ns.getPurchasedServers().length}`, 2 ** ramExp);
         if (!serverName || serverName === "") {
-            ns.toast(
-                `Failed to buy server. This might mean that you don't have enough money.`,
-                "error",
-                5000,
-            );
+            ns.toast(`Failed to buy server. This might mean that you don't have enough money.`, "error", 5000);
         } else {
-            ns.toast(
-                `Bough server ${name} with ${ns.formatRam(2 ** ramExp)}.`,
-                "success",
-                5000,
-            );
+            ns.toast(`Bough server ${name} with ${ns.formatRam(2 ** ramExp)}.`, "success", 5000);
 
             register({
                 hostname: name!,
@@ -149,9 +134,7 @@ function ManualBuyMenu(props: ManualBuyProps) {
             }}
         >
             <label htmlFor="server-ram">
-                RAM:{" "}
-                {typeof ramExp == "number" ? ns.formatRam(2 ** ramExp) : "? GB"}{" "}
-                | Price: $
+                RAM: {typeof ramExp == "number" ? ns.formatRam(2 ** ramExp) : "? GB"} | Price: $
                 {ns.formatNumber(ns.getPurchasedServerCost(2 ** ramExp))}
             </label>
             <input
@@ -161,9 +144,7 @@ function ManualBuyMenu(props: ManualBuyProps) {
                 max={20}
                 step={1}
                 value={ramExp}
-                onInput={(event) =>
-                    setRamExponent(Number(event.currentTarget.value))
-                }
+                onInput={(event) => setRamExponent(Number(event.currentTarget.value))}
             />
             <input
                 id="server-name"

@@ -1,12 +1,7 @@
 import { NS } from "@ns";
 import { calcThreads } from "/lib/network-threads";
 import { Worker, WorkerOptions, WorkResult } from "./worker";
-import {
-    POOL_MESSAGE_PORT_BASE,
-    WORKER_MESSAGE_PORT,
-    WORKER_SCRIPTS,
-    WorkerMode,
-} from "./consts";
+import { POOL_MESSAGE_PORT_BASE, WORKER_MESSAGE_PORT, WORKER_SCRIPTS, WorkerMode } from "./consts";
 import { HWGWWorkerBatch } from "./batch";
 import { WorkerGroup } from "./group";
 import { Reservation, reserveThreads } from "/system/memory";
@@ -40,10 +35,7 @@ export class WorkerPool {
     workerRam: Record<WorkerMode, number>;
 
     get reservedRam() {
-        return Object.values(this.options?.reserveRam ?? {}).reduce(
-            (total, current) => total + current,
-            0,
-        );
+        return Object.values(this.options?.reserveRam ?? {}).reduce((total, current) => total + current, 0);
     }
 
     /**
@@ -57,67 +49,46 @@ export class WorkerPool {
             this.killAll();
         }, "workerpool-cleanup");
 
-        globalThis.eventEmitter.register(
-            ns,
-            "worker:done",
-            (data: WorkResult & { pid: number }) => {
-                this.byPids.get(data.pid)?.done({ ...data });
-            },
-        );
+        globalThis.eventEmitter.register(ns, "worker:done", (data: WorkResult & { pid: number }) => {
+            this.byPids.get(data.pid)?.done({ ...data });
+        });
 
-        globalThis.eventEmitter.register(
-            ns,
-            "worker:resumed",
-            ({ pid }: { pid: number }) => {
-                this.resumeResolvers.get(pid)?.(true);
-            },
-        );
+        globalThis.eventEmitter.register(ns, "worker:resumed", ({ pid }: { pid: number }) => {
+            this.resumeResolvers.get(pid)?.(true);
+        });
 
-        globalThis.eventEmitter.register(
-            ns,
-            "worker:started",
-            ({ pid }: { pid: number }) => {
-                this.startResolvers.get(pid)?.(true);
-            },
-        );
+        globalThis.eventEmitter.register(ns, "worker:started", ({ pid }: { pid: number }) => {
+            this.startResolvers.get(pid)?.(true);
+        });
 
-        globalThis.eventEmitter.register(
-            this.ns,
-            "worker:killed",
-            ({ pid }: { pid: number }) => {
-                if (this.ns.isRunning(pid)) {
-                    this.ns.print(
-                        `WARNING: Got killed event from ${pid}, but worker still exists. Forgetting, but not killing.`,
-                    );
-                    return;
-                }
-                const worker = this.byPids.get(pid);
-                if (!worker) {
-                    this.ns.print(
-                        `WARNING: Got killed event from ${pid} but worker did not exist.`,
-                    );
-                    return;
-                }
-                this.byPids.delete(pid);
-            },
-        );
+        globalThis.eventEmitter.register(this.ns, "worker:killed", ({ pid }: { pid: number }) => {
+            if (this.ns.isRunning(pid)) {
+                this.ns.print(
+                    `WARNING: Got killed event from ${pid}, but worker still exists. Forgetting, but not killing.`,
+                );
+                return;
+            }
+            const worker = this.byPids.get(pid);
+            if (!worker) {
+                this.ns.print(`WARNING: Got killed event from ${pid} but worker did not exist.`);
+                return;
+            }
+            this.byPids.delete(pid);
+        });
 
         this.options = options ?? {};
 
         this.workerRam = {
             [WorkerMode.Hack]: ns.getScriptRam(WORKER_SCRIPTS[WorkerMode.Hack]),
             [WorkerMode.Grow]: ns.getScriptRam(WORKER_SCRIPTS[WorkerMode.Grow]),
-            [WorkerMode.Weaken]: ns.getScriptRam(
-                WORKER_SCRIPTS[WorkerMode.Weaken],
-            ),
+            [WorkerMode.Weaken]: ns.getScriptRam(WORKER_SCRIPTS[WorkerMode.Weaken]),
         };
     }
 
     get listenPort() {
         const port = POOL_MESSAGE_PORT_BASE + this.ns.pid;
 
-        if (port > WORKER_MESSAGE_PORT)
-            throw new Error(`TOO MANY SERVERS/PROCESSES`);
+        if (port > WORKER_MESSAGE_PORT) throw new Error(`TOO MANY SERVERS/PROCESSES`);
 
         return port;
     }
@@ -142,10 +113,7 @@ export class WorkerPool {
         }
     }
 
-    *readPort(): Generator<
-        { event: string; pid: number; data: Record<string, any> },
-        void
-    > {
+    *readPort(): Generator<{ event: string; pid: number; data: Record<string, any> }, void> {
         const port = this.ns.getPortHandle(this.listenPort);
 
         if (port.empty()) return;
@@ -162,18 +130,11 @@ export class WorkerPool {
     /**
      * Reserve a worker group with `numThreads` threads.
      */
-    reserveGroup(
-        numThreads: number,
-        options: Omit<WorkerOptions, "threads">,
-    ): WorkerGroup | null {
+    reserveGroup(numThreads: number, options: Omit<WorkerOptions, "threads">): WorkerGroup | null {
         if (numThreads === 0) return null;
 
         const threadSize = this.workerRam[options.mode];
-        const reservations = reserveThreads(
-            numThreads,
-            threadSize,
-            options.mode,
-        );
+        const reservations = reserveThreads(numThreads, threadSize, options.mode);
 
         if (!reservations) {
             console.warn(
@@ -186,9 +147,7 @@ export class WorkerPool {
         for (const reservation of reservations) {
             try {
                 const size = globalThis.system.memory.sizeOf(reservation)!;
-                const workerThreads = Math.floor(
-                    size / this.workerRam[options.mode],
-                );
+                const workerThreads = Math.floor(size / this.workerRam[options.mode]);
 
                 workers.add(
                     new Worker(this.ns, this, {
@@ -201,8 +160,7 @@ export class WorkerPool {
                 console.error(e);
 
                 for (const worker of workers) worker.kill();
-                for (const reservation of reservations)
-                    globalThis.system.memory.free(reservation);
+                for (const reservation of reservations) globalThis.system.memory.free(reservation);
                 return null;
             }
         }
@@ -219,9 +177,7 @@ export class WorkerPool {
 
         const hackAmount = (server.moneyAvailable ?? 0) * hackRatio;
 
-        const hackThreads = Math.floor(
-            this.ns.hackAnalyzeThreads(server.hostname, hackAmount),
-        );
+        const hackThreads = Math.floor(this.ns.hackAnalyzeThreads(server.hostname, hackAmount));
 
         if (hackThreads < 0) {
             //this.ns.print(`WARNING: Invalid hackThreads amount for ${hostname}/${hackRatio} (${this.ns.formatNumber(server.moneyMax - server.moneyAvailable)}/\$${this.ns.formatNumber(server.moneyMax)}) - ${hackThreads}. Did you prepare the server before calling this?`);
@@ -238,9 +194,7 @@ export class WorkerPool {
         const hackSecIncrease = this.ns.hackAnalyzeSecurity(hackThreads);
         const hackWeakenThreads = Math.ceil(hackSecIncrease / 0.05);
 
-        const growThreads = Math.ceil(
-            this.ns.growthAnalyze(server.hostname, 1 / (1 - hackRatio)),
-        );
+        const growThreads = Math.ceil(this.ns.growthAnalyze(server.hostname, 1 / (1 - hackRatio)));
         const growSecIncrease = this.ns.growthAnalyzeSecurity(growThreads);
         const growWeakenThreads = Math.ceil(growSecIncrease / 0.05);
 
@@ -250,12 +204,7 @@ export class WorkerPool {
             growThreads,
             growWeakenThreads,
             get total() {
-                return (
-                    this.hackThreads +
-                    this.hackWeakenThreads +
-                    this.growThreads +
-                    this.growWeakenThreads
-                );
+                return this.hackThreads + this.hackWeakenThreads + this.growThreads + this.growWeakenThreads;
             },
         };
     }
@@ -267,30 +216,19 @@ export class WorkerPool {
         hostname: string,
         options: {
             hackRatio?: number;
-            groupOptions: Omit<
-                WorkerOptions,
-                "threads" | "mode" | "useReservation"
-            > & {
-                reservations?: Record<
-                    "hack" | "hackWeaken" | "grow" | "growWeaken",
-                    Reservation
-                >;
+            groupOptions: Omit<WorkerOptions, "threads" | "mode" | "useReservation"> & {
+                reservations?: Record<"hack" | "hackWeaken" | "grow" | "growWeaken", Reservation>;
             };
         },
     ): HWGWWorkerBatch | null {
-        if (
-            this.ns.getServerMinSecurityLevel(hostname) !==
-            this.ns.getServerSecurityLevel(hostname)
-        ) {
+        if (this.ns.getServerMinSecurityLevel(hostname) !== this.ns.getServerSecurityLevel(hostname)) {
             return null;
         }
 
-        const {
-            hackThreads,
-            hackWeakenThreads,
-            growThreads,
-            growWeakenThreads,
-        } = this.calculateBatchRatios(hostname, options?.hackRatio);
+        const { hackThreads, hackWeakenThreads, growThreads, growWeakenThreads } = this.calculateBatchRatios(
+            hostname,
+            options?.hackRatio,
+        );
 
         const groupOptions = {
             autoContinue: false,
@@ -319,12 +257,7 @@ export class WorkerPool {
             mode: WorkerMode.Weaken,
         });
 
-        if (
-            hackGroup === null ||
-            hackWeakenGroup === null ||
-            growGroup === null ||
-            growWeakenGroup === null
-        ) {
+        if (hackGroup === null || hackWeakenGroup === null || growGroup === null || growWeakenGroup === null) {
             this.ns.print(
                 `ERROR: Could not reserve threads for a batch. hack: ${hackGroup} (${hackThreads}t); hackWeaken: ${hackWeakenGroup} (${hackWeakenThreads}t); grow: ${growGroup} (${growThreads}t); growWeaken: ${growWeakenGroup} (${growWeakenThreads}t)`,
             );
@@ -355,13 +288,6 @@ export class WorkerPool {
             return null;
         }
 
-        return new HWGWWorkerBatch(
-            this.ns,
-            hostname,
-            growWeakenGroup,
-            hackWeakenGroup,
-            growGroup,
-            hackGroup,
-        );
+        return new HWGWWorkerBatch(this.ns, hostname, growWeakenGroup, hackWeakenGroup, growGroup, hackGroup);
     }
 }

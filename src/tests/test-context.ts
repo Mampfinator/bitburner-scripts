@@ -10,9 +10,7 @@ export class TestError extends Error {
     }
 }
 
-type TestReturn =
-    | { success: true; meta?: any }
-    | { success: false; error: TestError };
+type TestReturn = { success: true; meta?: any } | { success: false; error: TestError };
 
 interface Test {
     name: string;
@@ -120,10 +118,7 @@ interface DefaultTestSuccessResult {
     time: number;
 }
 
-type TestResult =
-    | TestFailedResult
-    | TimingTestSuccessResult
-    | DefaultTestSuccessResult;
+type TestResult = TestFailedResult | TimingTestSuccessResult | DefaultTestSuccessResult;
 
 /**
  * Test context for one suite of tests.
@@ -158,11 +153,7 @@ export class TestContext {
         this.tests.push(new BasicTest(this.ns, name, callback));
     }
 
-    async time(
-        name: string,
-        callback: () => Awaitable<void>,
-        iterations: number,
-    ) {
+    async time(name: string, callback: () => Awaitable<void>, iterations: number) {
         this.tests.push(new TimingTest(this.ns, name, callback, iterations));
     }
 
@@ -171,12 +162,10 @@ export class TestContext {
         await this.beforeAllCallback?.();
 
         for (const test of this.tests) {
-            if (filter && filter.length > 0 && !test.name.includes(filter))
-                continue;
+            if (filter && filter.length > 0 && !test.name.includes(filter)) continue;
             await this.beforeEachCallback?.();
 
-            const type =
-                test instanceof TimingTest ? "timing" : ("default" as const);
+            const type = test instanceof TimingTest ? "timing" : ("default" as const);
             const name = test.name;
 
             try {

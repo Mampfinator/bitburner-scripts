@@ -3,9 +3,7 @@ import { type TestContext } from "../test-context";
 export async function test(ctx: TestContext) {
     const { sleep } = await ctx.import<typeof import("lib/lib")>("lib/lib");
     const { compressTime, uncompressTime, getCompressionFactor } =
-        await ctx.import<typeof import("system/compress-time")>(
-            "system/compress-time",
-        );
+        await ctx.import<typeof import("system/compress-time")>("system/compress-time");
 
     ctx.beforeEach(() => {
         uncompressTime();

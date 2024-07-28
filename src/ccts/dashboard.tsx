@@ -31,10 +31,7 @@ interface SuccessMessage extends BaseMessage {
     reward: ContractReward;
 }
 
-export type DashboardMessage =
-    | FailedMessage
-    | SuccessMessage
-    | UnsolvableMessage;
+export type DashboardMessage = FailedMessage | SuccessMessage | UnsolvableMessage;
 
 interface CCTSDashboardProps {
     messageBus: MessageBus<DashboardMessage>;
@@ -47,12 +44,8 @@ export function CCTSDashboard(props: CCTSDashboardProps) {
     const [rep, setRep] = React.useState(new Map<string, number>());
     const [money, setMoney] = React.useState(0);
 
-    const [failed, setFailed] = React.useState(
-        new Map<string, [string, string][]>(),
-    );
-    const [unsolvable, setUnsolvable] = React.useState(
-        new Map<string, Set<string>>(),
-    );
+    const [failed, setFailed] = React.useState(new Map<string, [string, string][]>());
+    const [unsolvable, setUnsolvable] = React.useState(new Map<string, Set<string>>());
 
     React.useEffect(() => {
         const handler = (message: DashboardMessage) => {
@@ -65,15 +58,9 @@ export function CCTSDashboard(props: CCTSDashboardProps) {
                     const { amount } = reward;
                     setMoney(money + amount);
                 } else if (rewardType === ContractRewardType.Reputation) {
-                    for (const target of (message.reward as ReputationReward)
-                        .targets) {
+                    for (const target of (message.reward as ReputationReward).targets) {
                         const oldRep = rep.get(target) ?? 0;
-                        rep.set(
-                            target,
-                            oldRep +
-                                (message.reward as ReputationReward)
-                                    .amountPerTarget,
-                        );
+                        rep.set(target, oldRep + (message.reward as ReputationReward).amountPerTarget);
                     }
 
                     setRep(new Map(rep));
@@ -124,14 +111,7 @@ export function CCTSDashboard(props: CCTSDashboardProps) {
                     <summary>
                         <span>
                             Total reputation earned:{" "}
-                            <span>
-                                {formatNumber(
-                                    [...rep.values()].reduce(
-                                        (acc, curr) => acc + curr,
-                                        0,
-                                    ),
-                                )}
-                            </span>
+                            <span>{formatNumber([...rep.values()].reduce((acc, curr) => acc + curr, 0))}</span>
                         </span>
                     </summary>
                     <div style={{ display: "flex", flexDirection: "column" }}>

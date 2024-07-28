@@ -4,19 +4,11 @@ declare global {
     /**
      * Original `setTimeout` function.
      */
-    function originalSetTimeout(
-        h: TimerHandler,
-        t: number | undefined,
-        ...args: any[]
-    ): number;
+    function originalSetTimeout(h: TimerHandler, t: number | undefined, ...args: any[]): number;
 }
 
 function makeCompressedTimeout(divisor: number) {
-    function compressedTimeout(
-        h: TimerHandler,
-        t: number | undefined,
-        ...args: any[]
-    ): number {
+    function compressedTimeout(h: TimerHandler, t: number | undefined, ...args: any[]): number {
         const compressedTime = t ? Math.ceil(t / divisor) : t;
         return globalThis.originalSetTimeout(h, compressedTime, ...args);
     }
@@ -38,11 +30,7 @@ export function getCompressionFactor(): number {
  */
 export function compressTime(by: number) {
     if (by < 0) by = -1;
-    if (
-        globalThis.setTimeout.name === "compressedTimeout" ||
-        (globalThis.setTimeout as any).divisor === by
-    )
-        return;
+    if (globalThis.setTimeout.name === "compressedTimeout" || (globalThis.setTimeout as any).divisor === by) return;
 
     const newTimeout = makeCompressedTimeout(by);
 
@@ -58,9 +46,6 @@ export function uncompressTime() {
 }
 
 export async function load(_: NS) {
-    if (
-        !globalThis.originalSetTimeout &&
-        globalThis.setTimeout.name === "setTimeout"
-    )
+    if (!globalThis.originalSetTimeout && globalThis.setTimeout.name === "setTimeout")
         globalThis.originalSetTimeout = setTimeout;
 }

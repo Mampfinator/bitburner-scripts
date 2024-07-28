@@ -34,16 +34,12 @@ export class HWGWWorkerBatch {
 
         this.weakenHack.work();
 
-        let hackPromise = this.ns
-            .asleep(weakenTime - hackTime - DELAY)
-            .then(() => this.hack.work());
+        let hackPromise = this.ns.asleep(weakenTime - hackTime - DELAY).then(() => this.hack.work());
 
         await this.ns.asleep(DELAY);
 
         await this.weakenGrow.work();
-        let growPromise = this.ns
-            .asleep(weakenTime - growTime - DELAY)
-            .then(() => this.grow.work());
+        let growPromise = this.ns.asleep(weakenTime - growTime - DELAY).then(() => this.grow.work());
 
         await Promise.all([hackPromise, growPromise]);
 
@@ -103,36 +99,26 @@ export class HWGWWorkerBatch {
         const donePromises = [
             this.hack.nextDone().then(() => {
                 hackFinishedAt = Date.now();
-                console.log(
-                    `Hack workers finished at ${(hackFinishedAt - startedAt).toFixed(2)}ms.`,
-                );
+                console.log(`Hack workers finished at ${(hackFinishedAt - startedAt).toFixed(2)}ms.`);
             }),
             this.weakenHack.nextDone().then(() => {
                 weakenHFinishedAt = Date.now();
-                console.log(
-                    `WeakenH workers finished at ${(weakenHFinishedAt - startedAt).toFixed(2)}ms`,
-                );
+                console.log(`WeakenH workers finished at ${(weakenHFinishedAt - startedAt).toFixed(2)}ms`);
             }),
             this.grow.nextDone().then(() => {
                 growFinishedAt = Date.now();
-                console.log(
-                    `Grow workers finished at ${(growFinishedAt - startedAt).toFixed(2)}ms`,
-                );
+                console.log(`Grow workers finished at ${(growFinishedAt - startedAt).toFixed(2)}ms`);
             }),
             this.weakenGrow.nextDone().then(() => {
                 weakenGFinishedAt = Date.now();
-                console.log(
-                    `WeakenG workers finished at ${(weakenGFinishedAt - startedAt).toFixed(2)}ms`,
-                );
+                console.log(`WeakenG workers finished at ${(weakenGFinishedAt - startedAt).toFixed(2)}ms`);
             }),
         ];
 
         this.ns.print(`Starting workers for ${this.target}.`);
 
         await this.weakenHack.work().then((r) => {
-            console.log(
-                `Starting weaken hack workers took ${Date.now() - startedAt}ms.`,
-            );
+            console.log(`Starting weaken hack workers took ${Date.now() - startedAt}ms.`);
             return r;
         });
 
@@ -157,21 +143,17 @@ export class HWGWWorkerBatch {
 
         const finishGrowWeakenAt = finishGrowAt + DELAY;
         const startGrowWeakenDelay = finishGrowWeakenAt - growTime;
-        const growWeakenPromise = this.ns
-            .asleep(startGrowWeakenDelay)
-            .then(async () => {
-                const before = Date.now();
-                const sec = this.ns.getServerSecurityLevel(this.target);
-                const t = this.ns.getWeakenTime(this.target);
-                console.log(
-                    `Grow weaken: started with ${sec} (${this.ns.getServerMinSecurityLevel(this.target)}) security. Expected to take ${t}ms (${weakenTime}ms).`,
-                );
-                const r = await this.weakenGrow.work();
-                console.log(
-                    `Starting weaken grow workers took ${Date.now() - before}ms`,
-                );
-                return r;
-            });
+        const growWeakenPromise = this.ns.asleep(startGrowWeakenDelay).then(async () => {
+            const before = Date.now();
+            const sec = this.ns.getServerSecurityLevel(this.target);
+            const t = this.ns.getWeakenTime(this.target);
+            console.log(
+                `Grow weaken: started with ${sec} (${this.ns.getServerMinSecurityLevel(this.target)}) security. Expected to take ${t}ms (${weakenTime}ms).`,
+            );
+            const r = await this.weakenGrow.work();
+            console.log(`Starting weaken grow workers took ${Date.now() - before}ms`);
+            return r;
+        });
 
         await Promise.all([hackPromise, growPromise, growWeakenPromise]);
 
@@ -181,18 +163,10 @@ export class HWGWWorkerBatch {
 
         console.log(
             [
-                [
-                    "weakenH",
-                    weakenHFinishedAt! - startedAt,
-                    weakenTime,
-                ] as const,
+                ["weakenH", weakenHFinishedAt! - startedAt, weakenTime] as const,
                 ["hack", hackFinishedAt! - startedAt, finishHackAt] as const,
                 ["grow", growFinishedAt! - startedAt, finishGrowAt] as const,
-                [
-                    "weakenG",
-                    weakenGFinishedAt! - startedAt,
-                    finishGrowWeakenAt,
-                ] as const,
+                ["weakenG", weakenGFinishedAt! - startedAt, finishGrowWeakenAt] as const,
             ].sort(([, a], [, b]) => a - b),
         );
 
@@ -205,12 +179,7 @@ export class HWGWWorkerBatch {
     }
 
     get runnable() {
-        return (
-            this.weakenGrow !== null &&
-            this.weakenHack !== null &&
-            this.hack !== null &&
-            this.grow !== null
-        );
+        return this.weakenGrow !== null && this.weakenHack !== null && this.hack !== null && this.grow !== null;
     }
 
     /**

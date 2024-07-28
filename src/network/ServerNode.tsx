@@ -16,13 +16,7 @@ interface ServerNodeProps {
     };
 }
 
-const SPECIAL_SERVERS = new Set([
-    "CSEC",
-    "avmnite-02h",
-    "I.I.I.I",
-    "run4theh111z",
-    "fulcrumassets",
-]);
+const SPECIAL_SERVERS = new Set(["CSEC", "avmnite-02h", "I.I.I.I", "run4theh111z", "fulcrumassets"]);
 
 interface GetClassNameServer {
     hostname: string;
@@ -109,14 +103,7 @@ function capitalizeFirst(str: string): string {
     return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
-function MemoryBar({
-    usage,
-    width,
-    height,
-    defaultColor,
-    capacity,
-    ns,
-}: BarProps): React.ReactElement {
+function MemoryBar({ usage, width, height, defaultColor, capacity, ns }: BarProps): React.ReactElement {
     if (capacity === 0) return <></>;
 
     return (
@@ -179,21 +166,13 @@ function sum<T>(arr: T[], accessor: (item: T) => number): number {
     return arr.reduce((sum, item) => sum + accessor(item), 0);
 }
 
-export function ServerNode({
-    data: { server, handles, ns, setInfoData },
-}: ServerNodeProps): React.ReactElement {
+export function ServerNode({ data: { server, handles, ns, setInfoData } }: ServerNodeProps): React.ReactElement {
     const reservations = globalThis.system.memory.list(server.hostname) ?? [];
 
-    const groups = Object.groupBy(
-        reservations,
-        (reservation) => reservation.tag ?? "unknown",
-    );
+    const groups = Object.groupBy(reservations, (reservation) => reservation.tag ?? "unknown");
 
     const initialUsage = [];
-    for (const group of [
-        ...GROUP_ORDER,
-        ...Object.keys(groups).filter((key) => !GROUP_ORDER.includes(key)),
-    ]) {
+    for (const group of [...GROUP_ORDER, ...Object.keys(groups).filter((key) => !GROUP_ORDER.includes(key))]) {
         if (!groups[group]) continue;
         const amount = sum(groups[group]!, (reservation) => reservation.amount);
         const color = COLORS[group as keyof typeof COLORS] ?? randomColor();
@@ -203,52 +182,32 @@ export function ServerNode({
 
     const [capacity, setCapacity] = React.useState(server.maxRam);
     const [rooted, setRooted] = React.useState(server.hasAdminRights);
-    const [backdoored, setBackdoored] = React.useState(
-        server.backdoorInstalled ?? true,
-    );
+    const [backdoored, setBackdoored] = React.useState(server.backdoorInstalled ?? true);
     const [usage, setUsage] = React.useState(initialUsage);
 
     React.useEffect(() => {
         const cleanupFns = [
             globalThis.eventEmitter.withCleanup(
                 "server:ram-updated",
-                ({
-                    hostname,
-                    newRam,
-                }: {
-                    hostname: string;
-                    newRam: number;
-                }) => {
+                ({ hostname, newRam }: { hostname: string; newRam: number }) => {
                     if (hostname !== server.hostname) return;
                     setCapacity(newRam);
                 },
             ),
-            globalThis.eventEmitter.withCleanup(
-                "server:rooted",
-                (hostname: string) => {
-                    if (hostname !== server.hostname) return;
-                    setRooted(true);
-                },
-            ),
-            globalThis.eventEmitter.withCleanup(
-                "server:backdoored",
-                (hostname: string) => {
-                    if (hostname !== server.hostname) return;
-                    setBackdoored(true);
-                },
-            ),
+            globalThis.eventEmitter.withCleanup("server:rooted", (hostname: string) => {
+                if (hostname !== server.hostname) return;
+                setRooted(true);
+            }),
+            globalThis.eventEmitter.withCleanup("server:backdoored", (hostname: string) => {
+                if (hostname !== server.hostname) return;
+                setBackdoored(true);
+            }),
             globalThis.eventEmitter.withCleanup(
                 "process:assigned",
                 (_, reservation: ReservationDetails | null | undefined) => {
-                    if (
-                        !reservation ||
-                        reservation.hostname !== server.hostname
-                    )
-                        return;
+                    if (!reservation || reservation.hostname !== server.hostname) return;
 
-                    let scriptUsage = usage.find(
-                        ({ title }) => title === (reservation.tag ?? "unknown"),
-                    );
+                    let scriptUsage = usage.find(({ title }) => title === (reservation.tag ?? "unknown"));
                     if (!scriptUsage) {
                         scriptUsage = {
                             title: reservation.tag ?? "unknown",
@@ -265,15 +224,9 @@ export function ServerNode({
             globalThis.eventEmitter.withCleanup(
                 "process:killed",
                 (_, reservation: ReservationDetails | null | undefined) => {
-                    if (
-                        !reservation ||
-                        reservation.hostname !== server.hostname
-                    )
-                        return;
+                    if (!reservation || reservation.hostname !== server.hostname) return;
 
-                    const scriptUsage = usage.find(
-                        ({ title }) => title === (reservation.tag ?? "unknown"),
-                    );
+                    const scriptUsage = usage.find(({ title }) => title === (reservation.tag ?? "unknown"));
                     if (!scriptUsage) return;
                     scriptUsage.amount -= reservation.amount;
 
@@ -294,10 +247,7 @@ export function ServerNode({
                 setInfoData(server.hostname);
             }}
         >
-            {handles &&
-                handles.map(([type, position], i) => (
-                    <Handle type={type} position={position} id={`${i}`} />
-                ))}
+            {handles && handles.map(([type, position], i) => <Handle type={type} position={position} id={`${i}`} />)}
             <div
                 className={
                     "server-node " +
@@ -324,10 +274,7 @@ export function ServerNode({
                         {server.hostname.length <= 14 ? (
                             server.hostname
                         ) : (
-                            <p
-                                style={{ padding: 0, margin: 0 }}
-                                title={server.hostname}
-                            >
+                            <p style={{ padding: 0, margin: 0 }} title={server.hostname}>
                                 {server.hostname.substring(0, 11)}...
                             </p>
                         )}

@@ -18,21 +18,14 @@ export function* readPort(port: NetscriptPort) {
 export function sleep(ms: number, forceUncompressed?: boolean) {
     return new Promise((resolve) => {
         if (!forceUncompressed) setTimeout(resolve, ms);
-        else
-            (globalThis.originalSetTimeout ?? globalThis.setTimeout)(
-                resolve,
-                ms,
-            );
+        else (globalThis.originalSetTimeout ?? globalThis.setTimeout)(resolve, ms);
     });
 }
 
 /**
  * @returns a tuple of all `[passed, failed]` elements.
  */
-export function splitFilter<T>(
-    arr: T[],
-    filterFn: (element: T, index: number) => boolean,
-): [T[], T[]] {
+export function splitFilter<T>(arr: T[], filterFn: (element: T, index: number) => boolean): [T[], T[]] {
     const passed: T[] = [];
     const failed: T[] = [];
 

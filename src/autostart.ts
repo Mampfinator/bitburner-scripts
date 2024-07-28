@@ -9,10 +9,7 @@ function shouldStartServerbuyer(ns: NS) {
 
     const servers = ns.getPurchasedServers();
 
-    return (
-        servers.length < serverMax ||
-        servers.some((server) => ns.getServerMaxRam(server) < ramMax)
-    );
+    return servers.length < serverMax || servers.some((server) => ns.getServerMaxRam(server) < ramMax);
 }
 
 export async function main(ns: NS) {
@@ -20,12 +17,7 @@ export async function main(ns: NS) {
 
     auto(ns, { tag: "system" });
 
-    run(
-        ns,
-        "monitoring/cli.js",
-        { hostname: "home", temporary: true },
-        "reset",
-    );
+    run(ns, "monitoring/cli.js", { hostname: "home", temporary: true }, "reset");
 
     run(ns, "auto-nuke.js", { hostname: "home", temporary: true });
     run(ns, "ccts/auto-solve.js", { hostname: "home", temporary: true });
@@ -44,8 +36,7 @@ export async function main(ns: NS) {
 
     await ns.asleep(1000);
 
-    if (!ns.isRunning("hacking/supervisor.js"))
-        run(ns, "hacking/supervisor.js", { hostname: "home" });
+    if (!ns.isRunning("hacking/supervisor.js")) run(ns, "hacking/supervisor.js", { hostname: "home" });
 
     run(ns, "gangs/await-start.js", { temporary: true, hostname: "home" });
 }

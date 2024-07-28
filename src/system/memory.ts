@@ -7,10 +7,7 @@ export function getMemoryMap() {
     return new Map([...MEMORY_MAP].map(([key, info]) => [key, info.clone()]));
 }
 
-export type ServerMemInfo = Pick<
-    Server,
-    "maxRam" | "hostname" | "hasAdminRights"
->;
+export type ServerMemInfo = Pick<Server, "maxRam" | "hostname" | "hasAdminRights">;
 
 interface InternalReservation {
     amount: number;
@@ -52,11 +49,7 @@ export class MemInfo {
             free = this.lastFree;
         } else {
             const newFree =
-                this.capacity -
-                [...this.reservations.values()].reduce(
-                    (acc, cur) => acc! + (cur?.amount ?? 0),
-                    0,
-                )!;
+                this.capacity - [...this.reservations.values()].reduce((acc, cur) => acc! + (cur?.amount ?? 0), 0)!;
             this.lastFree = newFree;
             free = newFree;
         }
@@ -105,8 +98,7 @@ export class MemInfo {
                 oldRam: this._capacity,
             });
 
-            if (this.lastFree !== null)
-                this.lastFree += server.maxRam - this.capacity;
+            if (this.lastFree !== null) this.lastFree += server.maxRam - this.capacity;
             this._capacity = server.maxRam;
 
             changed = true;
@@ -246,17 +238,12 @@ interface ReserveOptions {
  * @param amount amount of memory (in GB) to reserve.
  * @returns the reservation, or `null` if the reservation failed.
  */
-export function reserve(
-    amount: number,
-    options?: ReserveOptions,
-): Reservation | null {
+export function reserve(amount: number, options?: ReserveOptions): Reservation | null {
     const { onServer, tag } = options ?? {};
     if (typeof onServer !== "undefined") {
         const info = MEMORY_MAP.get(onServer);
         if (!info) {
-            console.error(
-                `Attempt to reserve memory on server that has not been registered.`,
-            );
+            console.error(`Attempt to reserve memory on server that has not been registered.`);
             return null;
         }
         if (!info.usable) return null;
@@ -278,15 +265,8 @@ export function reserve(
     }
 }
 
-export function reserveThreads(
-    threads: number,
-    threadSize: number,
-    tag?: string,
-): Reservation[] | null {
-    const available = [...MEMORY_MAP.values()].reduce(
-        (acc, curr) => acc + curr.available,
-        0,
-    );
+export function reserveThreads(threads: number, threadSize: number, tag?: string): Reservation[] | null {
+    const available = [...MEMORY_MAP.values()].reduce((acc, curr) => acc + curr.available, 0);
 
     if (available < threads * threadSize) return null;
 
@@ -314,10 +294,7 @@ export function reserveThreads(
         });
 
         if (!reservation) {
-            console.error(
-                `Something be funky: ${threads}, ${threadSize}, ${useThreads}`,
-                server,
-            );
+            console.error(`Something be funky: ${threads}, ${threadSize}, ${useThreads}`, server);
             return cleanup();
         }
 
@@ -326,16 +303,10 @@ export function reserveThreads(
     }
 
     if (threads > 0) {
-        const availablePreCleanup = [...MEMORY_MAP.values()].reduce(
-            (acc, curr) => acc + curr.available,
-            0,
-        );
+        const availablePreCleanup = [...MEMORY_MAP.values()].reduce((acc, curr) => acc + curr.available, 0);
         cleanup();
 
-        const availablePostCleanup = [...MEMORY_MAP.values()].reduce(
-            (acc, curr) => acc + curr.available,
-            0,
-        );
+        const availablePostCleanup = [...MEMORY_MAP.values()].reduce((acc, curr) => acc + curr.available, 0);
 
         console.warn(
             `Apparently not enough memory available for ${threads}x${threadSize}GB: ${availablePostCleanup} - ${threads * threadSize} = ${availablePostCleanup - threads * threadSize} | attempted to use ${(((availablePostCleanup - availablePreCleanup) / threads) * threadSize * 100).toFixed(2)}% of available memory.`,
@@ -357,10 +328,7 @@ function sizeOf(res: Reservation): number | undefined {
  * Reserve `chunks` sections of memory with size `chunkSize`.
  * @returns the reserved chunks, or `null` if reservation failed.
  */
-export function reserveChunks(
-    chunks: number,
-    chunkSize: number,
-): Reservation[] | null {
+export function reserveChunks(chunks: number, chunkSize: number): Reservation[] | null {
     const reservations = [];
 
     for (let i = 0; i < chunks; i++) {
@@ -415,19 +383,12 @@ declare global {
              * @param onServer server to reserve RAM on. If not set, reserves on the server with the most available memory.
              * @returns the reservation, or `null` if the reservation failed.
              */
-            function reserve(
-                amount: number,
-                options?: ReserveOptions,
-            ): Reservation | null;
+            function reserve(amount: number, options?: ReserveOptions): Reservation | null;
             /**
              * Reserve `chunks` sections of memory with size `chunkSize`.
              * @returns the reserved chunks, or `null` if reservation failed.
              */
-            function reserveChunks(
-                chunks: number,
-                chunkSize: number,
-                tag?: string,
-            ): Reservation[] | null;
+            function reserveChunks(chunks: number, chunkSize: number, tag?: string): Reservation[] | null;
             /**
              * Free a `Reservation` from {@link globalThis.system.memory.reserve | reserve}.
              * @returns whether freeing the allocation was successful.

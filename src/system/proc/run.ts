@@ -33,9 +33,7 @@ export function run(
             tag: options.tag,
         });
     } else if (options.hostname) {
-        const cost =
-            options.ramOverride ??
-            ns.getScriptRam(scriptPath, options.hostname);
+        const cost = options.ramOverride ?? ns.getScriptRam(scriptPath, options.hostname);
         reservation = globalThis.system.memory.reserve(cost, {
             onServer: options.hostname,
             tag: options.tag,
@@ -43,10 +41,7 @@ export function run(
     }
 
     if (!reservation) {
-        console.warn(
-            `Failed to get reservation for ${scriptPath}@${options?.hostname}.`,
-            options,
-        );
+        console.warn(`Failed to get reservation for ${scriptPath}@${options?.hostname}.`, options);
         return [0, null, null];
     }
 

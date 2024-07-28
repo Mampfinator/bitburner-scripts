@@ -11,8 +11,5 @@ export function largestPrimeFactor(data: number) {
         divisor += 1;
     }
 
-    return factors.reduce(
-        (previous, current) => (current > previous ? current : previous),
-        0,
-    );
+    return factors.reduce((previous, current) => (current > previous ? current : previous), 0);
 }

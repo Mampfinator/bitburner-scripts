@@ -92,8 +92,7 @@ export function getServerGraph(ns: NS, options?: GraphOptions) {
 
             const server = ns.getServer(to);
             if (
-                (typeof options?.backdoorIsHomeLink === "undefined" ||
-                    options.backdoorIsHomeLink) &&
+                (typeof options?.backdoorIsHomeLink === "undefined" || options.backdoorIsHomeLink) &&
                 server.backdoorInstalled
             )
                 graph.addEdge("home", to);

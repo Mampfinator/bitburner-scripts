@@ -2,10 +2,7 @@ import { NS } from "@ns";
 import { info, Reservation } from "../memory";
 
 const PROCESSES = new Set<number>();
-const RUN_PROMISES = new Map<
-    number,
-    { promise: Promise<void>; resolve: () => void }
->();
+const RUN_PROMISES = new Map<number, { promise: Promise<void>; resolve: () => void }>();
 const RESERVATIONS = new Map<number, Reservation>();
 
 export function getReservation(ns: NS): Reservation | null;
@@ -43,10 +40,7 @@ export function started(pidOrNs: number | NS, late?: boolean): Promise<void> {
  */
 export function assign(pid: number, reservation: Reservation): boolean;
 export function assign(ns: NS, reservation: Reservation): boolean;
-export function assign(
-    nsOrPid: number | NS,
-    reservation: Reservation,
-): boolean {
+export function assign(nsOrPid: number | NS, reservation: Reservation): boolean {
     const pid = typeof nsOrPid === "number" ? nsOrPid : nsOrPid.pid;
 
     if (RESERVATIONS.has(pid)) return false;
@@ -88,10 +82,7 @@ declare global {
             /**
              * Assign a reservation to a script for automatic `free`ing.
              */
-            function assign(
-                nsOrPid: number | NS,
-                reservation: Reservation,
-            ): boolean;
+            function assign(nsOrPid: number | NS, reservation: Reservation): boolean;
             /**
              * Report that a script has been killed.
              */

@@ -5,8 +5,7 @@ export async function test(ctx: TestContext) {
     const size = 100_000;
     const remove = Math.floor(size * 0.25);
 
-    const { SparseArray, SimpleSparseArray } =
-        await ctx.import<typeof import("lib/lib")>("lib/lib.js");
+    const { SparseArray, SimpleSparseArray } = await ctx.import<typeof import("lib/lib")>("lib/lib.js");
 
     ctx.time(
         "Random: SparseArray",

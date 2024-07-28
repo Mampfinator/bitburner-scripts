@@ -21,10 +21,7 @@ export function solve(data: string) {
             }
         } else {
             const jumpBy = Number(chars.shift());
-            if (isNaN(jumpBy))
-                throw new Error(
-                    `NaN jumpBy in ${data} at index ${data.length - chars.length}.`,
-                );
+            if (isNaN(jumpBy)) throw new Error(`NaN jumpBy in ${data} at index ${data.length - chars.length}.`);
 
             while (chunkLength > 0) {
                 out += out[out.length - jumpBy];

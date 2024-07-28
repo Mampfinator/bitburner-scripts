@@ -2,20 +2,14 @@ import { NS } from "@ns";
 
 // TODO: migrate callack storage to SparseArray
 export class EventEmitter {
-    #callbacks = new Map<
-        string | symbol | number,
-        Array<((...args: any[]) => void | Promise<void>) | undefined>
-    >();
+    #callbacks = new Map<string | symbol | number, Array<((...args: any[]) => void | Promise<void>) | undefined>>();
 
     /**
      * @param event the event to listen to
      * @param callback
      * @returns this callback's ID. Use with `remove` to remove this callback again.
      */
-    public on(
-        event: string | symbol | number,
-        callback: (...args: any[]) => void,
-    ): number {
+    public on(event: string | symbol | number, callback: (...args: any[]) => void): number {
         const callbacks = this.#callbacks.get(event);
         if (!callbacks) {
             this.#callbacks.set(event, [callback]);
@@ -53,15 +47,8 @@ export class EventEmitter {
                     e?.name === "string"
                 ) {
                     callbacks[i] = undefined;
-                    console.warn(
-                        `NS-use after script death from ${e.hostname}/${e.name} (PID: ${e.pid})`,
-                    );
-                    this.emit(
-                        "error:ns-after-script-death",
-                        e.hostname,
-                        e.name,
-                        e.pid,
-                    );
+                    console.warn(`NS-use after script death from ${e.hostname}/${e.name} (PID: ${e.pid})`);
+                    this.emit("error:ns-after-script-death", e.hostname, e.name, e.pid);
                 } else {
                     this.emit("error", e, event, ...args);
                 }
@@ -72,10 +59,7 @@ export class EventEmitter {
     /**
      * @returns the removed callback, or undefined if none was found.
      */
-    public remove(
-        event: string | symbol | number,
-        id: number,
-    ): ((...args: any[]) => void) | undefined {
+    public remove(event: string | symbol | number, id: number): ((...args: any[]) => void) | undefined {
         const callbacks = this.#callbacks.get(event);
         if (!callbacks) return undefined;
 
@@ -101,11 +85,7 @@ export class EventEmitter {
      * @param event
      * @param callback
      */
-    public register(
-        ns: NS,
-        event: string | symbol | number,
-        callback: (...args: any[]) => void,
-    ): number {
+    public register(ns: NS, event: string | symbol | number, callback: (...args: any[]) => void): number {
         const callbackId = this.on(event, callback);
         ns.atExit(
             () => {
@@ -116,14 +96,8 @@ export class EventEmitter {
         return callbackId;
     }
 
-    public withCleanup(
-        event: string,
-        listener: (...args: any[]) => void,
-        ns?: NS,
-    ): () => void {
-        const callbackId = ns
-            ? this.register(ns, event, listener)
-            : this.on(event, listener);
+    public withCleanup(event: string, listener: (...args: any[]) => void, ns?: NS): () => void {
+        const callbackId = ns ? this.register(ns, event, listener) : this.on(event, listener);
         return () => {
             this.remove(event, callbackId);
         };

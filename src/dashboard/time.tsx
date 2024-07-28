@@ -1,9 +1,5 @@
 import { NS } from "@ns";
-import {
-    compressTime,
-    getCompressionFactor,
-    uncompressTime,
-} from "/system/compress-time";
+import { compressTime, getCompressionFactor, uncompressTime } from "/system/compress-time";
 import { formatTime } from "/lib/lib";
 
 const { React } = globalThis;
@@ -68,9 +64,7 @@ export function TimeCompression({ ns }: { ns: NS }) {
                         background: "none",
                     }}
                     name="time"
-                    onChange={(e) =>
-                        setExampleTime(Number(e.currentTarget.value))
-                    }
+                    onChange={(e) => setExampleTime(Number(e.currentTarget.value))}
                 >
                     <option value={5 * 60 * 1000}>5m</option>
                     <option value={30 * 60 * 1000}>30m</option>

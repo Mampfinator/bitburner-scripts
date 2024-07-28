@@ -16,15 +16,11 @@ export async function main(ns: NS) {
     ]) as { threads: number; multiplier: number };
 
     if (threads === 0 && multiplier <= 1) {
-        return ns.tprint(
-            `ERROR: No valid "--threads" or "--multiplier" provided.`,
-        );
+        return ns.tprint(`ERROR: No valid "--threads" or "--multiplier" provided.`);
     }
 
     if (threads > 0 && multiplier > 0) {
-        return ns.tprint(
-            `ERROR: Either "--threads" or "--multiplier" required, not both.`,
-        );
+        return ns.tprint(`ERROR: Either "--threads" or "--multiplier" required, not both.`);
     }
 
     for (const server of getServerNames(ns)) {

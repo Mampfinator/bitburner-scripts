@@ -76,37 +76,34 @@ export async function main(ns: NS) {
         /**
          * Simulates the hash gain rate of a hacknet server with 1 level of the selected upgrade(s) applied.
          */
-        const simulateHashRateIncrease = ({level, ram, core}: {level?: boolean, ram?: boolean, core?: boolean}) => {
-            return ns.formulas.hacknetServers.hashGainRate(
-                current.level + (level ? 1 : 0),
-                0,
-                current.ram * (ram ? 2 : 1),
-                current.cores + (core ? 1 : 0),
-            ) - ns.formulas.hacknetServers.hashGainRate(
-                current.level,
-                0,
-                current.ram,
-                current.cores
+        const simulateHashRateIncrease = ({ level, ram, core }: { level?: boolean; ram?: boolean; core?: boolean }) => {
+            return (
+                ns.formulas.hacknetServers.hashGainRate(
+                    current.level + (level ? 1 : 0),
+                    0,
+                    current.ram * (ram ? 2 : 1),
+                    current.cores + (core ? 1 : 0),
+                ) - ns.formulas.hacknetServers.hashGainRate(current.level, 0, current.ram, current.cores)
             );
         };
 
         const upgrades: [number, UpgradeOption, number][] = [];
 
         if (canUpgrade(current, UpgradeOption.Cores)) {
-            const coreCost = hacknet.getCoreUpgradeCost(node)
-            const cores = simulateHashRateIncrease({core: true}) * 1000 / coreCost;
+            const coreCost = hacknet.getCoreUpgradeCost(node);
+            const cores = (simulateHashRateIncrease({ core: true }) * 1000) / coreCost;
             upgrades.push([cores, UpgradeOption.Cores, coreCost]);
         }
-        
+
         if (canUpgrade(current, UpgradeOption.RAM)) {
-            const ramCost = hacknet.getRamUpgradeCost(node)
-            const ram =  simulateHashRateIncrease({ram: true}) * 1000 / ramCost;
+            const ramCost = hacknet.getRamUpgradeCost(node);
+            const ram = (simulateHashRateIncrease({ ram: true }) * 1000) / ramCost;
             upgrades.push([ram, UpgradeOption.RAM, ramCost]);
         }
 
         if (canUpgrade(current, UpgradeOption.Level)) {
-            const levelCost = hacknet.getLevelUpgradeCost(node)
-            const level = simulateHashRateIncrease({level: true}) * 1000 / levelCost;
+            const levelCost = hacknet.getLevelUpgradeCost(node);
+            const level = (simulateHashRateIncrease({ level: true }) * 1000) / levelCost;
             upgrades.push([level, UpgradeOption.Level, levelCost]);
         }
 
@@ -120,7 +117,7 @@ export async function main(ns: NS) {
 
     /**
      * Upgrade a hacknet node.
-     * 
+     *
      * @returns whether the upgrade was successful.
      */
     function upgrade(node: number, option: UpgradeOption) {
@@ -159,7 +156,7 @@ export async function main(ns: NS) {
                 const success = hacknet.purchaseNode() >= 0;
 
                 if (success) {
-                    register({hostname: `hacknet-server-${nodes}`, hasAdminRights: true, maxRam: 1});
+                    register({ hostname: `hacknet-server-${nodes}`, hasAdminRights: true, maxRam: 1 });
                     nodes += 1;
                     budget -= buyNewCost;
                     ns.print(`Bought new hacknet node for $${ns.formatNumber(buyNewCost)}.`);
@@ -169,7 +166,11 @@ export async function main(ns: NS) {
 
             // upgrade cache whenever we can. It's not essential, but nice to have.
             const cacheUpgradeCost = hacknet.getCoreUpgradeCost(node);
-            if (canUpgrade(hacknet.getNodeStats(node), UpgradeOption.Cache) && cacheUpgradeCost < budget && (!cost || cacheUpgradeCost < cost)) {
+            if (
+                canUpgrade(hacknet.getNodeStats(node), UpgradeOption.Cache) &&
+                cacheUpgradeCost < budget &&
+                (!cost || cacheUpgradeCost < cost)
+            ) {
                 const success = upgrade(node, UpgradeOption.Cache);
                 if (success) {
                     budget -= cacheUpgradeCost;
@@ -181,7 +182,7 @@ export async function main(ns: NS) {
             if (!option || !cost) {
                 ns.print(`No upgrades available for hacknet node ${node}.`);
                 continue;
-            } 
+            }
             if (cost > budget) {
                 ns.print(`No afforable upgrade for hacknet node ${node}.`);
                 continue;
@@ -195,7 +196,11 @@ export async function main(ns: NS) {
             }
 
             if (option === UpgradeOption.RAM) {
-                register({hostname: `hacknet-server-${node}`, hasAdminRights: true, maxRam: hacknet.getNodeStats(node).ram});
+                register({
+                    hostname: `hacknet-server-${node}`,
+                    hasAdminRights: true,
+                    maxRam: hacknet.getNodeStats(node).ram,
+                });
             }
 
             budget -= cost;

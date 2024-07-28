@@ -12,10 +12,7 @@ enum GangMode {
 
 const MAX_GANG_SIZE = 12;
 
-function findMax<T>(
-    arr: T[],
-    fn: (element: T, index: number) => number,
-): T | undefined {
+function findMax<T>(arr: T[], fn: (element: T, index: number) => number): T | undefined {
     let highest = -1;
     let highestIndex = -1;
 
@@ -34,9 +31,7 @@ export async function main(ns: NS) {
     auto(ns, { tag: "gang" });
 
     if (!globalThis.eventEmitter) {
-        throw new Error(
-            `This script requires globalThis.eventEmitter to work. Run events.js on "home" to set it up.`,
-        );
+        throw new Error(`This script requires globalThis.eventEmitter to work. Run events.js on "home" to set it up.`);
     }
 
     ns.disableLog("ALL");
@@ -103,9 +98,7 @@ export async function main(ns: NS) {
                 mode = GangMode.Territory;
 
                 // We only enable territory warfare if we have a >= 75% chance to win against the highest power gang
-                ns.gang.setTerritoryWarfare(
-                    ns.gang.getChanceToWinClash(highestOther) >= 0.75,
-                );
+                ns.gang.setTerritoryWarfare(ns.gang.getChanceToWinClash(highestOther) >= 0.75);
             }
         }
 
@@ -119,15 +112,11 @@ export async function main(ns: NS) {
                 ns.gang.setMemberTask(member, "Territory Warfare");
             }
         } else {
-            const memberInfo = members.map((member) =>
-                ns.gang.getMemberInformation(member),
-            );
+            const memberInfo = members.map((member) => ns.gang.getMemberInformation(member));
 
             let potentialTasks: GangTaskStats[];
             if (mode === GangMode.Money) {
-                potentialTasks = tasks
-                    .filter((task) => task.baseMoney > 0)
-                    .sort((a, b) => b.baseMoney - a.baseMoney);
+                potentialTasks = tasks.filter((task) => task.baseMoney > 0).sort((a, b) => b.baseMoney - a.baseMoney);
             } else {
                 // mode === GangMode.Respect
                 potentialTasks = tasks
@@ -141,11 +130,7 @@ export async function main(ns: NS) {
 
                 for (const member of memberInfo) {
                     ns.gang.setMemberTask(member.name, wantedTask.name);
-                    wantedBudget += ns.formulas.gang.wantedLevelGain(
-                        ns.gang.getGangInformation(),
-                        member,
-                        wantedTask,
-                    );
+                    wantedBudget += ns.formulas.gang.wantedLevelGain(ns.gang.getGangInformation(), member, wantedTask);
                 }
 
                 for (const member of memberInfo) {
@@ -197,10 +182,7 @@ async function recruitMember(ns: NS): Promise<string | null> {
         .catch(console.error);
 
     if (!res) {
-        ns.toast(
-            `Error when fetching a random name from namefake.com. Check console for details.`,
-            "error",
-        );
+        ns.toast(`Error when fetching a random name from namefake.com. Check console for details.`, "error");
         return null;
     }
 
@@ -226,9 +208,7 @@ function getHighestPowerOtherGang(ns: NS) {
 
     const [maxPowerGang] = Object.entries(others)
         .filter(([name, info]) => name !== myGang.faction && info.territory > 0)
-        .reduce((highest, [name, info]) =>
-            highest[1].power > info.power ? highest : [name, info],
-        );
+        .reduce((highest, [name, info]) => (highest[1].power > info.power ? highest : [name, info]));
 
     return maxPowerGang ?? null;
 }

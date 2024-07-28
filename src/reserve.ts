@@ -8,10 +8,8 @@ const FLAGS = [
 ] as any;
 
 export function autocomplete(data: AutocompleteData, args: ScriptArg[]) {
-    if (args.at(-1) === "target" || args.at(-2) === "target")
-        return data.servers;
-    if (args.at(-1) === "tag" || args.at(-2) === "tag")
-        return ["debug", "hack", "grow", "weaken", "share", "unknown"];
+    if (args.at(-1) === "target" || args.at(-2) === "target") return data.servers;
+    if (args.at(-1) === "tag" || args.at(-2) === "tag") return ["debug", "hack", "grow", "weaken", "share", "unknown"];
 
     data.flags(FLAGS);
     return [];

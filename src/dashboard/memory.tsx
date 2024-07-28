@@ -14,9 +14,9 @@ export const MemoryInspector = ({ ns }: { ns: NS }) => {
         };
     });
 
-    const [memInfo, setMemInfo] = React.useState<
-        Map<string, { memInfo: MemInfo; actual: number }>
-    >(() => calculateMem());
+    const [memInfo, setMemInfo] = React.useState<Map<string, { memInfo: MemInfo; actual: number }>>(() =>
+        calculateMem(),
+    );
 
     function calculateMem() {
         const map = new Map<string, { memInfo: MemInfo; actual: number }>();
@@ -40,17 +40,9 @@ export const MemoryInspector = ({ ns }: { ns: NS }) => {
                 <summary>Memory</summary>
                 <div>
                     {[...memInfo]
-                        .filter(
-                            ([_, { memInfo, actual }]) =>
-                                actual > 0 &&
-                                memInfo.available < memInfo.capacity,
-                        )
+                        .filter(([_, { memInfo, actual }]) => actual > 0 && memInfo.available < memInfo.capacity)
                         .map(([server, { memInfo, actual }]) => (
-                            <ServerMemInfo
-                                server={server}
-                                memInfo={memInfo}
-                                actual={actual}
-                            />
+                            <ServerMemInfo server={server} memInfo={memInfo} actual={actual} />
                         ))}
                 </div>
             </details>
@@ -78,12 +70,7 @@ const ServerMemInfo = (props: ServerMemInfoProps) => {
                 border: "1px solid darkgreen",
             }}
         >
-            <UsageBar
-                label={server}
-                max={capacity}
-                valueA={capacity - available}
-                valueB={actual}
-            />
+            <UsageBar label={server} max={capacity} valueA={capacity - available} valueB={actual} />
         </div>
     );
 };
@@ -116,9 +103,7 @@ const BAR_STYLE: React.CSSProperties = {
 
 const UsageBar = ({ label, max, valueA, valueB }: UsageBarProps) => {
     if (max < valueA || max < valueB) {
-        throw new Error(
-            `Invalid max/valueA/valueB: ${max} supposed to be greater than ${valueA} and ${valueB}`,
-        );
+        throw new Error(`Invalid max/valueA/valueB: ${max} supposed to be greater than ${valueA} and ${valueB}`);
     }
 
     const widthA = valueA / max;

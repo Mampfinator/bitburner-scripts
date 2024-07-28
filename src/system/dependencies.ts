@@ -17,23 +17,20 @@ async function makeScript(dep: ScriptDependency, element: HTMLScriptElement) {
 
     if (dep.type) element.type = dep.type;
     if (dep.type === "module") {
-        source = source.replaceAll(
-            /(?<=import *.+ *from *\")(.+?)(?=\")/g,
-            (match: string) => {
-                const replacer = IMPORT_MAP.imports[match];
-                if (replacer) {
-                    console.log(`Replacing ${match} with ${replacer}.`);
-                    return replacer;
-                }
+        source = source.replaceAll(/(?<=import *.+ *from *\")(.+?)(?=\")/g, (match: string) => {
+            const replacer = IMPORT_MAP.imports[match];
+            if (replacer) {
+                console.log(`Replacing ${match} with ${replacer}.`);
+                return replacer;
+            }
 
-                // if import is relative, make it absolute.
-                if (match.startsWith(".")) {
-                    return join(dep.src, match);
-                }
+            // if import is relative, make it absolute.
+            if (match.startsWith(".")) {
+                return join(dep.src, match);
+            }
 
-                return match;
-            },
-        );
+            return match;
+        });
     }
 
     if (dep.append) {
@@ -48,26 +45,17 @@ async function makeScript(dep: ScriptDependency, element: HTMLScriptElement) {
     return element;
 }
 
-async function makeRawScript(
-    dep: RawScriptDependency,
-    element: HTMLScriptElement,
-) {
+async function makeRawScript(dep: RawScriptDependency, element: HTMLScriptElement) {
     element.textContent = dep.src;
     if (dep.type) element.type = dep.type;
 }
 
-async function makeStyleSheet(
-    dep: StylesheetDependency,
-    element: HTMLLinkElement,
-) {
+async function makeStyleSheet(dep: StylesheetDependency, element: HTMLLinkElement) {
     element.href = dep.href;
     element.rel = "stylesheet";
 }
 
-async function makeRawStyleSheet(
-    dep: RawStyleSheetDependency,
-    element: HTMLStyleElement,
-) {
+async function makeRawStyleSheet(dep: RawStyleSheetDependency, element: HTMLStyleElement) {
     let text = "";
     for (const [key, style] of Object.entries(dep.style)) {
         text += `${key} {`;
@@ -104,24 +92,14 @@ interface RawStyleSheetDependency {
     style: Record<string, React.CSSProperties>;
 }
 
-type Dependency =
-    | ScriptDependency
-    | RawScriptDependency
-    | StylesheetDependency
-    | RawStyleSheetDependency;
+type Dependency = ScriptDependency | RawScriptDependency | StylesheetDependency | RawStyleSheetDependency;
 
 const DEPENDENCIES: Dependency[] = [];
 
 /**
  * Register an external scripts/stylesheet.
  */
-export function register({
-    dependency,
-    imports,
-}: {
-    dependency?: Dependency;
-    imports?: Record<string, string>;
-}) {
+export function register({ dependency, imports }: { dependency?: Dependency; imports?: Record<string, string> }) {
     if (dependency) DEPENDENCIES.push(dependency);
     if (imports) {
         IMPORT_MAP.imports = {
@@ -139,24 +117,14 @@ export async function apply(dep: Dependency) {
     else {
         const node = dep.node.toLowerCase();
 
-        element = doc.createElement(
-            node.includes("script")
-                ? "script"
-                : node === "stylesheet"
-                  ? "link"
-                  : "style",
-        );
+        element = doc.createElement(node.includes("script") ? "script" : node === "stylesheet" ? "link" : "style");
         element.id = dep.id;
     }
 
-    if (dep.node === "script")
-        await makeScript(dep, element as HTMLScriptElement);
-    else if (dep.node === "stylesheet")
-        await makeStyleSheet(dep, element as HTMLLinkElement);
-    else if (dep.node === "rawScript")
-        await makeRawScript(dep, element as HTMLScriptElement);
-    else if (dep.node === "rawStylesheet")
-        await makeRawStyleSheet(dep, element as HTMLStyleElement);
+    if (dep.node === "script") await makeScript(dep, element as HTMLScriptElement);
+    else if (dep.node === "stylesheet") await makeStyleSheet(dep, element as HTMLLinkElement);
+    else if (dep.node === "rawScript") await makeRawScript(dep, element as HTMLScriptElement);
+    else if (dep.node === "rawStylesheet") await makeRawStyleSheet(dep, element as HTMLStyleElement);
 
     if (!oldElement) {
         doc.head.appendChild(element);
@@ -173,10 +141,8 @@ export async function load(_: NS) {
             type: "module",
         },
         imports: {
-            "#ansi-styles":
-                "https://cdn.jsdelivr.net/npm/chalk@5.3.0/source/vendor/ansi-styles/index.min.js",
-            "#supports-color":
-                "https://cdn.jsdelivr.net/npm/chalk@5.3.0/source/vendor/supports-color/browser.min.js",
+            "#ansi-styles": "https://cdn.jsdelivr.net/npm/chalk@5.3.0/source/vendor/ansi-styles/index.min.js",
+            "#supports-color": "https://cdn.jsdelivr.net/npm/chalk@5.3.0/source/vendor/supports-color/browser.min.js",
         },
     });
 

@@ -18,9 +18,7 @@ export async function main(ns: NS) {
     auto(ns, { tag: "hacking" });
     const startedAt = Math.floor(Date.now() / 1000);
     const settingsText = ns.read("hacking/supervisor-settings.json");
-    const settings: SupervisorSettings = JSON.parse(
-        settingsText.length > 0 ? settingsText : "{}",
-    );
+    const settings: SupervisorSettings = JSON.parse(settingsText.length > 0 ? settingsText : "{}");
 
     const exclude = new Set(settings.exclude ?? []);
 
@@ -48,15 +46,11 @@ export async function main(ns: NS) {
         minRatio = 0.1,
         iterations = 10,
     ) {
-        if (typeof hostname !== "string")
-            throw new TypeError(`Invalid hostname: ${hostname}`);
-        if (typeof maxThreads !== "number")
-            throw new TypeError(`Invalid maxThreads: ${maxThreads}`);
-        if (typeof iterations !== "number")
-            throw new TypeError(`Invalid iterations: ${iterations}`);
+        if (typeof hostname !== "string") throw new TypeError(`Invalid hostname: ${hostname}`);
+        if (typeof maxThreads !== "number") throw new TypeError(`Invalid maxThreads: ${maxThreads}`);
+        if (typeof iterations !== "number") throw new TypeError(`Invalid iterations: ${iterations}`);
 
-        if (pool.calculateBatchRatios(hostname, maxRatio).total <= maxThreads)
-            return maxRatio;
+        if (pool.calculateBatchRatios(hostname, maxRatio).total <= maxThreads) return maxRatio;
 
         let ratio = 0.5;
 
@@ -88,29 +82,17 @@ export async function main(ns: NS) {
      * @returns {number}
      */
     function rateServer(server: Server, freeThreads: number) {
-        const hackRatio = approximateOptimalHackRatio(
-            server.hostname,
-            freeThreads,
-        );
-        const requiredThreads = pool.calculateBatchRatios(
-            server.hostname,
-            hackRatio,
-        ).total;
+        const hackRatio = approximateOptimalHackRatio(server.hostname, freeThreads);
+        const requiredThreads = pool.calculateBatchRatios(server.hostname, hackRatio).total;
 
         // If requiredThreads is 0, the formula below would become 0.
         // Return 0 instead; we're not interested in this server for now.
         if (requiredThreads === 0) return 0;
 
-        return (
-            (((server.moneyMax ?? 0) / (server.minDifficulty ?? 100)) *
-                hackRatio) /
-            requiredThreads
-        );
+        return (((server.moneyMax ?? 0) / (server.minDifficulty ?? 100)) * hackRatio) / requiredThreads;
     }
 
-    for (const server of getServers(ns).filter(
-        (server) => server.hasAdminRights,
-    )) {
+    for (const server of getServers(ns).filter((server) => server.hasAdminRights)) {
         if (server.hostname === "home") continue;
         ns.scp(Object.values(WORKER_SCRIPTS), server.hostname, "home");
     }
@@ -122,29 +104,19 @@ export async function main(ns: NS) {
     });
 
     function getPreparationThreads(hostname: string, availableThreads: number) {
-        let growByFactor =
-            1 /
-            (ns.getServerMoneyAvailable(hostname) /
-                ns.getServerMaxMoney(hostname));
+        let growByFactor = 1 / (ns.getServerMoneyAvailable(hostname) / ns.getServerMaxMoney(hostname));
         if (growByFactor === Infinity) growByFactor = 20;
 
         let grow = Math.ceil(ns.growthAnalyze(hostname, growByFactor));
 
         const growSecIncrease = ns.growthAnalyzeSecurity(grow, hostname);
         let weaken = Math.ceil(
-            (ns.getServerSecurityLevel(hostname) -
-                ns.getServerMinSecurityLevel(hostname) +
-                growSecIncrease) /
-                0.05,
+            (ns.getServerSecurityLevel(hostname) - ns.getServerMinSecurityLevel(hostname) + growSecIncrease) / 0.05,
         );
 
         const total = grow + weaken;
 
-        if (
-            availableThreads &&
-            availableThreads > 0 &&
-            total > availableThreads
-        ) {
+        if (availableThreads && availableThreads > 0 && total > availableThreads) {
             grow = Math.ceil(grow * (availableThreads / total));
             weaken = Math.floor(weaken * (availableThreads / total));
 
@@ -187,10 +159,8 @@ export async function main(ns: NS) {
         await Promise.all(donePromises);
 
         const success =
-            ns.getServerSecurityLevel(hostname) ===
-                ns.getServerMinSecurityLevel(hostname) &&
-            ns.getServerMoneyAvailable(hostname) ===
-                ns.getServerMaxMoney(hostname);
+            ns.getServerSecurityLevel(hostname) === ns.getServerMinSecurityLevel(hostname) &&
+            ns.getServerMoneyAvailable(hostname) === ns.getServerMaxMoney(hostname);
 
         if (success) {
             ns.print(`INFO: ${hostLog} has been prepared for hacking.`);
@@ -198,9 +168,7 @@ export async function main(ns: NS) {
                 prepared.add(hostname);
             }
         } else {
-            ns.print(
-                `WARNING: Server ${hostLog} could not be prepared for HWGW cycling.`,
-            );
+            ns.print(`WARNING: Server ${hostLog} could not be prepared for HWGW cycling.`);
         }
 
         return success;
@@ -241,28 +209,16 @@ export async function main(ns: NS) {
                     (server.moneyMax ?? 0) > 0
                 );
             })
-            .sort(
-                (a, b) =>
-                    rateServer(b, freeWorkerThreads) -
-                    rateServer(a, freeWorkerThreads),
-            );
+            .sort((a, b) => rateServer(b, freeWorkerThreads) - rateServer(a, freeWorkerThreads));
 
         if (settings.limitServers && settings.limitServers > 0) {
             const current = promises.size;
             targetServers = targetServers
                 .filter((server) => {
-                    const hackRatio = approximateOptimalHackRatio(
-                        server.hostname,
-                        freeWorkerThreads,
-                    );
-                    const threads = pool.calculateBatchRatios(
-                        server.hostname,
-                        hackRatio,
-                    ).total;
+                    const hackRatio = approximateOptimalHackRatio(server.hostname, freeWorkerThreads);
+                    const threads = pool.calculateBatchRatios(server.hostname, hackRatio).total;
                     const passed = threads <= freeWorkerThreads;
-                    ns.print(
-                        `INFO: ${server.hostname}: ${passed ? "Passed" : "Failed"} - ${hackRatio}, ${threads}`,
-                    );
+                    ns.print(`INFO: ${server.hostname}: ${passed ? "Passed" : "Failed"} - ${hackRatio}, ${threads}`);
                     return passed;
                 })
                 .slice(0, settings.limitServers - current);
@@ -276,19 +232,13 @@ export async function main(ns: NS) {
 
             const hostLog = `\x1b[1m${server.hostname}\x1b[0m`;
 
-            const hackRatio = approximateOptimalHackRatio(
-                server.hostname,
-                freeWorkerThreads,
-            );
+            const hackRatio = approximateOptimalHackRatio(server.hostname, freeWorkerThreads);
             if (hackRatio === 0) {
                 markIdle(server);
                 continue;
             }
 
-            const totalBatchThreads = pool.calculateBatchRatios(
-                server.hostname,
-                hackRatio,
-            ).total;
+            const totalBatchThreads = pool.calculateBatchRatios(server.hostname, hackRatio).total;
             if (totalBatchThreads > freeWorkerThreads) {
                 markIdle(server);
                 continue;
@@ -296,10 +246,7 @@ export async function main(ns: NS) {
 
             let promise;
             if (!isPrepared(server)) {
-                const { weaken, grow } = getPreparationThreads(
-                    server.hostname,
-                    freeWorkerThreads,
-                );
+                const { weaken, grow } = getPreparationThreads(server.hostname, freeWorkerThreads);
                 const total = weaken + grow;
                 // should never be case, but eh. better be safe than sorry.
                 if (total > freeWorkerThreads) {
@@ -323,9 +270,7 @@ export async function main(ns: NS) {
                 }
 
                 if (weaken > 0 && !weakenGroup) {
-                    ns.print(
-                        `ERROR: Failed to reserve weaken group with ${weaken}t for ${hostLog}`,
-                    );
+                    ns.print(`ERROR: Failed to reserve weaken group with ${weaken}t for ${hostLog}`);
                     markIdle(server);
                     continue;
                 }
@@ -339,9 +284,7 @@ export async function main(ns: NS) {
                 }
 
                 if (grow > 0 && !growGroup) {
-                    ns.print(
-                        `ERROR: Failed to reserve weaken group with ${grow}t for ${hostLog}`,
-                    );
+                    ns.print(`ERROR: Failed to reserve weaken group with ${grow}t for ${hostLog}`);
                     weakenGroup?.kill();
                     markIdle(server);
                     continue;
@@ -368,14 +311,9 @@ export async function main(ns: NS) {
                     growGroup?.kill();
                 })();
             } else {
-                const threads = pool.calculateBatchRatios(
-                    server.hostname,
-                    hackRatio,
-                );
+                const threads = pool.calculateBatchRatios(server.hostname, hackRatio);
 
-                ns.print(
-                    `INFO: Reserving workers targeting ${hostLog} for a hack ratio of ${hackRatio}.`,
-                );
+                ns.print(`INFO: Reserving workers targeting ${hostLog} for a hack ratio of ${hackRatio}.`);
                 const batch = pool.reserveBatch(server.hostname, {
                     hackRatio,
                     groupOptions: { target: server.hostname },
@@ -396,9 +334,7 @@ export async function main(ns: NS) {
                         threads: {
                             hack: threads.hackThreads,
                             grow: threads.growThreads,
-                            weaken:
-                                threads.growWeakenThreads +
-                                threads.hackWeakenThreads,
+                            weaken: threads.growWeakenThreads + threads.hackWeakenThreads,
                         },
                         hackRatio,
                     },
@@ -408,9 +344,7 @@ export async function main(ns: NS) {
                 promise = (async () => {
                     ns.print(`INFO: Hacking ${hostLog}.`);
                     const hacked = (await batch.run()) ?? 0;
-                    ns.print(
-                        `INFO: Hacked ${hostLog} for \$${ns.formatNumber(hacked)}.`,
-                    );
+                    ns.print(`INFO: Hacked ${hostLog} for \$${ns.formatNumber(hacked)}.`);
                     batch.kill();
                     ns.writePort(MONITORING_PORT, {
                         event: "hacked",

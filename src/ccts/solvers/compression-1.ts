@@ -4,8 +4,7 @@ export function solve(data: string) {
         .reduce(
             (acc, char) => {
                 if (acc.length == 0) acc.unshift([char, 1]);
-                else if (acc[0][0] !== char || acc[0][1] === 9)
-                    acc.unshift([char, 1]);
+                else if (acc[0][0] !== char || acc[0][1] === 9) acc.unshift([char, 1]);
                 else acc[0][1] += 1;
 
                 return acc;

@@ -11,11 +11,7 @@ function isBackdoored(server: Server): boolean {
     return server.backdoorInstalled ?? true;
 }
 
-async function backdoor(
-    ns: NS,
-    server: string,
-    graph?: ReturnType<typeof getServerGraph>,
-): Promise<boolean> {
+async function backdoor(ns: NS, server: string, graph?: ReturnType<typeof getServerGraph>): Promise<boolean> {
     const { singularity } = ns;
     const startedAt = singularity.getCurrentServer();
 
@@ -67,11 +63,7 @@ async function nuke(server: Server, ns: NS) {
  * Process a server. Returns whether the server has been fully processed now.
  * If true, server will be excluded from future calls.
  */
-export async function processServer(
-    server: Server,
-    ns: NS,
-    serverGraph: ServerGraph,
-): Promise<boolean> {
+export async function processServer(server: Server, ns: NS, serverGraph: ServerGraph): Promise<boolean> {
     if (!isNuked(server) && canNuke(server, ns)) {
         await nuke(server, ns);
     }

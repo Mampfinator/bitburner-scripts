@@ -3,14 +3,7 @@ import { getServers } from "/lib/servers/servers";
 import { getServerGraph } from "/lib/servers/graph";
 import { auto } from "/system/proc/auto";
 
-const SERVERS_TO_BACKDOOR = [
-    "CSEC",
-    "avmnite-02h",
-    "I.I.I.I",
-    "run4theh111z",
-    "The-Cave",
-    "fulcrumassets",
-];
+const SERVERS_TO_BACKDOOR = ["CSEC", "avmnite-02h", "I.I.I.I", "run4theh111z", "The-Cave", "fulcrumassets"];
 
 export async function main(ns: NS) {
     auto(ns);
@@ -19,11 +12,7 @@ export async function main(ns: NS) {
         ns.tprint(`ERROR: optional argument "all" should be a boolean.`);
     }
 
-    const server = (
-        all
-            ? getServers(ns)
-            : SERVERS_TO_BACKDOOR.map((server) => ns.getServer(server))
-    ).filter(
+    const server = (all ? getServers(ns) : SERVERS_TO_BACKDOOR.map((server) => ns.getServer(server))).filter(
         (server) =>
             server.hostname !== "home" &&
             !server.purchasedByPlayer &&
@@ -44,9 +33,7 @@ export async function main(ns: NS) {
     }
 
     navigator.clipboard.writeText(
-        ["home", ...path, server.hostname]
-            .map((node) => `connect ${node};`)
-            .join("") + "backdoor;",
+        ["home", ...path, server.hostname].map((node) => `connect ${node};`).join("") + "backdoor;",
     );
     ns.tprint("Copied backdoor command to clipboard.");
 }

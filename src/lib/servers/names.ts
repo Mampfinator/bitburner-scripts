@@ -7,9 +7,7 @@ export function getServerNames(ns: NS, startFrom: string = "home") {
     while (queue.length > 0) {
         const current = queue.shift();
 
-        for (const hostname of ns
-            .scan(current)
-            .filter((name) => !hostnames.has(name))) {
+        for (const hostname of ns.scan(current).filter((name) => !hostnames.has(name))) {
             hostnames.add(hostname);
             queue.push(hostname);
         }

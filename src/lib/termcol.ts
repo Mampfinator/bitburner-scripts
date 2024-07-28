@@ -27,20 +27,11 @@ class ExtensibleFunction<T extends (...args: any) => any> extends Function {
     }
 }
 
-type ColorFns =
-    | "black"
-    | "red"
-    | "green"
-    | "yellow"
-    | "blue"
-    | "magenta"
-    | "cyan";
+type ColorFns = "black" | "red" | "green" | "yellow" | "blue" | "magenta" | "cyan";
 type ModeFns = "foreground" | "background";
 type EffectFns = "bold" | "strikeThrough" | "normal";
 
-export class TermCol<TDontCall extends string = ""> extends ExtensibleFunction<
-    (text: string) => string
-> {
+export class TermCol<TDontCall extends string = ""> extends ExtensibleFunction<(text: string) => string> {
     private foregroundColor?: Color;
     private backgroundColor?: Color;
     private mode = Mode.Foreground;
@@ -64,23 +55,14 @@ export class TermCol<TDontCall extends string = ""> extends ExtensibleFunction<
 
     // for *some reason* this function specifically requires explicit type annotation.
     // Do not remove unless verified to work otherwise.
-    get foreground(): Omit<
-        TermCol<TDontCall | ModeFns>,
-        TDontCall | "foreground"
-    > {
+    get foreground(): Omit<TermCol<TDontCall | ModeFns>, TDontCall | "foreground"> {
         this.mode = Mode.Foreground;
-        return this as Omit<
-            TermCol<TDontCall | ModeFns>,
-            TDontCall | "foreground"
-        >;
+        return this as Omit<TermCol<TDontCall | ModeFns>, TDontCall | "foreground">;
     }
 
     get background() {
         this.mode = Mode.Background;
-        return this as Omit<
-            TermCol<TDontCall | ModeFns>,
-            Exclude<TDontCall | "background", ColorFns>
-        >;
+        return this as Omit<TermCol<TDontCall | ModeFns>, Exclude<TDontCall | "background", ColorFns>>;
     }
 
     private applyColor(color: Color) {
@@ -90,10 +72,7 @@ export class TermCol<TDontCall extends string = ""> extends ExtensibleFunction<
             this.foregroundColor = color;
         }
 
-        return this as Omit<
-            TermCol<TDontCall | ColorFns>,
-            TDontCall | ColorFns
-        >;
+        return this as Omit<TermCol<TDontCall | ColorFns>, TDontCall | ColorFns>;
     }
 
     get black() {
@@ -126,10 +105,7 @@ export class TermCol<TDontCall extends string = ""> extends ExtensibleFunction<
 
     get normal() {
         while (this.otherEffects.length > 0) this.otherEffects.shift();
-        return this as unknown as Omit<
-            TermCol<Exclude<TDontCall, EffectFns>>,
-            Exclude<TDontCall, EffectFns>
-        >;
+        return this as unknown as Omit<TermCol<Exclude<TDontCall, EffectFns>>, Exclude<TDontCall, EffectFns>>;
     }
 
     get bold() {
@@ -139,18 +115,12 @@ export class TermCol<TDontCall extends string = ""> extends ExtensibleFunction<
 
     get strikeThrough() {
         this.otherEffects.push(Effect.Strikethrough);
-        return this as Omit<
-            TermCol<TDontCall | "strikeThrough">,
-            TDontCall | "strikeThrough"
-        >;
+        return this as Omit<TermCol<TDontCall | "strikeThrough">, TDontCall | "strikeThrough">;
     }
 
     get italic() {
         this.otherEffects.push(Effect.Italic);
-        return this as Omit<
-            TermCol<TDontCall | "italic">,
-            TDontCall | "italic"
-        >;
+        return this as Omit<TermCol<TDontCall | "italic">, TDontCall | "italic">;
     }
 }
 

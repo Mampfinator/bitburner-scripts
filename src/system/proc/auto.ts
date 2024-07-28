@@ -21,9 +21,7 @@ export function auto(ns: NS, options?: AutoOptions) {
                 tag,
             });
         if (!reservation) {
-            throw new Error(
-                "Failed to reserve memory for automatic process management.",
-            );
+            throw new Error("Failed to reserve memory for automatic process management.");
         }
 
         assign(ns, reservation);
