@@ -40,7 +40,7 @@ function getClassName(server: GetClassNameServer): string {
     if (server.purchasedByPlayer) classes.push("purchased");
     if (server.backdoorInstalled) classes.push("backdoor");
     if (server.hasAdminRights) classes.push("rooted");
-    
+
     if (classes.length === 0) classes.push("default");
 
     return classes.join(" ");
@@ -58,7 +58,7 @@ export const SERVER_NODE_STYLE = {
     ".server-node.default": {
         background: "#2f4858",
         // to match size with backdoor/w0rld_d4em0n
-        border: "4px solid transparent"
+        border: "4px solid transparent",
     },
     ".server-node.backdoor": {
         background: "#005f74",
@@ -72,7 +72,7 @@ export const SERVER_NODE_STYLE = {
     },
     ".server-node.w0rld_d4em0n": {
         background: "#ff3571",
-        border: "4px solid #e0225a"
+        border: "4px solid #e0225a",
     },
     ".server-node.home": {
         background: "#2a2a1c",
@@ -117,7 +117,7 @@ function MemoryBar({
     capacity,
     ns,
 }: BarProps): React.ReactElement {
-    if (capacity === 0) return <></>
+    if (capacity === 0) return <></>;
 
     return (
         <p
@@ -132,8 +132,11 @@ function MemoryBar({
                     "flex-direction": "row",
                 } as any
             }
-
-            title={capacity > 0 ? `Used: ${ns.formatRam(sum(usage, ({amount}) => amount))}/${ns.formatRam(capacity)}` : ""}
+            title={
+                capacity > 0
+                    ? `Used: ${ns.formatRam(sum(usage, ({ amount }) => amount))}/${ns.formatRam(capacity)}`
+                    : ""
+            }
         >
             {usage
                 .filter(({ amount }) => amount > 0)
@@ -285,7 +288,12 @@ export function ServerNode({
     });
 
     return (
-        <div onContextMenu={(e) => { e.preventDefault(); setInfoData(server.hostname)}}>
+        <div
+            onContextMenu={(e) => {
+                e.preventDefault();
+                setInfoData(server.hostname);
+            }}
+        >
             {handles &&
                 handles.map(([type, position], i) => (
                     <Handle type={type} position={position} id={`${i}`} />

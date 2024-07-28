@@ -334,33 +334,38 @@ function NetworkTree({ ns }: { ns: NS }): React.ReactElement {
     const { nodes: initialNodes, edges: initialEdges } =
         getLayoutedElements(ns);
 
-    const [nodes,, onNodesChange] = useNodesState(initialNodes);
-    const [edges,, onEdgesChange] = useEdgesState(initialEdges);
-    const [serverMenuState, setServerMenuState] = React.useState<{server: string} | null>(null);
+    const [nodes, , onNodesChange] = useNodesState(initialNodes);
+    const [edges, , onEdgesChange] = useEdgesState(initialEdges);
+    const [serverMenuState, setServerMenuState] = React.useState<{
+        server: string;
+    } | null>(null);
 
     for (const node of nodes) {
         if (node.type === "server") {
             node.data.setInfoData = (server: string) => {
-                if (server) setServerMenuState({server});
+                if (server) setServerMenuState({ server });
                 else setServerMenuState(null);
-            }
+            };
         }
     }
 
-    return (<>
-        { serverMenuState && <ServerMenu ns={ns} server={serverMenuState.server}/> }
-        <ReactFlow
-            nodes={nodes}
-            onNodesChange={onNodesChange}
-            nodesDraggable={false}
-            nodesConnectable={false}
-            edges={edges}
-            onEdgesChange={onEdgesChange}
-            nodeTypes={{ server: ServerNode }}
-            proOptions={{ hideAttribution: true }}
-        >
-            <Controls position="bottom-left" />
-        </ReactFlow>
+    return (
+        <>
+            {serverMenuState && (
+                <ServerMenu ns={ns} server={serverMenuState.server} />
+            )}
+            <ReactFlow
+                nodes={nodes}
+                onNodesChange={onNodesChange}
+                nodesDraggable={false}
+                nodesConnectable={false}
+                edges={edges}
+                onEdgesChange={onEdgesChange}
+                nodeTypes={{ server: ServerNode }}
+                proOptions={{ hideAttribution: true }}
+            >
+                <Controls position="bottom-left" />
+            </ReactFlow>
         </>
     );
 }
@@ -396,16 +401,24 @@ const SERVER_MENU_STYLE = {
     ".process-list": {
         display: "flex",
         "flex-direction": "column",
-    }
-}
+    },
+};
 
-type File = {name: string, type: "file"};
-type Folder = { name: string; type: "folder", children: Map<string, Folder | File> };
+type File = { name: string; type: "file" };
+type Folder = {
+    name: string;
+    type: "folder";
+    children: Map<string, Folder | File>;
+};
 
 function parseFileList(files: string[]): Folder {
-    const paths = files.map(file => file.split("/"));
+    const paths = files.map((file) => file.split("/"));
 
-    const root = { name: "root", type: "folder" as const, children: new Map<string, Folder | File>() };
+    const root = {
+        name: "root",
+        type: "folder" as const,
+        children: new Map<string, Folder | File>(),
+    };
 
     for (const path of paths) {
         let currentFolder = root;
@@ -414,7 +427,11 @@ function parseFileList(files: string[]): Folder {
 
         for (const folder of path) {
             if (!currentFolder.children.has(folder)) {
-                currentFolder.children.set(folder, { name: folder, type: "folder", children: new Map() });
+                currentFolder.children.set(folder, {
+                    name: folder,
+                    type: "folder",
+                    children: new Map(),
+                });
             }
             currentFolder = currentFolder.children.get(folder) as Folder;
         }
@@ -425,7 +442,7 @@ function parseFileList(files: string[]): Folder {
     return root;
 }
 
-function ServerMenu({ ns, server }: { ns: NS, server: string }) {
+function ServerMenu({ ns, server }: { ns: NS; server: string }) {
     // .cct
     const [includeCcts, setCcts] = React.useState(true);
     // .json, .js
@@ -433,18 +450,26 @@ function ServerMenu({ ns, server }: { ns: NS, server: string }) {
     // .lit, .txt, .msg
     const [includeTxts, setTxts] = React.useState(true);
     // .exe
-    const [includePrograms, setPrograms] = React.useState(true)
-    
-    
+    const [includePrograms, setPrograms] = React.useState(true);
+
     const files = React.useMemo(() => {
-        return ns.ls(server)
-            .filter(file => {
-                if (!includeCcts && file.endsWith(".cct")) return false;
-                if (!includeScripts && (file.endsWith(".json") || file.endsWith(".js"))) return false;
-                if (!includeTxts && (file.endsWith(".lit") || file.endsWith(".txt") || file.endsWith(".msg"))) return false;
-                if (!includePrograms && file.endsWith(".exe")) return false;
-                return true;
-            });
+        return ns.ls(server).filter((file) => {
+            if (!includeCcts && file.endsWith(".cct")) return false;
+            if (
+                !includeScripts &&
+                (file.endsWith(".json") || file.endsWith(".js"))
+            )
+                return false;
+            if (
+                !includeTxts &&
+                (file.endsWith(".lit") ||
+                    file.endsWith(".txt") ||
+                    file.endsWith(".msg"))
+            )
+                return false;
+            if (!includePrograms && file.endsWith(".exe")) return false;
+            return true;
+        });
     }, [server, includeCcts, includeScripts, includeTxts, includePrograms]);
 
     const root = parseFileList(files);
@@ -453,32 +478,72 @@ function ServerMenu({ ns, server }: { ns: NS, server: string }) {
         return ns.ps(server);
     }, [server]);
 
-    return <Panel position="bottom-right">
-        <div className="server-menu">
-            <h3 style={{padding: 0, margin: 0}}>{server}</h3>
-            <button onClick={() => connect(ns, server)}>Connect</button>
-            <details>
-                <summary>Files</summary>
-                <label htmlFor="ccts">CCTs</label>
-                <input type="checkbox" id="ccts" checked={includeCcts} onChange={() => setCcts(!includeCcts)} />
-                <label htmlFor="scripts">Scripts</label>
-                <input type="checkbox" id="scripts" checked={includeScripts} onChange={() => setScripts(!includeScripts)} />
-                <label htmlFor="txts">Texts</label>
-                <input type="checkbox" id="txts" checked={includeTxts} onChange={() => setTxts(!includeTxts)} />
-                <label htmlFor="programs">Programs</label>
-                <input type="checkbox" id="programs" checked={includePrograms} onChange={() => setPrograms(!includePrograms)} />
-                <div style={{display: "flex", "flex-direction": "column"} as any}>
-                    <FileList root={root} />
-                </div>
-            </details>
-            <details>
-                <summary>Processes</summary>
-                <div style={{display: "flex", "flex-direction": "column"} as any}>
-                    <ProcessList processes={processes} server={server} ns={ns}/>
-                </div>
-            </details>
-        </div>
-    </Panel>
+    return (
+        <Panel position="bottom-right">
+            <div className="server-menu">
+                <h3 style={{ padding: 0, margin: 0 }}>{server}</h3>
+                <button onClick={() => connect(ns, server)}>Connect</button>
+                <details>
+                    <summary>Files</summary>
+                    <label htmlFor="ccts">CCTs</label>
+                    <input
+                        type="checkbox"
+                        id="ccts"
+                        checked={includeCcts}
+                        onChange={() => setCcts(!includeCcts)}
+                    />
+                    <label htmlFor="scripts">Scripts</label>
+                    <input
+                        type="checkbox"
+                        id="scripts"
+                        checked={includeScripts}
+                        onChange={() => setScripts(!includeScripts)}
+                    />
+                    <label htmlFor="txts">Texts</label>
+                    <input
+                        type="checkbox"
+                        id="txts"
+                        checked={includeTxts}
+                        onChange={() => setTxts(!includeTxts)}
+                    />
+                    <label htmlFor="programs">Programs</label>
+                    <input
+                        type="checkbox"
+                        id="programs"
+                        checked={includePrograms}
+                        onChange={() => setPrograms(!includePrograms)}
+                    />
+                    <div
+                        style={
+                            {
+                                display: "flex",
+                                "flex-direction": "column",
+                            } as any
+                        }
+                    >
+                        <FileList root={root} />
+                    </div>
+                </details>
+                <details>
+                    <summary>Processes</summary>
+                    <div
+                        style={
+                            {
+                                display: "flex",
+                                "flex-direction": "column",
+                            } as any
+                        }
+                    >
+                        <ProcessList
+                            processes={processes}
+                            server={server}
+                            ns={ns}
+                        />
+                    </div>
+                </details>
+            </div>
+        </Panel>
+    );
 }
 
 export async function main(ns: NS) {
