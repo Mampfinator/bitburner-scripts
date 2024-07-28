@@ -43,6 +43,8 @@ function getClassName(server: GetClassNameServer): string {
 export const SERVER_NODE_STYLE = {
     ".server-node": {
         color: "#799973",
+        // to match size with backdoor/w0rld_d4em0n
+        border: "4px solid transparent",
         padding: "5px",
         paddingTop: 0,
         paddingBottom: 0,
@@ -51,8 +53,6 @@ export const SERVER_NODE_STYLE = {
     },
     ".server-node.default": {
         background: "#2f4858",
-        // to match size with backdoor/w0rld_d4em0n
-        border: "4px solid transparent",
     },
     ".server-node.backdoor": {
         background: "#005f74",
