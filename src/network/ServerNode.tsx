@@ -23,7 +23,14 @@ const SPECIAL_SERVERS = new Set([
     "fulcrumassets",
 ]);
 
-function getClassName(server: Server): string {
+interface GetClassNameServer {
+    hostname: string;
+    purchasedByPlayer: boolean;
+    hasAdminRights: boolean;
+    backdoorInstalled: boolean;
+}
+
+function getClassName(server: GetClassNameServer): string {
     const classes = [];
 
     if (server.hostname === "home") classes.push("home");
@@ -31,6 +38,7 @@ function getClassName(server: Server): string {
     else if (SPECIAL_SERVERS.has(server.hostname)) classes.push("special");
     else if (server.purchasedByPlayer) classes.push("purchased");
     else if (server.backdoorInstalled) classes.push("backdoor");
+    else if (server.hasAdminRights) classes.push("rooted");
     else classes.push("default");
 
     return classes.join(" ");
@@ -161,8 +169,6 @@ function sum<T>(arr: T[], accessor: (item: T) => number): number {
 export function ServerNode({
     data: { server, handles, ns },
 }: ServerNodeProps): React.ReactElement {
-    const className = getClassName(server);
-
     const reservations = globalThis.system.memory.list(server.hostname) ?? [];
 
     const groups = Object.groupBy(
@@ -182,10 +188,42 @@ export function ServerNode({
         initialUsage.push({ title: group, amount, color });
     }
 
+    const [capacity, setCapacity] = React.useState(server.maxRam);
+    const [rooted, setRooted] = React.useState(server.hasAdminRights);
+    const [backdoored, setBackdoored] = React.useState(
+        server.backdoorInstalled ?? true,
+    );
     const [usage, setUsage] = React.useState(initialUsage);
 
     React.useEffect(() => {
         const cleanupFns = [
+            globalThis.eventEmitter.withCleanup(
+                "server:ram-updated",
+                ({
+                    hostname,
+                    newRam,
+                }: {
+                    hostname: string;
+                    newRam: number;
+                }) => {
+                    if (hostname !== server.hostname) return;
+                    setCapacity(newRam);
+                },
+            ),
+            globalThis.eventEmitter.withCleanup(
+                "server:rooted",
+                (hostname: string) => {
+                    if (hostname !== server.hostname) return;
+                    setRooted(true);
+                },
+            ),
+            globalThis.eventEmitter.withCleanup(
+                "server:backdoored",
+                (hostname: string) => {
+                    if (hostname !== server.hostname) return;
+                    setBackdoored(true);
+                },
+            ),
             globalThis.eventEmitter.withCleanup(
                 "process:assigned",
                 (_, reservation: ReservationDetails | null | undefined) => {
@@ -242,9 +280,29 @@ export function ServerNode({
                 handles.map(([type, position], i) => (
                     <Handle type={type} position={position} id={`${i}`} />
                 ))}
-            <div className={"server-node " + className}>
+            <div
+                className={
+                    "server-node " +
+                    getClassName({
+                        hostname: server.hostname,
+                        hasAdminRights: rooted,
+                        backdoorInstalled: backdoored,
+                        purchasedByPlayer: server.purchasedByPlayer,
+                    })
+                }
+            >
                 <div className={"server-content"}>
-                    <h3 className={"server-name " + className}>
+                    <h3
+                        className={
+                            "server-name " +
+                            getClassName({
+                                hostname: server.hostname,
+                                hasAdminRights: rooted,
+                                backdoorInstalled: backdoored,
+                                purchasedByPlayer: server.purchasedByPlayer,
+                            })
+                        }
+                    >
                         {server.hostname.length <= 14 ? (
                             server.hostname
                         ) : (
@@ -258,7 +316,7 @@ export function ServerNode({
                     </h3>
                     <MemoryBar
                         ns={ns}
-                        capacity={server.maxRam}
+                        capacity={capacity}
                         usage={usage}
                         width="95%"
                         height="30px"

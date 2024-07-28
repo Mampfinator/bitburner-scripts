@@ -119,8 +119,11 @@ export class EventEmitter {
     public withCleanup(
         event: string,
         listener: (...args: any[]) => void,
+        ns?: NS,
     ): () => void {
-        const callbackId = this.on(event, listener);
+        const callbackId = ns
+            ? this.register(ns, event, listener)
+            : this.on(event, listener);
         return () => {
             this.remove(event, callbackId);
         };

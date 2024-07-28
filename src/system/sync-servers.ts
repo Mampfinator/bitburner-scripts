@@ -1,14 +1,12 @@
 //! Sync server list.
 import { NS } from "@ns";
-import { getServerNames } from "/lib/servers/names";
 import { register } from "./memory";
 import { auto } from "./proc/auto";
+import { getServers } from "/lib/servers/servers";
 
 export function syncServers(ns: NS) {
-    for (const hostname of getServerNames(ns)) {
-        const hasAdminRights = ns.hasRootAccess(hostname);
-        const maxRam = ns.getServerMaxRam(hostname);
-        register({ hostname, hasAdminRights, maxRam });
+    for (const server of getServers(ns)) {
+        register(server);
     }
 }
 

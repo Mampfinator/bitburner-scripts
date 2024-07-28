@@ -201,7 +201,7 @@ function getLayoutedElements(ns: NS): { nodes: Node[]; edges: Edge[] } {
     let x = -1;
 
     while (purchasedServers.length > 0) {
-        for (let y = grid.minY; y < grid.maxY; y++) {
+        for (let y = grid.minY; y <= grid.maxY; y++) {
             const node = purchasedServers.shift();
             if (!node) break;
 

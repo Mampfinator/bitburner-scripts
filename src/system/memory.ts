@@ -36,7 +36,13 @@ export class MemInfo {
         return this._hasAdminRights;
     }
 
+    /**
+     * Caches how much memory was last available.
+     *
+     * Not meant to be taken as ground truth. Use `MemInfo#available` instead.
+     */
     private lastFree: number | null = null;
+
     /**
      * Free available memory on this server.
      */
@@ -67,17 +73,41 @@ export class MemInfo {
     /**
      * Update a server's memory information.
      * @returns whether any changes were made.
+     *
+     * @fires global#server:rooted
+     * @fires global#server:ram-updated
      */
     update(server: ServerMemInfo): boolean {
-        const oldMax = this.capacity;
         let changed = false;
 
-        this._hasAdminRights = server.hasAdminRights;
+        if (this._hasAdminRights != server.hasAdminRights) {
+            this._hasAdminRights = server.hasAdminRights;
+            changed = true;
 
-        if (this._capacity < server.maxRam) {
+            /**
+             * @event global#server:rooted
+             * @type { string } the hostname of the newly-rooted server.
+             */
+            globalThis.eventEmitter.emit(`server:rooted`, server.hostname);
+        }
+
+        if (this._capacity != server.maxRam) {
+            /**
+             * @event global#server:ram-updated
+             * @type {object}
+             * @property {string} hostname
+             * @property {number} newRam
+             * @property {number} oldRam
+             */
+            globalThis.eventEmitter.emit(`server:ram-upgraded`, {
+                hostname: this.hostname,
+                newRam: server.maxRam,
+                oldRam: this._capacity,
+            });
+
+            if (this.lastFree !== null)
+                this.lastFree += server.maxRam - this.capacity;
             this._capacity = server.maxRam;
-
-            if (this.lastFree !== null) this.lastFree += this.capacity - oldMax;
 
             changed = true;
         }
@@ -174,6 +204,9 @@ export interface ReservationDetails extends InternalReservation {
  * If the server has already been registered, its info will be updated.
  * @param server Server to register.
  * @returns whether any server info was added or updated.
+ *
+ * @fires global#server:rooted
+ * @fires global#server:ram-updated
  */
 export function register(server: ServerMemInfo): boolean {
     if (!server.hasAdminRights) return false;
