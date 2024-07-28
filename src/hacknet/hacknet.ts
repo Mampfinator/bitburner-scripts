@@ -2,6 +2,7 @@ import { NodeStats, NS } from "@ns";
 import { auto } from "system/proc/auto";
 import { JSONSettings } from "/lib/settings";
 import { sleep } from "/lib/lib";
+import { register } from "/system/memory";
 
 class HacknetSettings extends JSONSettings {
     constructor(ns: NS) {
@@ -158,6 +159,7 @@ export async function main(ns: NS) {
                 const success = hacknet.purchaseNode() >= 0;
 
                 if (success) {
+                    register({hostname: `hacknet-server-${nodes}`, hasAdminRights: true, maxRam: 1});
                     nodes += 1;
                     budget -= buyNewCost;
                     ns.print(`Bought new hacknet node for $${ns.formatNumber(buyNewCost)}.`);
@@ -190,6 +192,10 @@ export async function main(ns: NS) {
             if (!success) {
                 ns.print(`WARNING: Failed to upgrade hacknet node ${node}.`);
                 continue;
+            }
+
+            if (option === UpgradeOption.RAM) {
+                register({hostname: `hacknet-server-${node}`, hasAdminRights: true, maxRam: hacknet.getNodeStats(node).ram});
             }
 
             budget -= cost;
