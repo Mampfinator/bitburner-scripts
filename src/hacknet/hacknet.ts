@@ -140,6 +140,13 @@ export async function main(ns: NS) {
 
         let budget = ns.getServerMoneyAvailable("home") * settings.spendMaxMoney;
 
+        if (nodes === 0 && hacknet.getPurchaseNodeCost() < budget) {
+            hacknet.purchaseNode();
+            nodes += 1;
+            budget -= hacknet.getPurchaseNodeCost();
+            ns.print(`Bought initial hacknet node for $${ns.formatNumber(hacknet.getPurchaseNodeCost())}.`);
+        }
+
         ns.print(`Budget: $${ns.formatNumber(budget)}`);
 
         // Upgrade loop
