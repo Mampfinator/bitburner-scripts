@@ -6,6 +6,7 @@ import { MONITORING_PORT } from "monitoring/monitor.js";
 import { getServers } from "/lib/servers/servers";
 import { calcThreads } from "/lib/network-threads";
 import { auto } from "/system/proc/auto";
+import { getServerNames } from "/lib/servers/names";
 
 export interface SupervisorSettings {
     limitServers?: number;
@@ -23,6 +24,22 @@ export async function main(ns: NS) {
     const exclude = new Set(settings.exclude ?? []);
 
     ns.disableLog("ALL");
+
+    function copyFiles(server: string) {
+        for (const script of Object.values(WORKER_SCRIPTS)) {
+            ns.scp(script, server);
+        }
+    }
+
+    for (const server of getServerNames(ns)) {
+        if (server === "home") continue;
+        copyFiles(server);
+    }
+
+    globalThis.eventEmitter.register(ns, "server:added", ({ hostname }: { hostname: string }) => {
+        copyFiles(hostname);
+    });
+
 
     const prepared = new Set();
 
@@ -90,11 +107,6 @@ export async function main(ns: NS) {
         if (requiredThreads === 0) return 0;
 
         return (((server.moneyMax ?? 0) / (server.minDifficulty ?? 100)) * hackRatio) / requiredThreads;
-    }
-
-    for (const server of getServers(ns).filter((server) => server.hasAdminRights)) {
-        if (server.hostname === "home") continue;
-        ns.scp(Object.values(WORKER_SCRIPTS), server.hostname, "home");
     }
 
     ns.print("Initialized pool.");
