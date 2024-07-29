@@ -201,14 +201,15 @@ export interface ReservationDetails extends InternalReservation {
  * @fires global#server:ram-updated
  * @fires global#server:added
  */
-export function register(server: ServerMemInfo): boolean {
-    if (!server.hasAdminRights) return false;
+export function register(server: ServerMemInfo): [true, MemInfo] | [false, MemInfo | null] {
+    if (!server.hasAdminRights) return [false, null];
 
     const hostname = server.hostname;
 
     if (MEMORY_MAP.has(hostname)) {
         const info = MEMORY_MAP.get(hostname)!;
-        return info.update(server);
+        const updated = info.update(server);
+        return [updated, info];
     }
 
     const info = new MemInfo(server);
@@ -219,7 +220,7 @@ export function register(server: ServerMemInfo): boolean {
      */
     globalThis.eventEmitter.emit(`server:added`, server);
 
-    return true;
+    return [true, info];
 }
 
 export interface Reservation {
@@ -375,7 +376,7 @@ declare global {
              * @param server Server to register.
              * @returns whether any server info was added or updated.
              */
-            function register(server: ServerMemInfo): boolean;
+            function register(server: ServerMemInfo): [true, MemInfo] | [false, MemInfo | null];
             /**
              * Reserve `amount` RAM in GB. Yes this is basically a crude `malloc`.
              * To free this allocation again, see {@link globalThis.system.memory.free | free}.

@@ -1,13 +1,12 @@
 //! Sync server list.
 import { NS } from "@ns";
-import { register } from "./memory";
 import { auto } from "./proc/auto";
 import { getServers } from "/lib/servers/servers";
 import { sleep } from "/lib/lib";
 
 export function syncServers(ns: NS) {
     for (const server of getServers(ns)) {
-        register(server);
+        globalThis.serverCache.update(server);
     }
 }
 

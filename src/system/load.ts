@@ -15,6 +15,7 @@ import { load as loadDependencies } from "./dependencies";
 import { syncServers } from "./sync-servers";
 import { compressTime } from "./compress-time";
 import { run } from "./proc/run";
+import { ServerCache } from "/lib/servers/server-cache";
 
 export async function load(ns: NS) {
     await loadDependencies(ns);
@@ -27,6 +28,9 @@ export async function load(ns: NS) {
     globalThis.system ??= {} as any;
 
     await loadEvents(ns);
+
+    globalThis.serverCache = ServerCache.instance;
+
     await loadMemory(ns);
     await loadProc(ns);
     syncServers(ns);

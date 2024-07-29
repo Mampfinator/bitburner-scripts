@@ -1,15 +1,16 @@
 import { NS } from "@ns";
 
+
 // TODO: migrate callack storage to SparseArray
-export class EventEmitter {
-    #callbacks = new Map<string | symbol | number, Array<((...args: any[]) => void | Promise<void>) | undefined>>();
+export class EventEmitter<TEvents extends { [key: string]: undefined | ((...args: any[]) => void | Promise<void>) } = { [key: string]: (...args: any[]) => void | Promise<void> }> {
+    #callbacks = new Map<keyof TEvents, Array<TEvents[keyof TEvents] | undefined>>();
 
     /**
      * @param event the event to listen to
      * @param callback
      * @returns this callback's ID. Use with `remove` to remove this callback again.
      */
-    public on(event: string | symbol | number, callback: (...args: any[]) => void): number {
+    public on<TEvent extends keyof TEvents>(event: TEvent, callback: TEvents[TEvent]): number {
         const callbacks = this.#callbacks.get(event);
         if (!callbacks) {
             this.#callbacks.set(event, [callback]);
@@ -27,7 +28,7 @@ export class EventEmitter {
         return index;
     }
 
-    public async emit(event: string | symbol | number, ...args: any[]) {
+    public async emit<TEvent extends keyof TEvents>(event: TEvent, ...args: TEvents[TEvent] extends Function ? Parameters<TEvents[TEvent]> : never): Promise<void> {
         const callbacks = this.#callbacks.get(event);
         if (!callbacks) return;
 
@@ -48,8 +49,10 @@ export class EventEmitter {
                 ) {
                     callbacks[i] = undefined;
                     console.warn(`NS-use after script death from ${e.hostname}/${e.name} (PID: ${e.pid})`);
+                    // @ts-expect-error: Not supposed to be public.
                     this.emit("error:ns-after-script-death", e.hostname, e.name, e.pid);
                 } else {
+                    // @ts-expect-error: Not supposed to be public.
                     this.emit("error", e, event, ...args);
                 }
             }
@@ -59,20 +62,20 @@ export class EventEmitter {
     /**
      * @returns the removed callback, or undefined if none was found.
      */
-    public remove(event: string | symbol | number, id: number): ((...args: any[]) => void) | undefined {
+    public remove<TEvent extends keyof TEvents>(event: TEvent, id: number): TEvents[TEvent] | undefined {
         const callbacks = this.#callbacks.get(event);
         if (!callbacks) return undefined;
 
         const old = callbacks[id];
         callbacks[id] = undefined;
 
-        return old;
+        return old as TEvents[TEvent];
     }
 
     /**
      * @param {string | symbol | number} event if not specified, clears all callbacks.
      */
-    public clear(event?: string | symbol | number) {
+    public clear<TEvent extends keyof TEvents>(event?: TEvent) {
         if (!event) this.#callbacks.clear();
         else {
             this.#callbacks.delete(event);
@@ -85,7 +88,7 @@ export class EventEmitter {
      * @param event
      * @param callback
      */
-    public register(ns: NS, event: string | symbol | number, callback: (...args: any[]) => void): number {
+    public register<TEvent extends keyof TEvents>(ns: NS, event: TEvent, callback: TEvents[TEvent]): number {
         const callbackId = this.on(event, callback);
         ns.atExit(
             () => {
@@ -96,8 +99,8 @@ export class EventEmitter {
         return callbackId;
     }
 
-    public withCleanup(event: string, listener: (...args: any[]) => void, ns?: NS): () => void {
-        const callbackId = ns ? this.register(ns, event, listener) : this.on(event, listener);
+    public withCleanup<TEvent extends keyof TEvents>(event: TEvent, callback: TEvents[TEvent], ns?: NS): () => void {
+        const callbackId = ns ? this.register(ns, event, callback) : this.on(event, callback);
         return () => {
             this.remove(event, callbackId);
         };
