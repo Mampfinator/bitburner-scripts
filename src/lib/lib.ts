@@ -194,3 +194,30 @@ export function formatTime(time: number): string {
     if (units.length === 0) return "0s";
     return units.map((input) => input.join("")).join("");
 }
+
+/**
+ * Finds the minimum and maximum values in an array.
+ *
+ * @param items array of items
+ * @param accessor function that takes an item and returns a number
+ */
+export function findExtremes<T>(items: T[], accessor: (item: T) => number): { max: T; min: T } | undefined {
+    if (items.length === 0) return undefined;
+    let max = items[0];
+    let maxValue = accessor(max);
+    let min = items[0];
+    let minValue = maxValue;
+    for (const item of items) {
+        const value = accessor(item);
+        if (value > maxValue) {
+            max = item;
+            maxValue = value;
+        }
+
+        if (value < minValue) {
+            min = item;
+            minValue = value;
+        }
+    }
+    return { max, min };
+}
