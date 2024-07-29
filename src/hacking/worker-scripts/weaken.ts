@@ -50,7 +50,7 @@ export async function main(ns: NS) {
         send("killed");
     });
 
-    let stopped = true;
+    let stopped = !autoContinue;
 
     while (true) {
         for (const { event, data } of readPort(port)) {
