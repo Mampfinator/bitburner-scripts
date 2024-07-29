@@ -1,10 +1,11 @@
 import { NS } from "@ns";
 import { auto } from "/system/proc/auto";
+import { sleep } from "/lib/lib";
 
 export async function main(ns: NS) {
     auto(ns, { tag: "gang" });
     while (true) {
-        await ns.asleep(5000);
+        await sleep(5000, true);
 
         try {
             const gang = ns.gang.getGangInformation();

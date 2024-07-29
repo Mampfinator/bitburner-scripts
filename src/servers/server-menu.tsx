@@ -4,6 +4,7 @@ import { MessageBus } from "/lib/messages";
 import { register } from "/system/memory";
 import { auto } from "/system/proc/auto";
 import { JSONSettings } from "/lib/settings";
+import { sleep } from "/lib/lib";
 
 const { React } = globalThis;
 
@@ -51,7 +52,7 @@ export async function main(ns: NS) {
     }
 
     while (true) {
-        await ns.asleep(50);
+        await sleep(50, true);
         if (!settings.autoBuy) continue;
         if (ns.getServerMoneyAvailable("home") <= settings.minMoney) continue;
 

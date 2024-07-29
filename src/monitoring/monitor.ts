@@ -1,6 +1,6 @@
 //! Main monitoring loop. Use `watch` and `unwatch` to add/remove things from monitor.
 import { NS } from "@ns";
-import { readPort } from "/lib/lib";
+import { readPort, sleep } from "/lib/lib";
 import { calcThreads } from "/lib/network-threads";
 import { auto } from "/system/proc/auto";
 
@@ -251,7 +251,7 @@ export async function main(ns: NS) {
             ns.print(print);
         }
 
-        await ns.sleep(LOOP_DELAY);
+        await sleep(LOOP_DELAY, true);
         ns.clearLog();
     }
 }

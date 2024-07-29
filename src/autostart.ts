@@ -2,6 +2,7 @@ import { NS } from "@ns";
 import { run } from "./system/proc/run";
 import { load } from "system/load";
 import { auto } from "./system/proc/auto";
+import { sleep } from "./lib/lib";
 
 function shouldStartServerbuyer(ns: NS) {
     const serverMax = ns.getPurchasedServerLimit();
@@ -34,7 +35,7 @@ export async function main(ns: NS) {
         ns.tail(serversPid);
     }
 
-    await ns.asleep(1000);
+    await sleep(1000, true);
 
     if (!ns.isRunning("hacking/supervisor.js")) run(ns, "hacking/supervisor.js", { hostname: "home" });
 

@@ -7,6 +7,7 @@ import { auto } from "./proc/auto";
 import { getServerGraph } from "/lib/servers/graph";
 import { processServer } from "./servers";
 import { register } from "./memory";
+import { sleep } from "/lib/lib";
 
 function listAllProcesses(ns: NS) {
     const processes = [];
@@ -58,6 +59,6 @@ export async function main(ns: NS) {
             skip.add(server.hostname);
         }
 
-        await ns.asleep(50);
+        await sleep(50, true);
     }
 }

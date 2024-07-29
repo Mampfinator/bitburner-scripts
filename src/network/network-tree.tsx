@@ -4,6 +4,7 @@ import { apply } from "/system/dependencies";
 import { auto } from "/system/proc/auto";
 import { SERVER_MENU_STYLE } from "./ServerMenu";
 import { ServerTree } from "./ServerTree";
+import { sleep } from "/lib/lib";
 
 const { React } = globalThis;
 
@@ -29,6 +30,6 @@ export async function main(ns: NS) {
     ns.printRaw(<ServerTree ns={ns} />);
 
     while (true) {
-        await ns.asleep(10000);
+        await sleep(10000, true);
     }
 }

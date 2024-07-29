@@ -3,6 +3,7 @@ import { NS } from "@ns";
 import { register } from "./memory";
 import { auto } from "./proc/auto";
 import { getServers } from "/lib/servers/servers";
+import { sleep } from "/lib/lib";
 
 export function syncServers(ns: NS) {
     for (const server of getServers(ns)) {
@@ -17,7 +18,7 @@ export async function main(ns: NS) {
     if (!flags["run-once"]) {
         while (true) {
             syncServers(ns);
-            await ns.asleep(5000);
+            await sleep(5000, true);
         }
     } else {
         syncServers(ns);

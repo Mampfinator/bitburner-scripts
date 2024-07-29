@@ -3,6 +3,7 @@ import { auto } from "/system/proc/auto";
 import { getServerNames } from "/lib/servers/names";
 import { col } from "/lib/termcol";
 import { share, WORKER_NAME } from "./share";
+import { sleep } from "/lib/lib";
 
 /**
  * @param {NS} ns
@@ -45,6 +46,6 @@ export async function main(ns: NS) {
     );
 
     while (true) {
-        await ns.asleep(10000);
+        await sleep(10000, true);
     }
 }

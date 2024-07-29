@@ -5,6 +5,7 @@ import { MessageBus } from "/lib/messages";
 import { CCTSDashboard, CCTSMessageType, DashboardMessage } from "./dashboard";
 import { parseRewardString } from "./consts";
 import { auto } from "/system/proc/auto";
+import { sleep } from "/lib/lib";
 
 const { React } = globalThis;
 
@@ -119,6 +120,6 @@ export async function main(ns: NS) {
         }
 
         // sleep 5 minutes
-        await ns.asleep(1000 * 60 * 5);
+        await sleep(1000 * 60 * 5, true);
     }
 }

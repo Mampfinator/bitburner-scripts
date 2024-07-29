@@ -2,6 +2,7 @@ import { NS } from "@ns";
 import { SystemDashboard } from "./dashboard";
 import { MessageBus } from "/lib/messages";
 import { auto } from "/system/proc/auto";
+import { sleep } from "/lib/lib";
 
 const { React } = globalThis;
 
@@ -18,6 +19,6 @@ export async function main(ns: NS) {
     ns.printRaw(<SystemDashboard ns={ns} messageBus={messageBus} />);
 
     while (true) {
-        await ns.asleep(50000);
+        await sleep(50000, true);
     }
 }
