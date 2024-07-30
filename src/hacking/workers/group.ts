@@ -45,7 +45,7 @@ export class WorkerGroup {
         // if any single worker failed starting, we abort here and free all workers.
         if (result.some((res) => res.status === "rejected" || res.value === null)) {
             for (const worker of this.workers) {
-                worker.kill();
+                worker.stop();
             }
 
             return null;
@@ -63,9 +63,9 @@ export class WorkerGroup {
         };
     }
 
-    kill() {
+    stop() {
         for (const worker of this.workers) {
-            worker.kill();
+            worker.stop();
         }
     }
 }

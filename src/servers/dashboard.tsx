@@ -94,6 +94,10 @@ interface ManualBuyProps {
     ns: NS;
 }
 
+function getDefaultServerName() {
+    return `home${[...globalThis.servers.values()].filter(s => s.purchasedByPlayer && s.isHacknetServer).length}`;
+}
+
 /**
  * Manual buy menu, because the tech store one sucks even more.
  */
@@ -104,7 +108,7 @@ function ManualBuyMenu(props: ManualBuyProps) {
     const [name, setName] = React.useState<undefined | string>(undefined);
 
     function buy() {
-        const serverName = ns.purchaseServer(name ?? `home${ns.getPurchasedServers().length}`, 2 ** ramExp);
+        const serverName = ns.purchaseServer(name ?? getDefaultServerName(), 2 ** ramExp);
         if (!serverName || serverName === "") {
             ns.toast(`Failed to buy server. This might mean that you don't have enough money.`, "error", 5000);
         } else {

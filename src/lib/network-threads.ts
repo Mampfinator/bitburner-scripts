@@ -1,22 +1,16 @@
 //! scans a breakdown of how many worker threads are still free across the entire network.
 import { NS } from "@ns";
-import { getServerNames } from "/lib/servers/names";
 import { auto } from "/system/proc/auto";
 
-/**
- * @param {NS} ns
- */
-export function calcThreads(ns: NS, minusRam = 0) {
-    const servers = getServerNames(ns);
-
-    const ramCost = ns.getScriptRam("hacking/worker.js");
+export function calcThreads(minusRam = 0) {
+    // Most expensive worker script.
+    const ramCost = 1.75;
 
     let total = Math.floor(-minusRam / ramCost);
     let free = Math.floor(-minusRam / ramCost);
 
-    for (const server of servers.filter((server) => ns.hasRootAccess(server))) {
-        const maxRam = ns.getServerMaxRam(server);
-        const freeRam = maxRam - ns.getServerUsedRam(server);
+    for (const server of servers.values()) {
+        const { maxRam, freeRam } = server;
 
         total += Math.floor(maxRam / ramCost);
         free += Math.floor(freeRam / ramCost);
@@ -27,7 +21,7 @@ export function calcThreads(ns: NS, minusRam = 0) {
 
 export async function main(ns: NS) {
     auto(ns);
-    const { total, free } = calcThreads(ns);
+    const { total, free } = calcThreads();
 
     ns.tprint(`Free: ${free}. Total in network: ${total}.`);
 }

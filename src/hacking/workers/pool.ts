@@ -1,5 +1,4 @@
 import { NS } from "@ns";
-import { calcThreads } from "/lib/network-threads";
 import { Worker, WorkerOptions, WorkResult } from "./worker";
 import { POOL_MESSAGE_PORT_BASE, WORKER_MESSAGE_PORT, WORKER_SCRIPTS, WorkerMode } from "./consts";
 import { HWGWWorkerBatch } from "./batch";
@@ -109,7 +108,7 @@ export class WorkerPool {
      */
     killAll() {
         for (const worker of this.byPids.values()) {
-            worker.kill();
+            worker.stop();
         }
     }
 
@@ -134,7 +133,7 @@ export class WorkerPool {
         if (numThreads === 0) return null;
 
         const threadSize = this.workerRam[options.mode];
-        const reservations = reserveThreads(numThreads, threadSize, options.mode);
+        const reservations = reserveThreads(numThreads, threadSize, "hacking");
 
         if (!reservations) {
             console.warn(
@@ -159,7 +158,7 @@ export class WorkerPool {
             } catch (e) {
                 console.error(e);
 
-                for (const worker of workers) worker.kill();
+                for (const worker of workers) worker.stop();
                 for (const reservation of reservations) globalThis.system.memory.free(reservation);
                 return null;
             }
@@ -221,7 +220,8 @@ export class WorkerPool {
             };
         },
     ): HWGWWorkerBatch | null {
-        if (this.ns.getServerMinSecurityLevel(hostname) !== this.ns.getServerSecurityLevel(hostname)) {
+        const server = globalThis.servers.get(hostname);
+        if (!server || server.minDifficulty !== server.hackDifficulty) {
             return null;
         }
 
@@ -237,23 +237,23 @@ export class WorkerPool {
 
         const hackGroup = this.reserveGroup(hackThreads, {
             ...groupOptions,
-            useReservation: options.groupOptions.reservations?.hack,
+            useReservation: options.groupOptions.reservations?.["hack"],
             mode: WorkerMode.Hack,
         });
         const hackWeakenGroup = this.reserveGroup(hackWeakenThreads, {
             ...groupOptions,
-            useReservation: options.groupOptions.reservations?.hackWeaken,
+            useReservation: options.groupOptions.reservations?.["hackWeaken"],
             mode: WorkerMode.Weaken,
         });
 
         const growGroup = this.reserveGroup(growThreads, {
             ...groupOptions,
-            useReservation: options.groupOptions.reservations?.grow,
+            useReservation: options.groupOptions.reservations?.["grow"],
             mode: WorkerMode.Grow,
         });
         const growWeakenGroup = this.reserveGroup(growWeakenThreads, {
             ...groupOptions,
-            useReservation: options.groupOptions.reservations?.growWeaken,
+            useReservation: options.groupOptions.reservations?.["growWeaken"],
             mode: WorkerMode.Weaken,
         });
 
@@ -276,14 +276,13 @@ export class WorkerPool {
                 growWeakenThreads,
                 growWeakenGroup,
                 groupOptions,
-                calcThreads(this.ns),
                 this.reservedRam,
             );
 
-            hackGroup?.kill();
-            hackWeakenGroup?.kill();
-            growGroup?.kill();
-            growWeakenGroup?.kill();
+            hackGroup?.stop();
+            hackWeakenGroup?.stop();
+            growGroup?.stop();
+            growWeakenGroup?.stop();
 
             return null;
         }

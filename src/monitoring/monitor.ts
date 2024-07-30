@@ -1,8 +1,9 @@
 //! Main monitoring loop. Use `watch` and `unwatch` to add/remove things from monitor.
 import { NS } from "@ns";
 import { readPort, sleep } from "/lib/lib";
-import { calcThreads } from "/lib/network-threads";
 import { auto } from "/system/proc/auto";
+import { ServerData } from "/lib/servers/server-cache";
+import { JSONSettings } from "/lib/settings";
 
 export const MONITORING_PORT = 10;
 
@@ -39,26 +40,27 @@ const LOOP_DELAY = 250;
 // 5 minutes; because one loop is 250ms.
 const SNAPSHOT_SIZE = 4 * 60 * 5;
 
+class MonitoringSettings extends JSONSettings {
+    constructor(ns: NS) {
+        super(ns, "monitoring/monitoring.json");
+    }
+
+    protected servers: string[] = [];
+
+    addServer(server: string) {
+        this.servers = [...new Set([...this.servers, server])];
+    }
+
+    removeServer(server: string) {
+        this.servers = this.servers.filter((s) => s !== server);
+    }
+}
+
 export async function main(ns: NS) {
     auto(ns, { tag: "hacking" });
     ns.disableLog("ALL");
 
-    let servers: Set<string>;
-
-    if (ns.fileExists("monitoring/servers.json")) {
-        const data = JSON.parse(ns.read("monitoring/servers.json"));
-        servers = new Set(data.servers);
-    } else {
-        servers = new Set();
-    }
-
-    function save() {
-        ns.write("monitoring/servers.json", JSON.stringify({ servers: [...servers] }), "w");
-    }
-
-    ns.atExit(() => {
-        save();
-    });
+    const servers: Set<ServerData> = new Set();
 
     const statuses = new Map<string, HackingStatus>();
     const profit = new Map<string, number>();
@@ -66,7 +68,7 @@ export async function main(ns: NS) {
     const profitSnapshots = new Map<string, number[]>();
 
     const prepared = new Set<string>();
-    const threads = new Map<string, { hack: number; grow: number; weaken: number }>();
+    const threads = new Map<string, { hacking: number; growing: number; weakening: number }>();
     const ratios = new Map<string, number>();
 
     const port = ns.getPortHandle(MONITORING_PORT);
@@ -82,27 +84,24 @@ export async function main(ns: NS) {
         for (const message of readPort(port)) {
             if (message.event === "add") {
                 const { target } = message.data;
-
-                if (!ns.serverExists(target)) {
+                const server = globalThis.servers.get(target);
+                if (!server) {
                     ns.toast(`Failed to monitor ${target}. No such server exists.`);
                     continue;
                 }
-                servers.add(target);
+                servers.add(server);
                 if (!profitSnapshots.has(target)) profitSnapshots.set(target, []);
-                save();
             } else if (message.event === "remove") {
                 servers.delete(message.data.target);
                 statuses.clear();
-                save();
             } else if (message.event === "reset") {
                 servers.clear();
                 statuses.clear();
                 profit.clear();
                 threads.clear();
                 ratios.clear();
-                save();
             } else if (message.event === "setStatus") {
-                const { target, status, threads: usedThreads, hackRatio } = message.data;
+                const { target, status, usedThreads: {hack: hacking, grow: growing, weaken: weakening} = {hack: undefined, grow: undefined, weaken: undefined}, hackRatio } = message.data;
                 statuses.set(target, status);
 
                 if (status === "hack") {
@@ -110,21 +109,19 @@ export async function main(ns: NS) {
                     ratios.set(target, hackRatio);
                 }
 
-                threads.set(target, usedThreads);
+                threads.set(target, { hacking, growing, weakening });
             } else if (message.event === "hacked") {
                 const { target, amount } = message.data;
                 profit.set(target, (profit.get(target) ?? 0) + amount);
             }
         }
 
-        const networkThreads = calcThreads(ns);
-
         /**
          * @type {string[][]}
          */
         const printLines = [
             [
-                `${ESC}[1m${networkThreads.free}/${networkThreads.total}${ESC}[0m - `,
+                "",
                 `${ESC}[1mServer${ESC}[0m`,
                 "",
                 //`${ESC}[${Mode.Foreground + STATUS_COLORS.preparing}mPreparing${ESC}[0m/${ESC}[${Mode.Foreground + STATUS_COLORS.hack}mHacking${ESC}[0m/${ESC}[${Mode.Foreground + STATUS_COLORS.idle}mIdle${ESC}[0m`,
@@ -138,26 +135,24 @@ export async function main(ns: NS) {
             ],
         ];
 
-        for (const server of [...servers].sort()) {
-            const currentMoney = ns.getServerMoneyAvailable(server);
-            const maxMoney = ns.getServerMaxMoney(server);
-            const moneyPercentage = currentMoney / maxMoney;
+        for (const server of [...servers].sort((a, b) => a.hostname.localeCompare(b.hostname))) {
+            const { moneyAvailable, moneyMax } = server;
+            const moneyPercentage = moneyAvailable / moneyMax;
 
             let moneyColor = Mode.Foreground;
             if (moneyPercentage <= 0.15) moneyColor += Color.Red;
             else if (moneyPercentage <= 0.75) moneyColor += Color.Green;
             else moneyColor += Color.Cyan;
 
-            const currentSec = ns.getServerSecurityLevel(server);
-            const minSec = ns.getServerMinSecurityLevel(server);
+            const { hackDifficulty, minDifficulty } = server;
 
             let secColor = Mode.Foreground;
-            const securityRatio = currentSec / minSec;
+            const securityRatio = hackDifficulty / minDifficulty;
             if (securityRatio <= 1.1) secColor += Color.Cyan;
             else if (securityRatio <= 2) secColor += Color.Green;
             else secColor += Color.Red;
 
-            const status = statuses.get(server) ?? "idle";
+            const status = statuses.get(server.hostname) ?? "idle";
 
             const serverColor = Mode.Foreground + (STATUS_COLORS[status] ?? Color.Green);
 
@@ -165,24 +160,24 @@ export async function main(ns: NS) {
 
             let threadsStr = "";
 
-            const usedThreads = threads.get(server);
+            const usedThreads = threads.get(server.hostname);
             if (!usedThreads) threadsStr = "\x1b[31m?\x1b[0m";
             else {
                 const threads = [];
 
-                if (usedThreads.hack !== undefined) threads.push(`\x1b[3${Color.Cyan}m${usedThreads.hack}\x1b[0m`);
-                if (usedThreads.grow !== undefined) threads.push(`\x1b[3${Color.Yellow}m${usedThreads.grow}\x1b[0m`);
-                if (usedThreads.weaken !== undefined)
-                    threads.push(`\x1b[3${Color.Magenta}m${usedThreads.weaken}\x1b[0m`);
+                if (usedThreads.hacking !== undefined) threads.push(`\x1b[3${Color.Cyan}m${usedThreads.hacking}\x1b[0m`);
+                if (usedThreads.growing !== undefined) threads.push(`\x1b[3${Color.Yellow}m${usedThreads.growing}\x1b[0m`);
+                if (usedThreads.weakening !== undefined)
+                    threads.push(`\x1b[3${Color.Magenta}m${usedThreads.weakening}\x1b[0m`);
 
                 threadsStr += threads.join("/");
             }
 
             line.push(`[${threadsStr}] `);
-            line.push(`${ESC}[${serverColor};1m${server}${ESC}[0m`);
+            line.push(`${ESC}[${serverColor};1m${server.hostname}${ESC}[0m`);
 
             if (status === "hack") {
-                const ratio = ratios.get(server);
+                const ratio = ratios.get(server.hostname);
                 if (!ratio) line.push(" (\x1b[31m?\x1b[0m)");
                 else line.push(` (\x1b[3${Color.Cyan}m${ratio.toFixed(2)}\x1b[0m)`);
             } else {
@@ -191,18 +186,18 @@ export async function main(ns: NS) {
 
             line.push(" | ");
 
-            line.push(`\$${ns.formatNumber(currentMoney)}/\$${ns.formatNumber(maxMoney)}`);
+            line.push(`\$${ns.formatNumber(moneyAvailable)}/\$${ns.formatNumber(moneyMax)}`);
             line.push(` (${ESC}[${moneyColor}m${ns.formatPercent(moneyPercentage)}${ESC}[0m)`);
 
             line.push(" | ");
 
-            const snapshots = profitSnapshots.get(server) ?? [];
+            const snapshots = profitSnapshots.get(server.hostname) ?? [];
 
             if (snapshots) {
                 while (snapshots.length >= SNAPSHOT_SIZE) {
                     snapshots.shift();
                 }
-                snapshots.push(profit.get(server) ?? 0);
+                snapshots.push(profit.get(server.hostname) ?? 0);
 
                 const serverProfit = ((snapshots.at(-1) ?? 0) - (snapshots.at(0) ?? 0)) / (SNAPSHOT_SIZE * LOOP_DELAY);
 
@@ -213,7 +208,7 @@ export async function main(ns: NS) {
 
             line.push(" | ");
 
-            line.push(`${ESC}[${secColor}m${currentSec.toFixed(2)}${ESC}[0m/${minSec.toFixed(2)}`);
+            line.push(`${ESC}[${secColor}m${hackDifficulty.toFixed(2)}${ESC}[0m/${minDifficulty.toFixed(2)}`);
 
             printLines.push(line);
         }

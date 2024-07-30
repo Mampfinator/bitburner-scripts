@@ -3,10 +3,8 @@ import { WORKER_SCRIPTS, WorkerMode } from "./workers/consts";
 import { type WorkerGroup } from "./workers/group";
 import { WorkerPool } from "./workers/pool";
 import { MONITORING_PORT } from "monitoring/monitor.js";
-import { getServers } from "/lib/servers/servers";
 import { calcThreads } from "/lib/network-threads";
 import { auto } from "/system/proc/auto";
-import { getServerNames } from "/lib/servers/names";
 
 export interface SupervisorSettings {
     limitServers?: number;
@@ -33,9 +31,9 @@ export async function main(ns: NS) {
         }
     }
 
-    for (const server of getServerNames(ns)) {
-        if (server === "home") continue;
-        copyFiles(server);
+    for (const server of globalThis.servers.values()) {
+        if (server.hostname === "home") continue;
+        copyFiles(server.hostname);
     }
 
     globalThis.eventEmitter.register(ns, "server:added", ({ hostname }: { hostname: string }) => {
@@ -117,26 +115,28 @@ export async function main(ns: NS) {
     });
 
     function getPreparationThreads(hostname: string, availableThreads: number) {
-        let growByFactor = 1 / (ns.getServerMoneyAvailable(hostname) / ns.getServerMaxMoney(hostname));
+        const server = globalThis.servers.get(hostname)!;
+
+        let growByFactor = 1 / (server.moneyAvailable / server.moneyMax);
         if (growByFactor === Infinity) growByFactor = 20;
 
-        let grow = Math.ceil(ns.growthAnalyze(hostname, growByFactor));
+        let growThreads = Math.ceil(ns.growthAnalyze(hostname, growByFactor));
 
-        const growSecIncrease = ns.growthAnalyzeSecurity(grow, hostname);
-        let weaken = Math.ceil(
-            (ns.getServerSecurityLevel(hostname) - ns.getServerMinSecurityLevel(hostname) + growSecIncrease) / 0.05,
+        const growSecIncrease = ns.growthAnalyzeSecurity(growThreads, hostname);
+        let weakenThreads = Math.ceil(
+            (server.hackDifficulty - server.minDifficulty + growSecIncrease) / 0.05,
         );
 
-        const total = grow + weaken;
+        const total = growThreads + weakenThreads;
 
         if (availableThreads && availableThreads > 0 && total > availableThreads) {
-            grow = Math.ceil(grow * (availableThreads / total));
-            weaken = Math.floor(weaken * (availableThreads / total));
+            growThreads = Math.ceil(growThreads * (availableThreads / total));
+            weakenThreads = Math.floor(weakenThreads * (availableThreads / total));
 
-            if (grow + weaken > availableThreads) grow -= 1;
+            if (growThreads + weakenThreads > availableThreads) growThreads -= 1;
         }
 
-        return { grow, weaken };
+        return { growThreads, weakenThreads };
     }
 
     /**
@@ -171,9 +171,11 @@ export async function main(ns: NS) {
 
         await Promise.all(donePromises);
 
+        const server = globalThis.servers.get(hostname)!;
+
         const success =
-            ns.getServerSecurityLevel(hostname) === ns.getServerMinSecurityLevel(hostname) &&
-            ns.getServerMoneyAvailable(hostname) === ns.getServerMaxMoney(hostname);
+            server.hackDifficulty === server.minDifficulty &&
+            server.moneyAvailable === server.moneyMax;
 
         if (success) {
             ns.print(`INFO: ${hostLog} has been prepared for hacking.`);
@@ -209,7 +211,7 @@ export async function main(ns: NS) {
             `Supervising ${promises.size} cycles | +\$${ns.formatNumber(profit / (Date.now() / 1000 - startedAt))}/sec (\$${ns.formatNumber(profit)})`,
         );
 
-        let { free: freeWorkerThreads } = calcThreads(ns);
+        let { free: freeWorkerThreads } = calcThreads();
 
         freeWorkerThreads -= 1;
 
@@ -259,15 +261,15 @@ export async function main(ns: NS) {
 
             let promise;
             if (!isPrepared(server)) {
-                const { weaken, grow } = getPreparationThreads(server.hostname, freeWorkerThreads);
-                const total = weaken + grow;
+                const { weakenThreads, growThreads } = getPreparationThreads(server.hostname, freeWorkerThreads);
+                const total = weakenThreads + growThreads;
                 // should never be case, but eh. better be safe than sorry.
                 if (total > freeWorkerThreads) {
                     markIdle(server);
                     continue;
                 }
 
-                if (weaken <= 0 && grow <= 0) {
+                if (weakenThreads <= 0 && growThreads <= 0) {
                     ns.writePort(MONITORING_PORT, {
                         event: "setStatus",
                         data: { status: "idle", target: server.hostname },
@@ -275,30 +277,30 @@ export async function main(ns: NS) {
                 }
 
                 let weakenGroup = undefined;
-                if (weaken > 0) {
-                    weakenGroup = pool.reserveGroup(weaken, {
+                if (weakenThreads > 0) {
+                    weakenGroup = pool.reserveGroup(weakenThreads, {
                         mode: WorkerMode.Weaken,
                         target: server.hostname,
                     });
                 }
 
-                if (weaken > 0 && !weakenGroup) {
-                    ns.print(`ERROR: Failed to reserve weaken group with ${weaken}t for ${hostLog}`);
+                if (weakenThreads > 0 && !weakenGroup) {
+                    ns.print(`ERROR: Failed to reserve weaken group with ${weakenThreads}t for ${hostLog}`);
                     markIdle(server);
                     continue;
                 }
 
                 let growGroup;
-                if (grow > 0) {
-                    growGroup = pool.reserveGroup(grow, {
+                if (growThreads > 0) {
+                    growGroup = pool.reserveGroup(growThreads, {
                         mode: WorkerMode.Grow,
                         target: server.hostname,
                     });
                 }
 
-                if (grow > 0 && !growGroup) {
-                    ns.print(`ERROR: Failed to reserve weaken group with ${grow}t for ${hostLog}`);
-                    weakenGroup?.kill();
+                if (growThreads > 0 && !growGroup) {
+                    ns.print(`ERROR: Failed to reserve weaken group with ${growThreads}t for ${hostLog}`);
+                    weakenGroup?.stop();
                     markIdle(server);
                     continue;
                 }
@@ -308,7 +310,7 @@ export async function main(ns: NS) {
                     data: {
                         status: "preparing",
                         target: server.hostname,
-                        threads: { weaken, grow },
+                        threads: { weaken: weakenThreads, grow: growThreads },
                     },
                 });
                 freeWorkerThreads -= total;
@@ -320,8 +322,8 @@ export async function main(ns: NS) {
                         growGroup as WorkerGroup | undefined,
                     );
 
-                    weakenGroup?.kill();
-                    growGroup?.kill();
+                    weakenGroup?.stop();
+                    growGroup?.stop();
                 })();
             } else {
                 const threads = pool.calculateBatchRatios(server.hostname, hackRatio);
@@ -334,7 +336,7 @@ export async function main(ns: NS) {
 
                 if (!batch || !batch.runnable) {
                     ns.print(`INFO: Could not reserve workers for ${hostLog}.`);
-                    batch?.kill();
+                    batch?.stop();
                     markIdle(server);
                     continue;
                 }
@@ -356,9 +358,9 @@ export async function main(ns: NS) {
 
                 promise = (async () => {
                     ns.print(`INFO: Hacking ${hostLog}.`);
-                    const hacked = (await batch.run()) ?? 0;
+                    const hacked = (await batch.work()) ?? 0;
                     ns.print(`INFO: Hacked ${hostLog} for \$${ns.formatNumber(hacked)}.`);
-                    batch.kill();
+                    batch.stop();
                     ns.writePort(MONITORING_PORT, {
                         event: "hacked",
                         data: { amount: hacked, target: server.hostname },

@@ -6,12 +6,17 @@ import { auto } from "/system/proc/auto";
 import { JSONSettings } from "/lib/settings";
 import { sleep } from "/lib/lib";
 
+
 const { React } = globalThis;
 
 class ServerBuySettings extends JSONSettings {
     public autoBuy = false;
     public minMoney = 0;
     public minRamExp = 0;
+}
+
+function listPurchased() {
+    return [...globalThis.servers.values()].filter(server => server.purchasedByPlayer);
 }
 
 export async function main(ns: NS) {
@@ -56,7 +61,7 @@ export async function main(ns: NS) {
         if (!settings.autoBuy) continue;
         if (ns.getServerMoneyAvailable("home") <= settings.minMoney) continue;
 
-        const servers = ns.getPurchasedServers().map((server) => ns.getServer(server));
+        const servers = listPurchased();
         const maxRam = ns.getPurchasedServerMaxRam();
 
         for (const server of servers.filter(
@@ -78,7 +83,7 @@ export async function main(ns: NS) {
         }
 
         while (
-            ns.getPurchasedServers().length < ns.getPurchasedServerLimit() &&
+            listPurchased().length < ns.getPurchasedServerLimit() &&
             (settings.minMoney === 0 || ns.getServerMoneyAvailable("home") > settings.minMoney) &&
             ns.getServerMoneyAvailable("home") > ns.getPurchasedServerCost(2 ** settings.minRamExp)
         ) {
@@ -94,7 +99,7 @@ export async function main(ns: NS) {
                 }
             }
 
-            const name = ns.purchaseServer(`home${ns.getPurchasedServers().length}`, ram);
+            const name = ns.purchaseServer(`home${listPurchased().length}`, ram);
             const success = name.length > 0;
 
             if (!success) {

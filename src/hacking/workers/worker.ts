@@ -1,7 +1,7 @@
 import { NS } from "@ns";
 import { WORKER_MESSAGE_PORT, WORKER_SCRIPTS, WorkerMode } from "./consts";
 import { WorkerPool } from "./pool";
-import { run } from "../../system/proc/run";
+import { run as runScript } from "../../system/proc/run";
 import { Reservation } from "/system/memory";
 
 export interface WorkResult {
@@ -38,7 +38,7 @@ export class Worker {
     awaitKilled: Promise<void>;
 
     [Symbol.toPrimitive]() {
-        return `Worker(${this.isRunning ? this.pid : "DEAD"}:${this.mode}=>${this.target})`;
+        return `Worker(${this.running ? this.pid : "DEAD"}:${this.mode}=>${this.target})`;
     }
 
     constructor(ns: NS, pool: WorkerPool, options: WorkerOptions) {
@@ -53,9 +53,9 @@ export class Worker {
 
         const reservation =
             options.useReservation ??
-            globalThis.system.memory.reserve(this.pool.workerRam[this.mode] * this.threads, { tag: this.mode });
+            globalThis.system.memory.reserve(this.pool.workerRam[this.mode] * this.threads, { tag: "hacking" });
 
-        const [pid, killed] = run(
+        const [pid, killed] = runScript(
             ns,
             scriptPath,
             {
@@ -73,7 +73,7 @@ export class Worker {
         }
 
         this.awaitKilled = killed!.then(() => {
-            if (this.pid > 0) this.kill();
+            if (this.pid > 0) this.stop();
         });
 
         this.pid = pid;
@@ -81,14 +81,14 @@ export class Worker {
         this.pool.free.add(this);
     }
 
-    get isRunning() {
+    get running() {
         return this.pid > 0;
     }
 
     /**
      * Kill this Worker's process.
      */
-    kill() {
+    stop() {
         this.ns.kill(this.pid);
         this.pid = 0;
         this.pool.forget(this);
@@ -137,7 +137,7 @@ export class Worker {
      * Send a message to this worker.
      */
     send(event: string, data: Record<string, any>) {
-        if (!this.isRunning) return;
+        if (!this.running) return;
 
         this.ns.writePort(WORKER_MESSAGE_PORT + this.pid, {
             event,

@@ -224,6 +224,10 @@ export class ServerData extends EventEmitter<ServerEvents> implements Server {
     }
     //#endregion
 
+    get freeRam(): number {
+        return this.maxRam - this.ramUsed;
+    }
+
     public update(server: Partial<Server>) {
         for (const [key, value] of Object.entries(server) as [keyof Server, Server[keyof Server]][]) {
             if (value === undefined || !(key in this.server)) continue;
