@@ -13,6 +13,10 @@ class HacknetSettings extends JSONSettings {
      * Percentage of current money the script can spend at any given time.
      */
     spendMaxMoney: number = 0.1;
+    /**
+     * Keep at least this much money. No limit if set to 0.
+     */
+    keepAtLeast: number = 0;
 
     /**
      * Percentage of maximum hashes the script can spend at any given time.
@@ -139,6 +143,9 @@ export async function main(ns: NS) {
         let nodes = hacknet.numNodes();
 
         let budget = ns.getServerMoneyAvailable("home") * settings.spendMaxMoney;
+        if (settings.keepAtLeast > 0 && (ns.getServerMoneyAvailable("home") - budget) < settings.keepAtLeast) {
+            budget = ns.getServerMoneyAvailable("home") - settings.keepAtLeast;
+        }
 
         if (nodes === 0 && hacknet.getPurchaseNodeCost() < budget) {
             hacknet.purchaseNode();
