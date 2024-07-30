@@ -50,8 +50,6 @@ export const SERVER_NODE_STYLE = {
         paddingBottom: 0,
         width: "170px",
         height: "70px",
-    },
-    ".server-node.default": {
         background: "#2f4858",
     },
     ".server-node.backdoor": {
@@ -145,7 +143,7 @@ function MemoryBar({ usage, width, height, defaultColor, capacity, ns }: BarProp
 
 const GROUP_ORDER = ["unknown", "hack", "grow", "weaken", "share"];
 
-const COLORS = {
+const COLORS: Record<string, string> = {
     unknown: "red",
     hack: "cyan",
     grow: "yellow",
@@ -162,6 +160,13 @@ function randomColor(): string {
     return color;
 }
 
+function getColor(tag: string): string {
+    if (COLORS[tag]) return COLORS[tag];
+    const color = randomColor();
+    COLORS[tag] = color;
+    return color;
+}
+
 function sum<T>(arr: T[], accessor: (item: T) => number): number {
     return arr.reduce((sum, item) => sum + accessor(item), 0);
 }
@@ -172,10 +177,10 @@ export function ServerNode({ data: { server, handles, ns, setInfoData } }: Serve
     const groups = Object.groupBy(reservations, (reservation) => reservation.tag ?? "unknown");
 
     const initialUsage = [];
-    for (const group of [...GROUP_ORDER, ...Object.keys(groups).filter((key) => !GROUP_ORDER.includes(key))]) {
+    for (const group of [...GROUP_ORDER, ...Object.keys(groups).filter((key) => !GROUP_ORDER.includes(key)).sort()]) {
         if (!groups[group]) continue;
         const amount = sum(groups[group]!, (reservation) => reservation.amount);
-        const color = COLORS[group as keyof typeof COLORS] ?? randomColor();
+        const color = getColor(group);
 
         initialUsage.push({ title: group, amount, color });
     }

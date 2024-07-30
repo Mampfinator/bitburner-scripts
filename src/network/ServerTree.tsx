@@ -339,15 +339,7 @@ export function ServerTree({ ns }: { ns: NS }): React.ReactElement {
         }
     }
 
-    const { height, width } = React.useMemo(() => {
-        const {
-            min: {
-                position: { x: minX },
-            },
-            max: {
-                position: { x: maxX },
-            },
-        } = findExtremes(nodes, (node) => node.position.x)!;
+    const height = React.useMemo(() => {
         const {
             min: {
                 position: { y: minY },
@@ -357,14 +349,13 @@ export function ServerTree({ ns }: { ns: NS }): React.ReactElement {
             },
         } = findExtremes(nodes, (node) => node.position.y)!;
 
-        const height = (maxY - minY) * SPACE_Y + SPACE_Y * 2;
-        const width = (maxX - minX) * SPACE_X + SPACE_X * 2;
+        const height = Math.abs(maxY - minY);
 
-        return { height, width };
+        return height;
     }, [nodes]);
 
     return (
-        <div style={{ height: `${height}px`, width: `${width}px` }}>
+        <div style={{ height: `${height}px`, width: `100%` }}>
             <ReactFlowProvider>
                 {serverMenuState && <ServerMenu ns={ns} server={serverMenuState.server} />}
                 <ReactFlow
