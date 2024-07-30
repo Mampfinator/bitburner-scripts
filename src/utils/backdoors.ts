@@ -1,5 +1,4 @@
 import { NS } from "@ns";
-import { getServers } from "/lib/servers/servers";
 import { getServerGraph } from "/lib/servers/graph";
 import { auto } from "/system/proc/auto";
 
@@ -12,7 +11,9 @@ export async function main(ns: NS) {
         ns.tprint(`ERROR: optional argument "all" should be a boolean.`);
     }
 
-    const server = (all ? getServers(ns) : SERVERS_TO_BACKDOOR.map((server) => ns.getServer(server))).filter(
+    const server = (
+        all ? [...globalThis.servers.values()] : SERVERS_TO_BACKDOOR.map((server) => globalThis.servers.get(server)!)
+    ).filter(
         (server) =>
             server.hostname !== "home" &&
             !server.purchasedByPlayer &&

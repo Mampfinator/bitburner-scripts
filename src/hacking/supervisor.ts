@@ -15,6 +15,8 @@ export interface SupervisorSettings {
     exclude?: string[];
 }
 
+// TODO: rewrite
+// TODO: use `ServerCache`
 export async function main(ns: NS) {
     auto(ns, { tag: "hacking" });
     const startedAt = Math.floor(Date.now() / 1000);
@@ -39,7 +41,6 @@ export async function main(ns: NS) {
     globalThis.eventEmitter.register(ns, "server:added", ({ hostname }: { hostname: string }) => {
         copyFiles(hostname);
     });
-
 
     const prepared = new Set();
 
@@ -212,7 +213,7 @@ export async function main(ns: NS) {
 
         freeWorkerThreads -= 1;
 
-        let targetServers = getServers(ns)
+        let targetServers = [...globalThis.servers.values()]
             .filter((server) => {
                 return (
                     !promises.has(server.hostname) &&

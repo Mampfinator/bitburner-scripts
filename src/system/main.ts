@@ -4,10 +4,9 @@ import { NS } from "@ns";
 import { syncServers } from "./sync-servers";
 import { getServerNames } from "/lib/servers/names";
 import { auto } from "./proc/auto";
-import { getServerGraph } from "/lib/servers/graph";
-import { processServer } from "./servers";
-import { register } from "./memory";
 import { sleep } from "/lib/lib";
+import { ServerProvider } from "/lib/servers/server-provider";
+import { load } from "./load";
 
 function listAllProcesses(ns: NS) {
     const processes = [];
@@ -35,29 +34,37 @@ function syncProcesses(ns: NS) {
 }
 
 export async function main(ns: NS) {
-    auto(ns, { tag: "system" });
+    await load(ns);
 
     const skip = new Set<string>();
+
+    const provider = new ServerProvider(ns);
+    globalThis.servers.setBridge(provider.bridge);
 
     // for good measure
     syncServers(ns);
 
+    auto(ns, { tag: "system" });
+
     while (true) {
         syncProcesses(ns);
+        for (const serverName of getServerNames(ns)) {
+            const server = servers.get(serverName);
+            if (!server) {
+                console.error(`Expected server ${serverName} to exist, but it doesn't.`, servers);
+                continue;
+            }
 
-        const graph = getServerGraph(ns);
+            // we skip down here because `ServerCache#get` further up automatically updates the server,
+            // and doing that periodically can't hurt.
+            if (skip.has(server.hostname)) {
+                continue;
+            }
 
-        for (const server of [...graph.nodes].map((server) => ns.getServer(server))) {
-            globalThis.serverCache.update(server);
-            const processed = await processServer(server, ns, graph);
-
-            if (!processed) continue;
-
-            graph.addEdge("home", server.hostname);
-
-            // update memory information
-            register(server);
-            skip.add(server.hostname);
+            const processed = server.root() && (await server.backdoor());
+            if (processed) {
+                skip.add(server.hostname);
+            }
         }
 
         await sleep(50, true);

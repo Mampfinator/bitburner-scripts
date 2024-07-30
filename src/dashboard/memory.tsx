@@ -3,6 +3,7 @@ import { getMemoryMap, MemInfo } from "/system/memory";
 
 const { React } = globalThis;
 
+// TODO: use `ServerCache`.
 export const MemoryInspector = ({ ns }: { ns: NS }) => {
     React.useEffect(() => {
         const interval = setInterval(() => {

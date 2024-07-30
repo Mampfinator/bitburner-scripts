@@ -1,5 +1,4 @@
 import { AutocompleteData, NS, ScriptArg } from "@ns";
-import { getServers } from "/lib/servers/servers";
 import { getPortCrackersAvailable } from "./crackers";
 import { auto } from "/system/proc/auto";
 
@@ -13,7 +12,7 @@ export function autocomplete(_data: AutocompleteData, _args: ScriptArg[]) {
  * @param {number} hackRatio how much in % of a target's money to hack in a single cycle.
  */
 function calculateBatchRatios(ns: NS, hostname: string, hackRatio: number = 0.35) {
-    const server = ns.getServer(hostname);
+    const server = servers.get(hostname)!;
 
     const hackAmount = (server.moneyAvailable ?? 0) * hackRatio;
     const hackThreads = Math.floor(ns.hackAnalyzeThreads(server.hostname, hackAmount));
@@ -42,6 +41,10 @@ function calculateBatchRatios(ns: NS, hostname: string, hackRatio: number = 0.35
     };
 }
 
+function getServers() {
+    return [...globalThis.servers.values()];
+}
+
 /** @param {NS} ns */
 export async function main(ns: NS) {
     auto(ns);
@@ -53,7 +56,7 @@ export async function main(ns: NS) {
 
         const pMax = ns.formatRam(ns.getPurchasedServerMaxRam());
         const hMax = ns.formatRam(2 ** 30);
-        for (const server of getServers(ns).filter((server) => server.purchasedByPlayer)) {
+        for (const server of getServers().filter((server) => server.purchasedByPlayer)) {
             const free = ns.formatRam(server.maxRam - server.ramUsed);
             const max = ns.formatRam(server.maxRam);
             ns.tprint(`\x1b[1m${server.hostname}\x1b[0m: ${free}/${max}/${server.hostname === "home" ? hMax : pMax}`);
@@ -61,7 +64,7 @@ export async function main(ns: NS) {
     } else if (mode === "unnuked") {
         const numPortCrackers = getPortCrackersAvailable(ns);
 
-        const servers = getServers(ns)
+        const servers = getServers()
             .filter((server) => !server.hasAdminRights)
             .sort((a, b) => (a.requiredHackingSkill ?? 0) - (b.requiredHackingSkill ?? 0));
         if (servers.length === 0) {
@@ -80,7 +83,7 @@ export async function main(ns: NS) {
             ns.tprint(`\x1b[1m${server.hostname}\x1b[0m: ${skillPrefix}${skillString} | ${portsPrefix}${portsString}`);
         }
     } else if (mode === "weird") {
-        const servers = getServers(ns)
+        const servers = getServers()
             .filter((server) => (server.moneyMax ?? 0) <= 0 && !server.purchasedByPlayer)
             .sort((a, b) => (a.requiredHackingSkill ?? 0) - (b.requiredHackingSkill ?? 0));
 
@@ -99,7 +102,7 @@ export async function main(ns: NS) {
 
         ns.tprint(`Listing threads needed per cycle on every hackable server, using a hackRatio of ${hackRatio}`);
 
-        for (const server of getServers(ns)
+        for (const server of getServers()
             .filter((server) => server.hasAdminRights && (server.moneyMax ?? 0) > 0)
             .sort((a, b) => (a.requiredHackingSkill ?? 0) - (b.requiredHackingSkill ?? 0))) {
             const threads = calculateBatchRatios(ns, server.hostname, hackRatio);
@@ -109,7 +112,7 @@ export async function main(ns: NS) {
         }
     } else if (mode === "unowned") {
         ns.tprint("Listing owned servers with columns free/total/max RAM.");
-        for (const server of getServers(ns).filter((server) => !server.purchasedByPlayer)) {
+        for (const server of getServers().filter((server) => !server.purchasedByPlayer)) {
             const free = ns.formatRam(server.maxRam - server.ramUsed);
             const max = ns.formatRam(server.maxRam);
             ns.tprint(`\x1b[1m${server.hostname}\x1b[0m: ${free}/${max}`);

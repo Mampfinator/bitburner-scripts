@@ -293,6 +293,7 @@ function getLayoutedElements(ns: NS): { nodes: Node[]; edges: Edge[] } {
     return { nodes: positionedNodes, edges };
 }*/
 
+// FIXME: rendering broke. First bad commit seems to be 106ebcf90bf600914589e0da6d04ee0014eff826
 export function ServerTree({ ns }: { ns: NS }): React.ReactElement {
     const { nodes: initialNodes, edges: initialEdges } = getLayoutedElements(ns);
 

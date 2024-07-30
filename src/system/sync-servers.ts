@@ -6,7 +6,7 @@ import { sleep } from "/lib/lib";
 
 export function syncServers(ns: NS) {
     for (const server of getServers(ns)) {
-        globalThis.serverCache.update(server);
+        globalThis.servers.update(server);
     }
 }
 

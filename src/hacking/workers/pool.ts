@@ -173,7 +173,7 @@ export class WorkerPool {
      * @param hackRatio how much in % of a target's money to hack in a single cycle.
      */
     calculateBatchRatios(hostname: string, hackRatio: number = 0.35) {
-        const server = this.ns.getServer(hostname);
+        const server = globalThis.servers.get(hostname)!;
 
         const hackAmount = (server.moneyAvailable ?? 0) * hackRatio;
 

@@ -12,9 +12,7 @@ import { load as loadMemory } from "./memory";
 import { load as loadProc } from "./proc/processes";
 import { load as loadTime } from "./compress-time";
 import { load as loadDependencies } from "./dependencies";
-import { syncServers } from "./sync-servers";
 import { compressTime } from "./compress-time";
-import { run } from "./proc/run";
 import { ServerCache } from "/lib/servers/server-cache";
 
 export async function load(ns: NS) {
@@ -29,17 +27,10 @@ export async function load(ns: NS) {
 
     await loadEvents(ns);
 
-    globalThis.serverCache = ServerCache.instance;
+    globalThis.servers = ServerCache.instance;
 
     await loadMemory(ns);
     await loadProc(ns);
-    syncServers(ns);
 
     console.log(`System namespace loaded: `, globalThis.system);
-
-    run(ns, "system/main.js", { hostname: "home" });
-}
-
-export async function main(ns: NS) {
-    load(ns);
 }

@@ -140,7 +140,7 @@ export class MemInfo {
     /**
      * Grow a chunk.
      */
-    grow(chunkIndex: number, growBy: number): boolean {
+    growChunk(chunkIndex: number, growBy: number): boolean {
         if (this.available < growBy) return false;
 
         const old = this.reservations.get(chunkIndex);
@@ -202,8 +202,6 @@ export interface ReservationDetails extends InternalReservation {
  * @fires global#server:added
  */
 export function register(server: ServerMemInfo): [true, MemInfo] | [false, MemInfo | null] {
-    if (!server.hasAdminRights) return [false, null];
-
     const hostname = server.hostname;
 
     if (MEMORY_MAP.has(hostname)) {
@@ -360,11 +358,11 @@ export function free(reservation: Reservation): boolean {
  * Grow a `Reservation` by `amount` GB.
  * @returns whether growing the allocation was successful.
  */
-export function grow(reservation: Reservation, amount: number): boolean {
+export function growChunk(reservation: Reservation, amount: number): boolean {
     const info = MEMORY_MAP.get(reservation.hostname);
     if (!info) return false;
     if (!info.usable) return false;
-    return info.grow(reservation.chunkIndex, amount);
+    return info.growChunk(reservation.chunkIndex, amount);
 }
 
 declare global {
@@ -399,7 +397,7 @@ declare global {
              * Grow a `Reservation` by `amount` GB.
              * @returns whether growing the allocation was successful.
              */
-            function grow(reservation: Reservation, amount: number): boolean;
+            function growChunk(reservation: Reservation, amount: number): boolean;
             function sizeOf(reservation: Reservation): number | undefined;
             function list(server: string): ReservationDetails[] | null;
             function info(reservation: Reservation): ReservationDetails | null;
@@ -430,7 +428,7 @@ export async function load(ns: NS) {
         reserve,
         reserveChunks,
         free,
-        grow,
+        growChunk,
         sizeOf,
         list,
         info,

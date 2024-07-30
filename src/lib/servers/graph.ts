@@ -90,7 +90,7 @@ export function getServerGraph(ns: NS, options?: GraphOptions) {
         for (const to of ns.scan(current)) {
             if (!graph.nodes.has(to)) queue.push(to);
 
-            const server = ns.getServer(to);
+            const server = globalThis.servers.get(to)!;
             if (
                 (typeof options?.backdoorIsHomeLink === "undefined" || options.backdoorIsHomeLink) &&
                 server.backdoorInstalled

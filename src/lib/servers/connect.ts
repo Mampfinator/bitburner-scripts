@@ -4,7 +4,7 @@ import { getServerGraph, ServerGraph } from "./graph";
 /**
  * Connect to a server using `singularity`.
  */
-export function connect(ns: NS, server: string, graph?: ServerGraph): [true, () => void] | [false, null] {
+export function connect(ns: NS, server: string, graph?: ServerGraph): [true, (ns?: NS) => void] | [false, null] {
     const { singularity } = ns;
     const startedAt = singularity.getCurrentServer();
 
@@ -14,8 +14,8 @@ export function connect(ns: NS, server: string, graph?: ServerGraph): [true, () 
     if (!path) return [false, null];
 
     const walked = [startedAt];
-    const goBack = () => {
-        for (const server of walked) singularity.connect(server);
+    const goBack = (useNs?: NS) => {
+        for (const server of walked) (useNs?.singularity ?? singularity).connect(server);
     };
 
     while (path.length > 0) {

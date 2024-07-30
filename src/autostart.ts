@@ -1,6 +1,5 @@
 import { NS } from "@ns";
 import { run } from "./system/proc/run";
-import { load } from "system/load";
 import { auto } from "./system/proc/auto";
 import { sleep } from "./lib/lib";
 
@@ -8,36 +7,68 @@ function shouldStartServerbuyer(ns: NS) {
     const serverMax = ns.getPurchasedServerLimit();
     const ramMax = ns.getPurchasedServerMaxRam();
 
-    const servers = ns.getPurchasedServers();
-
-    return servers.length < serverMax || servers.some((server) => ns.getServerMaxRam(server) < ramMax);
+    const servers = [...globalThis.servers.values()].filter(
+        (server) => server.purchasedByPlayer && !server.isHacknetServer,
+    );
+    return servers.length < serverMax || servers.some((server) => server.maxRam < ramMax);
 }
 
+const SCRIPTS = [
+    { script: "monitoring/cli.js", tag: "monitoring", args: ["reset"] },
+    { script: "monitoring/monitor.js", tag: "monitoring" },
+    { script: "servers/server-menu.js", tag: "servers", condition: shouldStartServerbuyer },
+    { script: "gangs/await-start.js", tag: "gang" },
+    { script: "hacknet/hacknet.js", tag: "hacknet" },
+    { script: "hacking/supervisor.js", tag: "hacking", wait: 1000 },
+];
+
 export async function main(ns: NS) {
-    await load(ns);
+    ns.run("system/main.js");
+    await sleep(2500);
+
+    while (!globalThis.system) {
+        await ns.asleep(100);
+    }
+
+    ns.tprint("Loaded system namespace. Loading startup scripts...");
 
     auto(ns, { tag: "system" });
 
-    run(ns, "monitoring/cli.js", { hostname: "home", temporary: true }, "reset");
+    const pending = [...SCRIPTS];
+    while (pending.length > 0) {
+        const script = pending.shift()!;
 
-    run(ns, "auto-nuke.js", { hostname: "home", temporary: true });
-    run(ns, "ccts/auto-solve.js", { hostname: "home", temporary: true });
-    const [monitoringPid] = run(ns, "monitoring/monitor.js", {
-        hostname: "home",
-        temporary: true,
-    });
-    ns.tail(monitoringPid);
-    if (shouldStartServerbuyer(ns)) {
-        const [serversPid] = run(ns, "servers/server-menu.js", {
-            hostname: "home",
-            temporary: true,
-        });
-        ns.tail(serversPid);
+        if (script.condition?.(ns) ?? true) {
+            if (script.wait) {
+                ns.tprint(
+                    chalk.blueBright(`Waiting ${script.wait}ms before starting ${chalk.cyan.bold(script.script)}.`),
+                );
+                await sleep(script.wait);
+            }
+            const [pid, , reservation] = run(ns, script.script, { tag: script.tag, hostname: "home" });
+
+            if (pid > 0) {
+                ns.tprint(`Started ${chalk.cyan.bold(script.script)} (PID: ${pid})`);
+                if (reservation && system.memory.info(reservation)) {
+                    const details = system.memory.info(reservation)!;
+                    ns.tprint(
+                        `${chalk.cyan.bold(script.script)} ${chalk.blueBright(`is using ${ns.formatRam(details.amount)} (Index: ${details.chunkIndex}, Tag: ${details.tag ?? "Unknown"})`)}`,
+                    );
+                }
+            } else {
+                ns.print(chalk.yellow(`Failed to start ${chalk.yellowBright.bold(script.script)}${chalk.yellow(".")}`));
+                pending.push(script);
+            }
+        } else {
+            ns.tprint(
+                chalk.blueBright(
+                    `Skipping ${chalk.cyan.bold(script.script)}${chalk.blueBright("(launch condition not met).")}`,
+                ),
+            );
+        }
+
+        await sleep(500, true);
     }
 
-    await sleep(1000, true);
-
-    if (!ns.isRunning("hacking/supervisor.js")) run(ns, "hacking/supervisor.js", { hostname: "home" });
-
-    run(ns, "gangs/await-start.js", { temporary: true, hostname: "home" });
+    ns.tprint("Startup complete.");
 }

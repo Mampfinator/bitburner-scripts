@@ -1,10 +1,12 @@
+//! Delete every single script on all servers.
+//! Used mainly for re-syncing with the game-external folder state because bitburner-sync is weird.
 import { NS } from "@ns";
-import { auto } from "system/proc/auto";
+import { getServerNames } from "./lib/servers/names";
 
 export async function main(ns: NS) {
-    auto(ns);
-
-    for (const file of ns.ls(ns.getHostname(), ".js")) {
-        ns.rm(file);
+    for (const server of getServerNames(ns)) {
+        for (const file of ns.ls(server, ".js")) {
+            ns.rm(file);
+        }
     }
 }

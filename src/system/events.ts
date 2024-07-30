@@ -1,8 +1,11 @@
 import { NS } from "@ns";
 
-
 // TODO: migrate callack storage to SparseArray
-export class EventEmitter<TEvents extends { [key: string]: undefined | ((...args: any[]) => void | Promise<void>) } = { [key: string]: (...args: any[]) => void | Promise<void> }> {
+export class EventEmitter<
+    TEvents extends { [key: string]: undefined | ((...args: any[]) => void | Promise<void>) } = {
+        [key: string]: (...args: any[]) => void | Promise<void>;
+    },
+> {
     #callbacks = new Map<keyof TEvents, Array<TEvents[keyof TEvents] | undefined>>();
 
     /**
@@ -28,7 +31,10 @@ export class EventEmitter<TEvents extends { [key: string]: undefined | ((...args
         return index;
     }
 
-    public async emit<TEvent extends keyof TEvents>(event: TEvent, ...args: TEvents[TEvent] extends Function ? Parameters<TEvents[TEvent]> : never): Promise<void> {
+    public async emit<TEvent extends keyof TEvents>(
+        event: TEvent,
+        ...args: TEvents[TEvent] extends Function ? Parameters<TEvents[TEvent]> : never
+    ): Promise<void> {
         const callbacks = this.#callbacks.get(event);
         if (!callbacks) return;
 

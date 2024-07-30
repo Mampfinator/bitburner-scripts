@@ -1,5 +1,5 @@
-export class MessageBus<TMessage = any> {
-    private rx: ((message: TMessage) => void) | null = null;
+export class MessageBus<TMessage = any, TReturn = void> {
+    private rx: ((message: TMessage) => TReturn) | null = null;
 
     private readonly queue: TMessage[] = [];
 
@@ -11,7 +11,7 @@ export class MessageBus<TMessage = any> {
         }
     }
 
-    public subscribe(rx: (message: TMessage) => void) {
+    public subscribe(rx: (message: TMessage) => TReturn) {
         this.rx = rx;
 
         while (this.queue.length > 0) {
@@ -22,7 +22,7 @@ export class MessageBus<TMessage = any> {
     /**
      * @param rx if provided, only unsubscribes if the current handler matches the passed handler.
      */
-    public unsubscribe(rx?: (message: TMessage) => void) {
+    public unsubscribe(rx?: (message: TMessage) => TReturn) {
         if (rx) {
             if (Object.is(rx, this.rx)) {
                 this.rx = null;
