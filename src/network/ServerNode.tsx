@@ -145,9 +145,10 @@ const GROUP_ORDER = ["unknown", "hack", "grow", "weaken", "share"];
 
 const COLORS: Record<string, string> = {
     unknown: "red",
-    hack: "cyan",
-    grow: "yellow",
-    weaken: "magenta",
+    hacking: "cyan",
+    system: "yellow",
+    gang: "orange",
+    ccts: "blue",
     share: "purple",
 };
 
