@@ -97,8 +97,8 @@ declare global {
     }
 }
 
-export async function load(_: NS) {
-    globalThis.system.proc ??= {
+export async function load(_: NS, system: typeof globalThis.system) {
+    system.proc = {
         started,
         assign: assign as any,
         killed: killed as any,

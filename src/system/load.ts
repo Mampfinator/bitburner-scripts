@@ -23,14 +23,15 @@ export async function load(ns: NS) {
     await loadTime(ns);
     compressTime(-1);
 
-    globalThis.system ??= {} as any;
+    const system = {} as typeof globalThis["system"];
 
     await loadEvents(ns);
 
     globalThis.servers = ServerCache.instance;
 
-    await loadMemory(ns);
-    await loadProc(ns);
+    await loadMemory(ns, system);
+    await loadProc(ns, system);
 
-    console.log(`System namespace loaded: `, globalThis.system);
+    console.log(`System namespace loaded: `, system);
+    globalThis.system = system;
 }

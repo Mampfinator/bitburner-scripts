@@ -2,6 +2,7 @@ import { NS } from "@ns";
 import { run } from "./system/proc/run";
 import { auto } from "./system/proc/auto";
 import { sleep } from "./lib/lib";
+import { Reservation, ReservationDetails } from "./system/memory";
 
 function shouldStartServerbuyer(ns: NS) {
     const serverMax = ns.getPurchasedServerLimit();
@@ -23,16 +24,19 @@ const SCRIPTS = [
 ];
 
 export async function main(ns: NS) {
-    ns.run("system/main.js");
-    await sleep(2500);
-
+    const mainPid = ns.run("system/main.js");
     while (!globalThis.system) {
         await ns.asleep(100);
     }
 
-    ns.tprint("Loaded system namespace. Loading startup scripts...");
+    const mainMemory = globalThis.system.memory.info(globalThis.system.proc.getReservation(mainPid)!)!.amount;
+
+    ns.tprint(`Loaded system namespace and started system main loop using ${ns.formatRam(mainMemory)}.`);
+    ns.tprint("Loading startup scripts...");
 
     auto(ns, { tag: "system" });
+
+    const startedPids = [mainPid, ns.pid];
 
     const pending = [...SCRIPTS];
     while (pending.length > 0) {
@@ -48,6 +52,7 @@ export async function main(ns: NS) {
             const [pid, , reservation] = run(ns, script.script, { tag: script.tag, hostname: "home" });
 
             if (pid > 0) {
+                startedPids.push(pid);
                 ns.tprint(`Started ${chalk.cyan.bold(script.script)} (PID: ${pid})`);
                 if (reservation && system.memory.info(reservation)) {
                     const details = system.memory.info(reservation)!;
@@ -70,5 +75,11 @@ export async function main(ns: NS) {
         await sleep(500, true);
     }
 
-    ns.tprint("Startup complete.");
+    const totalRamUsed = ((startedPids
+        .map(system.proc.getReservation).filter(Boolean) as Reservation[])
+        .map(system.memory.info).filter(Boolean) as ReservationDetails[])
+        .reduce((acc, curr) => acc + curr.amount, 0);
+
+    ns.tprint(`Total RAM used at the end of startup: ${ns.formatRam(totalRamUsed)}`);
+    ns.tprint("Startup complete. ");
 }

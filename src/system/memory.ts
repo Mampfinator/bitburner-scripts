@@ -418,12 +418,13 @@ export function info(reservation: Reservation): ReservationDetails | null {
     return info.details(reservation.chunkIndex);
 }
 
-export async function load(ns: NS) {
-    if (globalThis.system.memory) {
+export async function load(ns: NS, system: typeof globalThis.system) {
+    if (globalThis.system?.memory) {
         console.warn(`Overriding old memory configuration.`);
         ns.print(`WARNING: Overriding old memory configuration.`);
     }
-    globalThis.system.memory = {
+    
+    system.memory = {
         register,
         reserve,
         reserveChunks,
