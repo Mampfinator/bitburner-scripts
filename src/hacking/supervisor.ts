@@ -220,8 +220,10 @@ export async function main(ns: NS) {
                 return (
                     !promises.has(server.hostname) &&
                     !exclude.has(server.hostname) &&
+                    !server.purchasedByPlayer &&
                     server.hasAdminRights &&
-                    (server.moneyMax ?? 0) > 0
+                    (server.moneyMax ?? 0) > 0 &&
+                    server.requiredHackingSkill <= ns.getHackingLevel()
                 );
             })
             .sort((a, b) => rateServer(b, freeWorkerThreads) - rateServer(a, freeWorkerThreads));

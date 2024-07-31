@@ -16,18 +16,19 @@ function shouldStartServerbuyer(ns: NS) {
 
 const SCRIPTS = [
     { script: "monitoring/cli.js", tag: "monitoring", args: ["reset"] },
-    { script: "monitoring/monitor.js", tag: "monitoring" },
     { script: "servers/server-menu.js", tag: "servers", condition: shouldStartServerbuyer },
     { script: "gangs/await-start.js", tag: "gang" },
     { script: "hacknet/hacknet.js", tag: "hacknet" },
+    { script: "network/network-tree.js", tag: "monitoring" },
     { script: "hacking/supervisor.js", tag: "hacking", wait: 1000 },
 ];
 
 export async function main(ns: NS) {
     const mainPid = ns.run("system/main.js");
-    while (!globalThis.system) {
-        await ns.asleep(100);
+    while (!globalThis.awaitSystemReady) {
+        await ns.asleep(20);
     }
+    await globalThis.awaitSystemReady(ns);
 
     const mainMemory = globalThis.system.memory.info(globalThis.system.proc.getReservation(mainPid)!)!.amount;
 

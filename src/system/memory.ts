@@ -279,10 +279,9 @@ export function reserveThreads(threads: number, threadSize: number, tag?: string
         return { result: ReserveThreadsError.OutOfMemory, reservations: null }
     }
 
-    const reservations: Reservation[] = [];
+    const pendingReservations: {hostname: string, amount: number}[] = [];
 
     function cleanup(errorCode: ReserveThreadsError) {
-        for (const res of reservations) free(res);
         return { result: errorCode, reservations: null };
     }
 
@@ -297,17 +296,10 @@ export function reserveThreads(threads: number, threadSize: number, tag?: string
         if (freeThreads <= 0) continue;
         const useThreads = Math.min(freeThreads, threads);
 
-        const reservation = reserve(useThreads * threadSize, {
-            onServer: server.hostname,
-            tag,
+        pendingReservations.push({
+            hostname: server.hostname,
+            amount: useThreads * threadSize,
         });
-
-        if (!reservation) {
-            console.error(`Something be funky: ${threads}, ${threadSize}, ${useThreads}`, server);
-            return cleanup(ReserveThreadsError.ReservationFailed);
-        }
-
-        reservations.push(reservation);
         threads -= useThreads;
     }
 
@@ -321,6 +313,17 @@ export function reserveThreads(threads: number, threadSize: number, tag?: string
             `Apparently not enough memory available for ${threads}x${threadSize}GB: ${availablePostCleanup} - ${threads * threadSize} = ${availablePostCleanup - threads * threadSize} | attempted to use ${(((availablePostCleanup - availablePreCleanup) / threads) * threadSize * 100).toFixed(2)}% of available memory.`,
         );
         return res
+    }
+
+    const reservations: Reservation[] = [];
+    for (const { hostname, amount } of pendingReservations) {
+        const reservation = reserve(amount, { onServer: hostname, tag });
+        if (!reservation) {
+            for (const res of reservations) free(res);
+            return cleanup(ReserveThreadsError.ReservationFailed);
+        }
+        
+        reservations.push(reservation);
     }
 
     return { reservations, result: OK };

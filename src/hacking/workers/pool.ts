@@ -133,7 +133,7 @@ export class WorkerPool {
         if (numThreads === 0) return null;
 
         const threadSize = this.workerRam[options.mode];
-        const { result, reservations } = reserveThreads(numThreads, threadSize, "hacking");
+        const { result, reservations } = reserveThreads(numThreads, threadSize, options.mode);
 
         if (result !== OK) {
             if (result !== ReserveThreadsError.OutOfMemory) console.warn(

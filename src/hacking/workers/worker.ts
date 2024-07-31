@@ -53,7 +53,7 @@ export class Worker {
 
         const reservation =
             options.useReservation ??
-            globalThis.system.memory.reserve(this.pool.workerRam[this.mode] * this.threads, { tag: "hacking" });
+            globalThis.system.memory.reserve(this.pool.workerRam[this.mode] * this.threads, { tag: this.mode });
 
         const [pid, killed] = runScript(
             ns,

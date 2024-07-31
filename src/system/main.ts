@@ -33,7 +33,20 @@ function syncProcesses(ns: NS) {
     }
 }
 
+declare global {
+    function awaitSystemReady(ns: NS): Promise<void>;
+}
+
+let ready = false;
+
 export async function main(ns: NS) {
+    ready = false;
+    globalThis.awaitSystemReady = async (ns: NS) => {
+        while (!ready) {
+            await ns.asleep(20);
+        }
+    }
+
     await load(ns);
 
     const skip = new Set<string>();
@@ -66,6 +79,8 @@ export async function main(ns: NS) {
                 skip.add(server.hostname);
             }
         }
+
+        ready = true;
 
         await sleep(50, true);
     }

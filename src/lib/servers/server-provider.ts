@@ -88,35 +88,27 @@ export class ServerProvider {
                 return [connected, () => originalGoBack?.(this.ns)];
             },
             backdoor: async ({ hostname, graph }: { hostname?: string; graph?: ServerGraph }) => {
-                if (
-                    (ns.getServer(hostname ?? ns.singularity.getCurrentServer()).requiredHackingSkill ?? 0) >
-                    ns.getHackingLevel()
-                )
+                const target = ns.getServer(hostname ?? ns.singularity.getCurrentServer());
+                if (!target) {
+                    console.error(`Could not find server: ${hostname ?? ns.singularity.getCurrentServer()}`);
                     return false;
+                }
 
-                if (hostname) {
-                    const [connected, goBack] = this.commands.dispatch("connectTo", { hostname, graph });
-                    if (!connected) {
-                        goBack();
-                        return false;
-                    }
+                if (target.requiredHackingSkill ?? 0 > ns.getHackingLevel()) return false;
 
-                    try {
-                        await ns.singularity.installBackdoor();
-                        goBack();
-                        return true;
-                    } catch (e) {
-                        console.error(e);
-                        goBack();
-                        return false;
-                    }
-                } else {
-                    try {
-                        await ns.singularity.installBackdoor();
-                        return true;
-                    } catch {
-                        return false;
-                    }
+                const [connected, cleanup] = hostname ? this.commands.dispatch("connectTo", { hostname, graph }) : [true, () => {}];
+                if (!connected) {
+                    cleanup();
+                    return false;
+                }
+
+                try {
+                    await ns.singularity.installBackdoor();
+                    cleanup();
+                    return ns.getServer(target.hostname).backdoorInstalled ?? true;
+                } catch {
+                    cleanup();
+                    return false;
                 }
             },
             root: ({ hostname }: { hostname: string }) => {
