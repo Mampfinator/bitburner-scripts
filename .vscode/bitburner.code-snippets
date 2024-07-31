@@ -21,7 +21,7 @@
 		"body": [
 			"ns.atExit(() => {",
 			"    globalThis.system.proc.killed(ns)",
-			"});"
+			"}, \"mark-killed\");"
 		],
 		"description": "Kill cleanup"
 	}
