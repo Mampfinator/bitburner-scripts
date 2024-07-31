@@ -211,7 +211,7 @@ export async function main(ns: NS) {
             `Supervising ${promises.size} cycles | +\$${ns.formatNumber(profit / (Date.now() / 1000 - startedAt))}/sec (\$${ns.formatNumber(profit)})`,
         );
 
-        let { free: freeWorkerThreads } = calcThreads();
+        let { free: freeWorkerThreads } = calcThreads(2, pool.options?.reserveRam ?? {});
 
         freeWorkerThreads -= 1;
 

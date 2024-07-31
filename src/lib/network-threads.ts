@@ -2,18 +2,21 @@
 import { NS } from "@ns";
 import { auto } from "/system/proc/auto";
 
-export function calcThreads(minusRam = 0) {
-    // Most expensive worker script.
-    const ramCost = 1.75;
+// TODO: deprecate. This is not the best way to do this.
+export function calcThreads(threadSize: number, reserveRam: Record<string, number> = {}): { total: number; free: number } {
 
-    let total = Math.floor(-minusRam / ramCost);
-    let free = Math.floor(-minusRam / ramCost);
+    let total = 0;
+    let free = 0;
 
     for (const server of servers.values()) {
-        const { maxRam, freeRam } = server;
+        let { available, capacity } = server.memInfo;
+        if (server.hostname in reserveRam) {
+            capacity = Math.max(capacity - reserveRam[server.hostname], 0);
+            available = Math.max(available - reserveRam[server.hostname], 0);    
+        }
 
-        total += Math.floor(maxRam / ramCost);
-        free += Math.floor(freeRam / ramCost);
+        total += Math.floor(capacity / threadSize);
+        free += Math.floor(available / threadSize);
     }
 
     return { total, free };
@@ -21,7 +24,11 @@ export function calcThreads(minusRam = 0) {
 
 export async function main(ns: NS) {
     auto(ns);
-    const { total, free } = calcThreads();
+    const { threadSize } = ns.flags([
+        ["threadSize", 2],
+    ]) as { threadSize: number };
+
+    const { total, free } = calcThreads(threadSize);
 
     ns.tprint(`Free: ${free}. Total in network: ${total}.`);
 }
