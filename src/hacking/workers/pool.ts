@@ -3,7 +3,7 @@ import { Worker, WorkerOptions, WorkResult } from "./worker";
 import { POOL_MESSAGE_PORT_BASE, WORKER_MESSAGE_PORT, WORKER_SCRIPTS, WorkerMode } from "./consts";
 import { HWGWWorkerBatch } from "./batch";
 import { WorkerGroup } from "./group";
-import { Reservation, reserveThreads } from "/system/memory";
+import { OK, Reservation, reserveThreads, ReserveThreadsError } from "/system/memory";
 
 export interface PoolOptions {
     reserveRam?: Record<string, number>;
@@ -133,11 +133,11 @@ export class WorkerPool {
         if (numThreads === 0) return null;
 
         const threadSize = this.workerRam[options.mode];
-        const reservations = reserveThreads(numThreads, threadSize, "hacking");
+        const { result, reservations } = reserveThreads(numThreads, threadSize, "hacking");
 
-        if (!reservations) {
-            console.warn(
-                `Could not reserve ${this.ns.formatRam(numThreads * threadSize)} (${this.ns.formatNumber(numThreads)}t) for worker batch. Aborting.`,
+        if (result !== OK) {
+            if (result !== ReserveThreadsError.OutOfMemory) console.warn(
+                `Could not reserve ${this.ns.formatRam(numThreads * threadSize)} (${this.ns.formatNumber(numThreads)}t) for worker batch. Code: ${result}. Aborting.`,
             );
             return null;
         }
@@ -176,19 +176,7 @@ export class WorkerPool {
 
         const hackAmount = (server.moneyAvailable ?? 0) * hackRatio;
 
-        const hackThreads = Math.floor(this.ns.hackAnalyzeThreads(server.hostname, hackAmount));
-
-        if (hackThreads < 0) {
-            //this.ns.print(`WARNING: Invalid hackThreads amount for ${hostname}/${hackRatio} (${this.ns.formatNumber(server.moneyMax - server.moneyAvailable)}/\$${this.ns.formatNumber(server.moneyMax)}) - ${hackThreads}. Did you prepare the server before calling this?`);
-            //console.log(`${hostname}/${hackRatio} (${this.ns.formatNumber(server.moneyMax - server.moneyAvailable)}/\$${this.ns.formatNumber(server.moneyMax)}) - ${hackThreads}. Did you prepare the server before calling this?`);
-            return {
-                hackThreads: 0,
-                hackWeakenThreads: 0,
-                growThreads: 0,
-                growWeakenThreads: 0,
-                total: 0,
-            };
-        }
+        const hackThreads = Math.max(Math.floor(this.ns.hackAnalyzeThreads(server.hostname, hackAmount)), 1);
 
         const hackSecIncrease = this.ns.hackAnalyzeSecurity(hackThreads);
         const hackWeakenThreads = Math.ceil(hackSecIncrease / 0.05);

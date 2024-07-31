@@ -264,16 +264,26 @@ export function reserve(amount: number, options?: ReserveOptions): Reservation |
     }
 }
 
-export function reserveThreads(threads: number, threadSize: number, tag?: string): Reservation[] | null {
+export enum ReserveThreadsError {
+    OutOfMemory = "The network is out of memory.",
+    ReservationFailed = "A thought-good reservation failed.",
+    UnexpectedOutOfMemory = "The network is out of memory, but it shouldn't have been.",
+}
+
+export const OK = "Ok";
+
+export function reserveThreads(threads: number, threadSize: number, tag?: string): { result: ReserveThreadsError, reservations: null } | { result: typeof OK, reservations: Reservation[] } {
     const available = [...MEMORY_MAP.values()].reduce((acc, curr) => acc + curr.available, 0);
 
-    if (available < threads * threadSize) return null;
+    if (available < threads * threadSize) {
+        return { result: ReserveThreadsError.OutOfMemory, reservations: null }
+    }
 
     const reservations: Reservation[] = [];
 
-    function cleanup() {
+    function cleanup(errorCode: ReserveThreadsError) {
         for (const res of reservations) free(res);
-        return null;
+        return { result: errorCode, reservations: null };
     }
 
     const servers = [...MEMORY_MAP.values()]
@@ -294,7 +304,7 @@ export function reserveThreads(threads: number, threadSize: number, tag?: string
 
         if (!reservation) {
             console.error(`Something be funky: ${threads}, ${threadSize}, ${useThreads}`, server);
-            return cleanup();
+            return cleanup(ReserveThreadsError.ReservationFailed);
         }
 
         reservations.push(reservation);
@@ -303,17 +313,17 @@ export function reserveThreads(threads: number, threadSize: number, tag?: string
 
     if (threads > 0) {
         const availablePreCleanup = [...MEMORY_MAP.values()].reduce((acc, curr) => acc + curr.available, 0);
-        cleanup();
+        const res = cleanup(ReserveThreadsError.OutOfMemory);
 
         const availablePostCleanup = [...MEMORY_MAP.values()].reduce((acc, curr) => acc + curr.available, 0);
 
         console.warn(
             `Apparently not enough memory available for ${threads}x${threadSize}GB: ${availablePostCleanup} - ${threads * threadSize} = ${availablePostCleanup - threads * threadSize} | attempted to use ${(((availablePostCleanup - availablePreCleanup) / threads) * threadSize * 100).toFixed(2)}% of available memory.`,
         );
-        return null;
+        return res
     }
 
-    return reservations;
+    return { reservations, result: OK };
 }
 
 function sizeOf(res: Reservation): number | undefined {
