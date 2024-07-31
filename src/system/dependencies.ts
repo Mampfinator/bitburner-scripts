@@ -7,12 +7,16 @@ function join(base: string, uri: string) {
     return new URL(uri, base).href;
 }
 
+const PENDING_DEPENDENCIES = new Map<string, ReturnType<PromiseConstructor["withResolvers"]>>();
+
 // FIXME: Absolute paths are not supported and will crash the game.
 async function makeScript(dep: ScriptDependency, element: HTMLScriptElement) {
-    const original = await fetch(dep.src).then((res) => res.text());
-    let source = original;
+    let ready: Promise<void>;
 
     if (dep.module && !!dep.imports) {
+        const original = await fetch(dep.src).then((res) => res.text());
+        let source = original;
+
         element.type = "module";
         source = source.replaceAll(/(?<=import *.+ *from *\")(.+?)(?=\")/g, (match: string) => {
             const replacer = dep.imports![match];
@@ -28,24 +32,36 @@ async function makeScript(dep: ScriptDependency, element: HTMLScriptElement) {
 
             return match;
         });
+
+        if (dep.append) {
+            if (!source.endsWith(";")) source += ";";
+            source += `\n${dep.append}`;
+        }
+
+        // `script#onload` is only triggered when the script is **down**loaded.
+        // So to to be able to await script execution for text scripts,
+        // we add a function to the global scope that will be called when the script is loaded
+        // and append a call to that function to the script source.
+        const resolvers = Promise.withResolvers();
+        PENDING_DEPENDENCIES.set(dep.src, resolvers);
+        source += `;\nglobalThis.dependencyLoaded("${dep.src}");`;
+
+        if (original !== source) {
+            console.log(`Modified script source for ${dep.src}`);
+        }
+        element.textContent = source;
+        element.async = true;
+
+        ready = resolvers.promise as Promise<void>;
+    } else {
+        element.src = dep.src;
+        if (dep.module) element.type = "module";
+        element.async = true;
+
+        ready = new Promise((resolve) => element.addEventListener("load", resolve)).then(() => {});
     }
 
-    if (dep.append) {
-        if (!source.endsWith(";")) source += ";";
-        source += `\n${dep.append}`;
-    }
-
-    if (original !== source) {
-        console.log(`Modified script source for ${dep.src}`);
-    }
-
-    element.textContent = source;
-
-    // We want to wait for the script to be fully parsed before continuing. 
-    // I'm *pretty sure* this is the best way to do it.
-    element.async = false;
-
-    return element;
+    return ready;
 }
 
 async function makeRawScript(dep: RawScriptDependency, element: HTMLScriptElement) {
@@ -94,7 +110,25 @@ interface RawStyleSheetDependency {
 
 type Dependency = ScriptDependency | RawScriptDependency | StylesheetDependency | RawStyleSheetDependency;
 
+const MAKE_ELEMENT = {
+    script: makeScript,
+    stylesheet: makeStyleSheet,
+    rawScript: makeRawScript,
+    rawStylesheet: makeRawStyleSheet,
+};
+
+declare global {
+    function dependencyLoaded(id: string): void;
+}
+
 export async function apply(dep: Dependency, id: string) {
+    globalThis.dependencyLoaded = (id: string) => {
+        if (PENDING_DEPENDENCIES.has(id)) {
+            PENDING_DEPENDENCIES.get(id)!.resolve(undefined as void);
+            PENDING_DEPENDENCIES.delete(id);
+        }
+    };
+
     const oldElement = doc.querySelector(`#${id}`);
 
     let element;
@@ -106,24 +140,24 @@ export async function apply(dep: Dependency, id: string) {
         element.id = id;
     }
 
-    if (dep.type === "script") await makeScript(dep, element as HTMLScriptElement);
-    else if (dep.type === "stylesheet") await makeStyleSheet(dep, element as HTMLLinkElement);
-    else if (dep.type === "rawScript") await makeRawScript(dep, element as HTMLScriptElement);
-    else if (dep.type === "rawStylesheet") await makeRawStyleSheet(dep, element as HTMLStyleElement);
+    const ready = MAKE_ELEMENT[dep.type](dep as any, element as any);
 
     if (!oldElement) {
         doc.head.appendChild(element);
     }
+
+    await ready;
 }
 
 type DependenciesFile = {
     [id: string]: Dependency;
-}
+};
 
 export async function load(ns: NS) {
     const dependencies: DependenciesFile = JSON.parse(ns.read("dependencies.json"));
 
     for (const [id, dep] of Object.entries(dependencies)) {
+        console.log(`Loading ${id} (${dep.type})`);
         await apply(dep, id);
     }
 }
