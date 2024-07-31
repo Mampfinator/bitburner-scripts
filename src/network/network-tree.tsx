@@ -14,16 +14,14 @@ export async function main(ns: NS) {
     ns.clearLog();
 
     await apply({
-        node: "rawStylesheet",
-        id: "server-graph-styles",
+        type: "rawStylesheet",
         style: SERVER_NODE_STYLE,
-    });
+    }, "server-graph-styles");
 
     await apply({
-        node: "rawStylesheet",
-        id: "server-graph-server-menu-styles",
+        type: "rawStylesheet",
         style: SERVER_MENU_STYLE as any,
-    });
+    }, "server-graph-server-menu-styles");
 
     ns.tail();
 

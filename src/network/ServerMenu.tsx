@@ -1,7 +1,6 @@
 import { NS } from "@ns";
 import { File, Folder, FileList } from "/components/FileList";
 import { ProcessList } from "/components/ProcessList";
-import { connect } from "/lib/servers/connect";
 
 const {
     React,
@@ -106,7 +105,7 @@ export function ServerMenu({ ns, server }: { ns: NS; server: string }) {
         <Panel position="bottom-right">
             <div className="server-menu">
                 <h3 style={{ padding: 0, margin: 0 }}>{server}</h3>
-                <button onClick={() => connect(ns, server)}>Connect</button>
+                <button onClick={() => globalThis.servers.get(server)!.connectTo()}>Connect</button>
                 <details>
                     <summary>Files</summary>
                     <label htmlFor="ccts">CCTs</label>

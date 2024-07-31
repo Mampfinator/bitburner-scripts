@@ -13,12 +13,15 @@ function join(base: string, uri: string) {
 
 // FIXME: Absolute paths are not supported and will crash the game.
 async function makeScript(dep: ScriptDependency, element: HTMLScriptElement) {
-    let source = await fetch(dep.src).then((res) => res.text());
+    const original = await fetch(dep.src).then((res) => res.text());
+    let source = original;
 
-    if (dep.type) element.type = dep.type;
-    if (dep.type === "module") {
+    if (dep.module && !!dep.imports) {
+        element.type = "module"; 
+        const oldSource = source;
+
         source = source.replaceAll(/(?<=import *.+ *from *\")(.+?)(?=\")/g, (match: string) => {
-            const replacer = IMPORT_MAP.imports[match];
+            const replacer = dep.imports![match];
             if (replacer) {
                 console.log(`Replacing ${match} with ${replacer}.`);
                 return replacer;
@@ -38,16 +41,22 @@ async function makeScript(dep: ScriptDependency, element: HTMLScriptElement) {
         source += `\n${dep.append}`;
     }
 
+    if (original !== source) {
+        console.log(`Modified script source for ${dep.src}`);
+    }
+
     element.textContent = source;
 
-    console.log(`Modified source for ${dep.src}.`);
+    // We want to wait for the script to be fully parsed before continuing. 
+    // I'm *pretty sure* this is the best way to do it.
+    element.async = false;
 
     return element;
 }
 
 async function makeRawScript(dep: RawScriptDependency, element: HTMLScriptElement) {
     element.textContent = dep.src;
-    if (dep.type) element.type = dep.type;
+    if (dep.module) element.type = "module";
 }
 
 async function makeStyleSheet(dep: StylesheetDependency, element: HTMLLinkElement) {
@@ -69,26 +78,23 @@ async function makeRawStyleSheet(dep: RawStyleSheetDependency, element: HTMLStyl
 }
 
 interface ScriptDependency {
-    node: "script";
-    id: string;
+    type: "script";
     src: string;
     append?: string;
-    type?: "module";
+    module?: boolean;
+    imports?: Record<string, string>;
 }
 interface RawScriptDependency {
-    node: "rawScript";
-    id: string;
+    type: "rawScript";
     src: string;
-    type?: "module";
+    module?: boolean;
 }
 interface StylesheetDependency {
-    node: "stylesheet";
-    id: string;
+    type: "stylesheet";
     href: string;
 }
 interface RawStyleSheetDependency {
-    node: "rawStylesheet";
-    id: string;
+    type: "rawStylesheet";
     style: Record<string, React.CSSProperties>;
 }
 
@@ -109,88 +115,37 @@ export function register({ dependency, imports }: { dependency?: Dependency; imp
     }
 }
 
-export async function apply(dep: Dependency) {
-    const oldElement = doc.querySelector(`#${dep.id}`);
+export async function apply(dep: Dependency, id: string) {
+    const oldElement = doc.querySelector(`#${id}`);
 
     let element;
     if (oldElement) element = oldElement;
     else {
-        const node = dep.node.toLowerCase();
+        const node = dep.type.toLowerCase();
 
         element = doc.createElement(node.includes("script") ? "script" : node === "stylesheet" ? "link" : "style");
-        element.id = dep.id;
+        element.id = id;
     }
 
-    if (dep.node === "script") await makeScript(dep, element as HTMLScriptElement);
-    else if (dep.node === "stylesheet") await makeStyleSheet(dep, element as HTMLLinkElement);
-    else if (dep.node === "rawScript") await makeRawScript(dep, element as HTMLScriptElement);
-    else if (dep.node === "rawStylesheet") await makeRawStyleSheet(dep, element as HTMLStyleElement);
+    if (dep.type === "script") await makeScript(dep, element as HTMLScriptElement);
+    else if (dep.type === "stylesheet") await makeStyleSheet(dep, element as HTMLLinkElement);
+    else if (dep.type === "rawScript") await makeRawScript(dep, element as HTMLScriptElement);
+    else if (dep.type === "rawStylesheet") await makeRawStyleSheet(dep, element as HTMLStyleElement);
 
     if (!oldElement) {
         doc.head.appendChild(element);
     }
 }
 
-export async function load(_: NS) {
-    register({
-        dependency: {
-            node: "script",
-            id: "chalk",
-            src: "https://cdn.jsdelivr.net/npm/chalk@5.3.0/source/index.min.js",
-            append: "globalThis.chalk = chalk",
-            type: "module",
-        },
-        imports: {
-            "#ansi-styles": "https://cdn.jsdelivr.net/npm/chalk@5.3.0/source/vendor/ansi-styles/index.min.js",
-            "#supports-color": "https://cdn.jsdelivr.net/npm/chalk@5.3.0/source/vendor/supports-color/browser.min.js",
-        },
-    });
+type IncludesFile = {
+    [id: string]: Dependency;
+}
 
-    register({
-        dependency: {
-            node: "script",
-            id: "reactflow",
-            src: "https://cdn.jsdelivr.net/npm/reactflow@11.11.4/dist/umd/index.min.js",
-        },
-    });
+// TODO: move dependencies to a separate JSON file for easier updating.
+export async function load(ns: NS) {
+    const includesFile: IncludesFile = JSON.parse(ns.read("includes.json"));
 
-    register({
-        dependency: {
-            node: "stylesheet",
-            id: "reactflow-style",
-            href: "https://cdn.jsdelivr.net/npm/reactflow@11.11.4/dist/style.min.css",
-        },
-    });
-
-    register({
-        dependency: {
-            node: "script",
-            id: "d3",
-            src: "https://d3js.org/d3.v7.min.js",
-        },
-    });
-
-    register({
-        dependency: {
-            node: "script",
-            id: "d3-force",
-            src: "https://cdn.jsdelivr.net/npm/d3-force@3",
-        },
-    });
-
-    register({
-        dependency: {
-            node: "rawScript",
-            id: "dagre",
-            type: "module",
-            src: `
-                import * as dagre from "https://cdn.jsdelivr.net/npm/@dagrejs/dagre@1.1.3/+esm";
-                globalThis.dagre = dagre;
-            `,
-        },
-    });
-
-    for (const dependency of DEPENDENCIES) {
-        await apply(dependency);
+    for (const [id, dep] of Object.entries(includesFile)) {
+        await apply(dep, id);
     }
 }
