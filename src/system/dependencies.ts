@@ -2,10 +2,6 @@
 import { NS } from "@ns";
 const doc = eval("document") as Document;
 
-const IMPORT_MAP = {
-    imports: {},
-} as { imports: Record<string, string> };
-
 function join(base: string, uri: string) {
     if (base.endsWith(".js")) base = base.replace(/(?<=\/)(?:.(?!\/))+$/, "");
     return new URL(uri, base).href;
@@ -17,9 +13,7 @@ async function makeScript(dep: ScriptDependency, element: HTMLScriptElement) {
     let source = original;
 
     if (dep.module && !!dep.imports) {
-        element.type = "module"; 
-        const oldSource = source;
-
+        element.type = "module";
         source = source.replaceAll(/(?<=import *.+ *from *\")(.+?)(?=\")/g, (match: string) => {
             const replacer = dep.imports![match];
             if (replacer) {
@@ -100,21 +94,6 @@ interface RawStyleSheetDependency {
 
 type Dependency = ScriptDependency | RawScriptDependency | StylesheetDependency | RawStyleSheetDependency;
 
-const DEPENDENCIES: Dependency[] = [];
-
-/**
- * Register an external scripts/stylesheet.
- */
-export function register({ dependency, imports }: { dependency?: Dependency; imports?: Record<string, string> }) {
-    if (dependency) DEPENDENCIES.push(dependency);
-    if (imports) {
-        IMPORT_MAP.imports = {
-            ...IMPORT_MAP.imports,
-            ...imports,
-        };
-    }
-}
-
 export async function apply(dep: Dependency, id: string) {
     const oldElement = doc.querySelector(`#${id}`);
 
@@ -137,15 +116,14 @@ export async function apply(dep: Dependency, id: string) {
     }
 }
 
-type IncludesFile = {
+type DependenciesFile = {
     [id: string]: Dependency;
 }
 
-// TODO: move dependencies to a separate JSON file for easier updating.
 export async function load(ns: NS) {
-    const includesFile: IncludesFile = JSON.parse(ns.read("includes.json"));
+    const dependencies: DependenciesFile = JSON.parse(ns.read("dependencies.json"));
 
-    for (const [id, dep] of Object.entries(includesFile)) {
+    for (const [id, dep] of Object.entries(dependencies)) {
         await apply(dep, id);
     }
 }
