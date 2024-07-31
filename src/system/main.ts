@@ -45,7 +45,7 @@ export async function main(ns: NS) {
         while (!ready) {
             await ns.asleep(20);
         }
-    }
+    };
 
     await load(ns);
 

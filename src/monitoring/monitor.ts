@@ -101,7 +101,16 @@ export async function main(ns: NS) {
                 threads.clear();
                 ratios.clear();
             } else if (message.event === "setStatus") {
-                const { target, status, usedThreads: {hack: hacking, grow: growing, weaken: weakening} = {hack: undefined, grow: undefined, weaken: undefined}, hackRatio } = message.data;
+                const {
+                    target,
+                    status,
+                    usedThreads: { hack: hacking, grow: growing, weaken: weakening } = {
+                        hack: undefined,
+                        grow: undefined,
+                        weaken: undefined,
+                    },
+                    hackRatio,
+                } = message.data;
                 statuses.set(target, status);
 
                 if (status === "hack") {
@@ -165,8 +174,10 @@ export async function main(ns: NS) {
             else {
                 const threads = [];
 
-                if (usedThreads.hacking !== undefined) threads.push(`\x1b[3${Color.Cyan}m${usedThreads.hacking}\x1b[0m`);
-                if (usedThreads.growing !== undefined) threads.push(`\x1b[3${Color.Yellow}m${usedThreads.growing}\x1b[0m`);
+                if (usedThreads.hacking !== undefined)
+                    threads.push(`\x1b[3${Color.Cyan}m${usedThreads.hacking}\x1b[0m`);
+                if (usedThreads.growing !== undefined)
+                    threads.push(`\x1b[3${Color.Yellow}m${usedThreads.growing}\x1b[0m`);
                 if (usedThreads.weakening !== undefined)
                     threads.push(`\x1b[3${Color.Magenta}m${usedThreads.weakening}\x1b[0m`);
 

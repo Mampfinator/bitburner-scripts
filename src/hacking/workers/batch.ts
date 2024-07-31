@@ -83,7 +83,12 @@ export class HWGWWorkerBatch {
     }
 
     get runnable() {
-        return this.weakenGrowGroup !== null && this.weakenHackGroup !== null && this.hackGroup !== null && this.growGroup !== null;
+        return (
+            this.weakenGrowGroup !== null &&
+            this.weakenHackGroup !== null &&
+            this.hackGroup !== null &&
+            this.growGroup !== null
+        );
     }
 
     /**

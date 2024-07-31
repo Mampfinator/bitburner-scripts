@@ -95,7 +95,7 @@ interface ManualBuyProps {
 }
 
 function getDefaultServerName() {
-    return `home${[...globalThis.servers.values()].filter(s => s.purchasedByPlayer && s.isHacknetServer).length}`;
+    return `home${[...globalThis.servers.values()].filter((s) => s.purchasedByPlayer && s.isHacknetServer).length}`;
 }
 
 /**

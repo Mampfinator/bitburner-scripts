@@ -96,7 +96,9 @@ export class ServerProvider {
 
                 if (target.requiredHackingSkill ?? 0 > ns.getHackingLevel()) return false;
 
-                const [connected, cleanup] = hostname ? this.commands.dispatch("connectTo", { hostname, graph }) : [true, () => {}];
+                const [connected, cleanup] = hostname
+                    ? this.commands.dispatch("connectTo", { hostname, graph })
+                    : [true, () => {}];
                 if (!connected) {
                     cleanup();
                     return false;

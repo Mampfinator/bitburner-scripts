@@ -6,7 +6,6 @@ import { auto } from "/system/proc/auto";
 import { JSONSettings } from "/lib/settings";
 import { sleep } from "/lib/lib";
 
-
 const { React } = globalThis;
 
 class ServerBuySettings extends JSONSettings {
@@ -16,7 +15,7 @@ class ServerBuySettings extends JSONSettings {
 }
 
 function listPurchased() {
-    return [...globalThis.servers.values()].filter(server => server.purchasedByPlayer);
+    return [...globalThis.servers.values()].filter((server) => server.purchasedByPlayer);
 }
 
 export async function main(ns: NS) {

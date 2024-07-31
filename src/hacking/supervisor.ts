@@ -123,9 +123,7 @@ export async function main(ns: NS) {
         let growThreads = Math.ceil(ns.growthAnalyze(hostname, growByFactor));
 
         const growSecIncrease = ns.growthAnalyzeSecurity(growThreads, hostname);
-        let weakenThreads = Math.ceil(
-            (server.hackDifficulty - server.minDifficulty + growSecIncrease) / 0.05,
-        );
+        let weakenThreads = Math.ceil((server.hackDifficulty - server.minDifficulty + growSecIncrease) / 0.05);
 
         const total = growThreads + weakenThreads;
 
@@ -173,9 +171,7 @@ export async function main(ns: NS) {
 
         const server = globalThis.servers.get(hostname)!;
 
-        const success =
-            server.hackDifficulty === server.minDifficulty &&
-            server.moneyAvailable === server.moneyMax;
+        const success = server.hackDifficulty === server.minDifficulty && server.moneyAvailable === server.moneyMax;
 
         if (success) {
             ns.print(`INFO: ${hostLog} has been prepared for hacking.`);

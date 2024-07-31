@@ -143,7 +143,7 @@ export async function main(ns: NS) {
         let nodes = hacknet.numNodes();
 
         let budget = ns.getServerMoneyAvailable("home") * settings.spendMaxMoney;
-        if (settings.keepAtLeast > 0 && (ns.getServerMoneyAvailable("home") - budget) < settings.keepAtLeast) {
+        if (settings.keepAtLeast > 0 && ns.getServerMoneyAvailable("home") - budget < settings.keepAtLeast) {
             budget = ns.getServerMoneyAvailable("home") - settings.keepAtLeast;
         }
 

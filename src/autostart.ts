@@ -76,10 +76,11 @@ export async function main(ns: NS) {
         await sleep(500, true);
     }
 
-    const totalRamUsed = ((startedPids
-        .map(system.proc.getReservation).filter(Boolean) as Reservation[])
-        .map(system.memory.info).filter(Boolean) as ReservationDetails[])
-        .reduce((acc, curr) => acc + curr.amount, 0);
+    const totalRamUsed = (
+        (startedPids.map(system.proc.getReservation).filter(Boolean) as Reservation[])
+            .map(system.memory.info)
+            .filter(Boolean) as ReservationDetails[]
+    ).reduce((acc, curr) => acc + curr.amount, 0);
 
     ns.tprint(`Total RAM used at the end of startup: ${ns.formatRam(totalRamUsed)}`);
     ns.tprint("Startup complete. ");

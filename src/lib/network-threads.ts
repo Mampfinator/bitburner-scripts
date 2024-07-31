@@ -3,8 +3,10 @@ import { NS } from "@ns";
 import { auto } from "/system/proc/auto";
 
 // TODO: deprecate. This is not the best way to do this.
-export function calcThreads(threadSize: number, reserveRam: Record<string, number> = {}): { total: number; free: number } {
-
+export function calcThreads(
+    threadSize: number,
+    reserveRam: Record<string, number> = {},
+): { total: number; free: number } {
     let total = 0;
     let free = 0;
 
@@ -12,7 +14,7 @@ export function calcThreads(threadSize: number, reserveRam: Record<string, numbe
         let { available, capacity } = server.memInfo;
         if (server.hostname in reserveRam) {
             capacity = Math.max(capacity - reserveRam[server.hostname], 0);
-            available = Math.max(available - reserveRam[server.hostname], 0);    
+            available = Math.max(available - reserveRam[server.hostname], 0);
         }
 
         total += Math.floor(capacity / threadSize);
@@ -24,9 +26,7 @@ export function calcThreads(threadSize: number, reserveRam: Record<string, numbe
 
 export async function main(ns: NS) {
     auto(ns);
-    const { threadSize } = ns.flags([
-        ["threadSize", 2],
-    ]) as { threadSize: number };
+    const { threadSize } = ns.flags([["threadSize", 2]]) as { threadSize: number };
 
     const { total, free } = calcThreads(threadSize);
 

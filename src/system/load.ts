@@ -23,7 +23,7 @@ export async function load(ns: NS) {
     await loadTime(ns);
     compressTime(-1);
 
-    const system = {} as typeof globalThis["system"];
+    const system = {} as (typeof globalThis)["system"];
 
     await loadEvents(ns);
 

@@ -272,14 +272,18 @@ export enum ReserveThreadsError {
 
 export const OK = "Ok";
 
-export function reserveThreads(threads: number, threadSize: number, tag?: string): { result: ReserveThreadsError, reservations: null } | { result: typeof OK, reservations: Reservation[] } {
+export function reserveThreads(
+    threads: number,
+    threadSize: number,
+    tag?: string,
+): { result: ReserveThreadsError; reservations: null } | { result: typeof OK; reservations: Reservation[] } {
     const available = [...MEMORY_MAP.values()].reduce((acc, curr) => acc + curr.available, 0);
 
     if (available < threads * threadSize) {
-        return { result: ReserveThreadsError.OutOfMemory, reservations: null }
+        return { result: ReserveThreadsError.OutOfMemory, reservations: null };
     }
 
-    const pendingReservations: {hostname: string, amount: number}[] = [];
+    const pendingReservations: { hostname: string; amount: number }[] = [];
 
     function cleanup(errorCode: ReserveThreadsError) {
         return { result: errorCode, reservations: null };
@@ -312,7 +316,7 @@ export function reserveThreads(threads: number, threadSize: number, tag?: string
         console.warn(
             `Apparently not enough memory available for ${threads}x${threadSize}GB: ${availablePostCleanup} - ${threads * threadSize} = ${availablePostCleanup - threads * threadSize} | attempted to use ${(((availablePostCleanup - availablePreCleanup) / threads) * threadSize * 100).toFixed(2)}% of available memory.`,
         );
-        return res
+        return res;
     }
 
     const reservations: Reservation[] = [];
@@ -322,7 +326,7 @@ export function reserveThreads(threads: number, threadSize: number, tag?: string
             for (const res of reservations) free(res);
             return cleanup(ReserveThreadsError.ReservationFailed);
         }
-        
+
         reservations.push(reservation);
     }
 
@@ -436,7 +440,7 @@ export async function load(ns: NS, system: typeof globalThis.system) {
         console.warn(`Overriding old memory configuration.`);
         ns.print(`WARNING: Overriding old memory configuration.`);
     }
-    
+
     system.memory = {
         register,
         reserve,

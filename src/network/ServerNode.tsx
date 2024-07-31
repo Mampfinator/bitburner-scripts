@@ -178,7 +178,12 @@ export function ServerNode({ data: { server, handles, ns, setInfoData } }: Serve
     const groups = Object.groupBy(reservations, (reservation) => reservation.tag ?? "unknown");
 
     const initialUsage = [];
-    for (const group of [...GROUP_ORDER, ...Object.keys(groups).filter((key) => !GROUP_ORDER.includes(key)).sort()]) {
+    for (const group of [
+        ...GROUP_ORDER,
+        ...Object.keys(groups)
+            .filter((key) => !GROUP_ORDER.includes(key))
+            .sort(),
+    ]) {
         if (!groups[group]) continue;
         const amount = sum(groups[group]!, (reservation) => reservation.amount);
         const color = getColor(group);

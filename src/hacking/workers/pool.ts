@@ -136,9 +136,10 @@ export class WorkerPool {
         const { result, reservations } = reserveThreads(numThreads, threadSize, options.mode);
 
         if (result !== OK) {
-            if (result !== ReserveThreadsError.OutOfMemory) console.warn(
-                `Could not reserve ${this.ns.formatRam(numThreads * threadSize)} (${this.ns.formatNumber(numThreads)}t) for worker batch. Code: ${result}. Aborting.`,
-            );
+            if (result !== ReserveThreadsError.OutOfMemory)
+                console.warn(
+                    `Could not reserve ${this.ns.formatRam(numThreads * threadSize)} (${this.ns.formatNumber(numThreads)}t) for worker batch. Code: ${result}. Aborting.`,
+                );
             return null;
         }
 
