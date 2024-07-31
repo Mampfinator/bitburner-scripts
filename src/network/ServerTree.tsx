@@ -7,14 +7,66 @@ import type { Edge, Node, Position } from "reactflow";
 
 const {
     React,
-    ReactFlow: { ReactFlowProvider, ReactFlow, Controls, useNodesState, useEdgesState, Position: PositionEnum },
+    ReactFlow: {
+        ReactFlowProvider,
+        ReactFlow,
+        Controls,
+        useNodesState,
+        useEdgesState,
+        Position: PositionEnum,
+        getNodesBounds,
+    },
     //dagre,
 } = globalThis;
 
 export const SPACE_X = 230;
 export const SPACE_Y = 115;
 
-function getLayoutedElements(ns: NS): { nodes: Node[]; edges: Edge[] } {
+class NodeGrid<T extends Omit<Node, "position"> = Omit<Node, "position">> {
+    private grid: Record<string, Record<string, T>> = {};
+
+    public maxX = 0;
+    public maxY = 0;
+    public minX = 0;
+    public minY = 0;
+
+    constructor(private defaultValue: Partial<T> = {}) {}
+
+    set(x: number, y: number, value: T) {
+        if (this.has(x, y)) console.warn("Overwriting node", x, y, value);
+        const row = (this.grid[x] ??= {});
+        row[y] = { ...this.defaultValue, ...value };
+
+        this.minX = Math.min(this.minX, x);
+        this.minY = Math.min(this.minY, y);
+        this.maxX = Math.max(this.maxX, x);
+        this.maxY = Math.max(this.maxY, y);
+    }
+
+    *[Symbol.iterator]() {
+        for (let x = this.minX; x <= this.maxX; x++) {
+            for (let y = this.minY; y <= this.maxY; y++) {
+                const value = this.grid[x]?.[y];
+                if (value) yield { x, y, value };
+            }
+        }
+    }
+
+    has(x: number, y: number) {
+        return this.grid[x]?.[y] !== undefined;
+    }
+
+    toNodesArray(): Node[] {
+        return [...this].map(({ x, y, value }) => {
+            return {
+                ...value,
+                position: { x: x * SPACE_X, y: y * SPACE_Y },
+            };
+        });
+    }
+}
+
+function getLayoutedElements(ns: NS, purchasedServerContainers: boolean = false): { nodes: Node[]; edges: Edge[] } {
     const serverGraph = getServerGraph(ns, {
         startFrom: "home",
         backdoorIsHomeLink: false,
@@ -22,68 +74,25 @@ function getLayoutedElements(ns: NS): { nodes: Node[]; edges: Edge[] } {
 
     const tree = serverGraph.toTree("home");
 
-    const initialNodes: Node[] = [];
     const initialEdges: Edge[] = [];
 
     type HandleType = "source" | "target";
 
-    function pushNode(server: string, x: number, y: number, handles?: [HandleType, Position][]) {
-        initialNodes.push({
-            id: server,
-            position: { x, y },
-            type: "server",
-            data: {
-                server: ns.getServer(server),
-                handles,
-                ns,
-            },
-        });
-    }
+    const grid = new NodeGrid({ type: "server", data: { ns } });
 
-    type GridData = {
-        server: string;
-        handles?: [HandleType, Position][];
-    };
-
-    const grid = {
-        minX: 0,
-        minY: 0,
-        maxX: 0,
-        maxY: 0,
-        grid: {} as Record<string, Record<string, GridData>>,
-        *[Symbol.iterator]() {
-            for (let x = grid.minX; x <= grid.maxX; x++) {
-                for (let y = grid.minY; y <= grid.maxY; y++) {
-                    const data = grid.grid[x]?.[y];
-                    if (data) yield { x, y, data };
-                }
-            }
+    grid.set(0, 0, {
+        id: "home",
+        data: {
+            server: servers.get("home")!,
+            handles: [
+                ["source", PositionEnum.Right],
+                ["source", PositionEnum.Left],
+            ],
+            ns,
         },
-        has(x: number, y: number) {
-            return this.grid[x]?.[y] !== undefined;
-        },
-    };
-
-    function pushGrid(x: number, y: number, data: GridData) {
-        if (grid.has(x, y)) console.warn(`Overriding old grid data at ${x}, ${y}`, grid.grid[x][y]);
-        const row = (grid.grid[x] ??= {});
-        row[y] = data;
-
-        grid.minX = Math.min(grid.minX, x);
-        grid.minY = Math.min(grid.minY, y);
-        grid.maxX = Math.max(grid.maxX, x);
-        grid.maxY = Math.max(grid.maxY, y);
-    }
-
-    pushGrid(0, 0, {
-        server: "home",
-        handles: [
-            ["source", PositionEnum.Right],
-            ["source", PositionEnum.Left],
-        ],
     });
 
-    const [purchasedServers, children] = splitFilter(
+    const [allPurchased, children] = splitFilter(
         [...tree.children.values()],
         (element) => ns.getServer(element.name).purchasedByPlayer,
     );
@@ -106,9 +115,13 @@ function getLayoutedElements(ns: NS): { nodes: Node[]; edges: Edge[] } {
                     next.push([{ x, y, name: node.name }, [...node.children.values()]]);
                 }
 
-                pushGrid(x, y, {
-                    server: node.name,
-                    handles,
+                grid.set(x, y, {
+                    id: node.name,
+                    data: {
+                        server: servers.get(node.name)!,
+                        handles,
+                        ns,
+                    },
                 });
 
                 initialEdges.push({
@@ -170,132 +183,149 @@ function getLayoutedElements(ns: NS): { nodes: Node[]; edges: Edge[] } {
     }
 
     const PURCHASED_HANDLES: [HandleType, Position][] = [["target", PositionEnum.Right]];
+
+    const [hacknet, purchased] = splitFilter(
+        allPurchased.map((element) => globalThis.servers.get(element.name)!),
+        (server) => server.isHacknetServer,
+    );
+
+    const rows = Math.abs(grid.maxY - grid.minY) + 1;
+    const purchasedRows = Math.ceil((purchased.length / allPurchased.length) * rows);
+    const purchasedRowLength = Math.round(purchased.length / purchasedRows);
+
     let x = -1;
+    let y = grid.minY;
 
-    while (purchasedServers.length > 0) {
-        for (let y = grid.minY; y <= grid.maxY; y++) {
-            const node = purchasedServers.shift();
-            if (!node) break;
-
-            pushGrid(x, y, {
-                server: node.name,
-                handles: PURCHASED_HANDLES,
+    const purchasedGrid = new NodeGrid({ type: "server" });
+    for (let i = 0; i < purchasedRows; i++) {
+        x = -1;
+        const row = purchased.slice(i * purchasedRowLength, (i + 1) * purchasedRowLength);
+        for (let j = 0; j < row.length; j++) {
+            purchasedGrid.set(x, y, {
+                id: row[j].hostname,
+                data: {
+                    server: row[j],
+                    handles: purchasedServerContainers ? undefined : PURCHASED_HANDLES,
+                    ns,
+                },
             });
 
-            initialEdges.push({
-                id: `purchased-${node.name}`,
-                source: "home",
-                target: node.name,
-                sourceHandle: "1",
-            });
+            if (!purchasedServerContainers)
+                initialEdges.push({
+                    id: `home-${row[j].hostname}`,
+                    source: "home",
+                    target: row[j].hostname,
+                    sourceHandle: "1",
+                });
+
+            x -= 1;
         }
-
-        x -= 1;
+        y += 1;
     }
 
-    for (const { x, y, data } of grid) {
-        pushNode(data.server, x * SPACE_X, y * SPACE_Y, data.handles);
+    const purchasedNodes = purchasedGrid.toNodesArray();
+    if (purchasedServerContainers && purchasedNodes.length > 0) {
+        const bounds = getNodesBounds(purchasedNodes);
+
+        const growX = SPACE_X * 0.5;
+        const growY = SPACE_Y * 0.5;
+
+        purchasedNodes.unshift({
+            id: "purchased-container",
+            type: "output",
+            position: { x: bounds.x - growX / 4 + 14, y: bounds.y - growY / 4 },
+            style: {
+                zIndex: -1,
+                background: "rgba(0, 48, 32, 0.85)",
+                width: bounds.width + 2 * growX,
+                height: bounds.height + 2 * growY,
+            },
+            targetPosition: PositionEnum.Right,
+            data: {},
+        });
+
+        initialEdges.push({
+            id: "purchased-container-home",
+            source: "home",
+            target: "purchased-container",
+            sourceHandle: "1",
+        });
     }
 
-    return { nodes: initialNodes, edges: initialEdges };
+    const hacknetRows = rows - purchasedRows;
+    const hacknetRowLength = Math.round(hacknet.length / hacknetRows);
+
+    const hacknetGrid = new NodeGrid({ type: "server" });
+
+    for (let i = 0; i < hacknetRows; i++) {
+        x = -1;
+        const row = hacknet.slice(i * hacknetRowLength, (i + 1) * hacknetRowLength);
+        for (let j = 0; j < row.length; j++) {
+            hacknetGrid.set(x, y, {
+                id: row[j].hostname,
+                data: {
+                    server: row[j],
+                    handles: purchasedServerContainers ? undefined : PURCHASED_HANDLES,
+                    ns,
+                },
+            });
+
+            if (!purchasedServerContainers)
+                initialEdges.push({
+                    id: `home-${row[j].hostname}`,
+                    source: "home",
+                    target: row[j].hostname,
+                    sourceHandle: "1",
+                });
+
+            x -= 1;
+        }
+        y += 1;
+    }
+
+    const hacknetNodes = hacknetGrid.toNodesArray();
+    if (purchasedServerContainers && hacknetNodes.length > 0) {
+        const bounds = getNodesBounds(hacknetNodes);
+
+        const growX = SPACE_X * 0.5;
+        const growY = SPACE_Y * 0.5;
+
+        hacknetNodes.unshift({
+            id: "hacknet-container",
+            type: "output",
+            position: { x: bounds.x - growX / 4 + 14, y: bounds.y - growY / 4 },
+            style: {
+                zIndex: -1,
+                background: "rgba(0, 48, 32, 0.85)",
+                width: bounds.width + 2 * growX,
+                height: bounds.height + 2 * growY,
+            },
+            targetPosition: PositionEnum.Right,
+            data: {},
+        });
+
+        initialEdges.push({
+            id: "hacknet-container-home",
+            source: "home",
+            target: "hacknet-container",
+            sourceHandle: "1",
+        });
+    }
+
+    return { nodes: [...grid.toNodesArray(), ...purchasedNodes, ...hacknetNodes], edges: initialEdges };
 }
 
-// FIXME: Dagre layouting doesn't seem to work.
-// TODO: implement splitting of purchased and other servers similar to normal `getLayoutedElements`.
-/*function getLayoutedElementsDagre(ns: NS): { nodes: Node[]; edges: Edge[] } {
-    const tree = getServerGraph(ns).toTree("home");
-
-    function getElements(node: TreeNode, nodes: Node[] = [], edges: Edge[] = []) {
-        nodes.push(
-            ...[...node.children.values()].map((child) => {
-                const handles = [["target", PositionEnum.Left]];
-                if (child.children.size > 0) handles.push(["source", PositionEnum.Right]);
-
-                return {
-                    id: child.name,
-                    position: { x: 0, y: 0 },
-                    type: "server",
-                    data: {
-                        server: ns.getServer(child.name),
-                        ns,
-                        handles,
-                    },
-                };
-            }),
-        );
-
-        edges.push(
-            ...[...node.children.values()].map((child) => {
-                return {
-                    id: `${node.name}-${child.name}`,
-                    source: node.name,
-                    target: child.name,
-                    type: "smoothstep",
-                };
-            }),
-        );
-
-        for (const child of node.children.values()) {
-            const { nodes: childNodes, edges: childEdges } = getElements(child);
-
-            nodes.push(...childNodes);
-            edges.push(...childEdges);
-        }
-
-        return { nodes, edges };
-    }
-
-    const dagreGraph = new dagre.graphlib.Graph();
-    dagreGraph.setDefaultEdgeLabel(() => ({}));
-
-    const nodeWidth = SPACE_X * 0.7;
-    const nodeHeight = SPACE_Y * 0.7;
-
-    const { nodes, edges } = getElements(tree);
-
-    nodes.push({
-        id: "home",
-        position: { x: 0, y: 0 },
-        type: "server",
-        data: {
-            server: ns.getServer("home"),
-            ns,
-            handles: [
-                ["source", PositionEnum.Right],
-                ["source", PositionEnum.Left],
-            ],
-        },
-    });
-
-    dagreGraph.setGraph({ rankdir: "LR" });
-
-    for (const node of nodes) {
-        dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
-    }
-
-    for (const edge of edges) {
-        dagreGraph.setEdge(edge.source, edge.target);
-    }
-
-    dagre.layout(dagreGraph);
-
-    const positionedNodes = nodes.map((node) => {
-        const nodeWithPosition = dagreGraph.node(node.id);
-        return {
-            ...node,
-            position: {
-                x: nodeWithPosition.x,
-                y: nodeWithPosition.y,
-            },
-        };
-    });
-
-    return { nodes: positionedNodes, edges };
-}*/
-
-// FIXME: rendering broke. First bad commit seems to be 106ebcf90bf600914589e0da6d04ee0014eff826
-export function ServerTree({ ns }: { ns: NS }): React.ReactElement {
-    const { nodes: initialNodes, edges: initialEdges } = getLayoutedElements(ns);
+export function ServerTree({
+    ns,
+    purchasedServerContainers = false,
+}: {
+    ns: NS;
+    purchasedServerContainers?: boolean;
+}): React.ReactElement {
+    const { nodes: initialNodes, edges: initialEdges } = React.useMemo(
+        () => getLayoutedElements(ns, purchasedServerContainers),
+        [],
+    );
 
     const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -308,7 +338,7 @@ export function ServerTree({ ns }: { ns: NS }): React.ReactElement {
             globalThis.eventEmitter.withCleanup(
                 "server:added",
                 () => {
-                    const { nodes, edges } = getLayoutedElements(ns);
+                    const { nodes, edges } = getLayoutedElements(ns, purchasedServerContainers);
                     setNodes(nodes);
                     setEdges(edges);
                 },
@@ -317,7 +347,7 @@ export function ServerTree({ ns }: { ns: NS }): React.ReactElement {
             globalThis.eventEmitter.withCleanup(
                 "server:deleted",
                 () => {
-                    const { nodes, edges } = getLayoutedElements(ns);
+                    const { nodes, edges } = getLayoutedElements(ns, purchasedServerContainers);
                     setNodes(nodes);
                     setEdges(edges);
                 },

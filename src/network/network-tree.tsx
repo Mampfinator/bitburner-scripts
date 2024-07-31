@@ -9,23 +9,33 @@ import { sleep } from "/lib/lib";
 const { React } = globalThis;
 
 export async function main(ns: NS) {
+    const { purchasedServerContainers } = ns.flags([["purchasedServerContainers", false]]) as {
+        purchasedServerContainers: boolean;
+    };
+
     auto(ns, { tag: "system" });
     ns.disableLog("ALL");
     ns.clearLog();
 
-    await apply({
-        type: "rawStylesheet",
-        style: SERVER_NODE_STYLE,
-    }, "server-graph-styles");
+    await apply(
+        {
+            type: "rawStylesheet",
+            style: SERVER_NODE_STYLE,
+        },
+        "server-graph-styles",
+    );
 
-    await apply({
-        type: "rawStylesheet",
-        style: SERVER_MENU_STYLE as any,
-    }, "server-graph-server-menu-styles");
+    await apply(
+        {
+            type: "rawStylesheet",
+            style: SERVER_MENU_STYLE as any,
+        },
+        "server-graph-server-menu-styles",
+    );
 
     ns.tail();
 
-    ns.printRaw(<ServerTree ns={ns} />);
+    ns.printRaw(<ServerTree ns={ns} purchasedServerContainers={purchasedServerContainers} />);
 
     while (true) {
         await sleep(10000, true);
