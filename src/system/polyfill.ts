@@ -5,6 +5,7 @@ declare global {
     var ReactFlow: typeof ReactFlowNS;
     var dagre: typeof dagreNS;
     var chalk: typeof import("chalk").default;
+    var unionize: typeof import("unionize");
 }
 
 declare global {

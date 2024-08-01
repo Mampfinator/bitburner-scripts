@@ -13,25 +13,29 @@ const PENDING_DEPENDENCIES = new Map<string, ReturnType<PromiseConstructor["with
 async function makeScript(dep: ScriptDependency, element: HTMLScriptElement) {
     let ready: Promise<void>;
 
-    if (dep.module && !!dep.imports) {
+    if (dep.append || dep.prepend || (dep.module && !!dep.imports)) {
         const original = await fetch(dep.src).then((res) => res.text());
         let source = original;
 
-        element.type = "module";
-        source = source.replaceAll(/(?<=import *.+ *from *\")(.+?)(?=\")/g, (match: string) => {
-            const replacer = dep.imports![match];
-            if (replacer) {
-                console.log(`Replacing ${match} with ${replacer}.`);
-                return replacer;
-            }
+        if (dep.prepend) source = dep.prepend + source;
 
-            // if import is relative, make it absolute.
-            if (match.startsWith(".")) {
-                return join(dep.src, match);
-            }
+        if (dep.module && !!dep.imports) {
+            element.type = "module";
+            source = source.replaceAll(/(?<=import *.+ *from *\")(.+?)(?=\")/g, (match: string) => {
+                const replacer = dep.imports![match];
+                if (replacer) {
+                    console.log(`Replacing ${match} with ${replacer}.`);
+                    return replacer;
+                }
 
-            return match;
-        });
+                // if import is relative, make it absolute.
+                if (match.startsWith(".")) {
+                    return join(dep.src, match);
+                }
+
+                return match;
+            });
+        }
 
         if (dep.append) {
             if (!source.endsWith(";")) source += ";";
@@ -91,6 +95,7 @@ interface ScriptDependency {
     type: "script";
     src: string;
     append?: string;
+    prepend?: string;
     module?: boolean;
     imports?: Record<string, string>;
 }
