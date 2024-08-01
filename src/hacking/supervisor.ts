@@ -1,7 +1,7 @@
 import { NS, Server } from "@ns";
-import { WORKER_SCRIPTS, WorkerMode } from "./workers/consts";
+import { WORKER_SCRIPTS, WorkerMode } from "./consts";
 import { type WorkerGroup } from "./workers/group";
-import { WorkerPool } from "./workers/pool";
+import { WorkerPool } from "./pool";
 import { MONITORING_PORT } from "monitoring/monitor.js";
 import { calcThreads } from "/lib/network-threads";
 import { auto } from "/system/proc/auto";
@@ -14,7 +14,6 @@ export interface SupervisorSettings {
 }
 
 // TODO: rewrite
-// TODO: use `ServerCache`
 export async function main(ns: NS) {
     auto(ns, { tag: "hacking" });
     const startedAt = Math.floor(Date.now() / 1000);
@@ -89,6 +88,8 @@ export async function main(ns: NS) {
                 ratio += (1 - ratio) / 2;
             }
         }
+
+        
 
         return Math.min(Math.max(ratio, minRatio), maxRatio);
     }

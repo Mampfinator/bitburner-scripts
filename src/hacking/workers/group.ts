@@ -1,7 +1,8 @@
 import { NS } from "@ns";
-import { WorkerMode } from "./consts";
-import { WorkerPool } from "./pool";
+import { WorkerMode } from "../consts";
+import { WorkerPool } from "../pool";
 import { Worker, WorkResult } from "./worker";
+import { findExtremes } from "/lib/lib";
 
 export class WorkerGroup {
     workers: Set<Worker>;
@@ -34,6 +35,14 @@ export class WorkerGroup {
 
     get ram() {
         return this.threads * this.pool.workerRam[this.mode];
+    }
+
+    /**
+     * @returns the minimum cores any worker in this group has available to it.
+     */
+    minCores(): number {
+        const { min } = findExtremes([...this.workers].map(worker => globalThis.servers.get(worker.hostname!)!), server => server.cpuCores)!;
+        return min.cpuCores;
     }
 
     /**

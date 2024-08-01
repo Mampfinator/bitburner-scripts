@@ -1,6 +1,6 @@
 import { NS } from "@ns";
-import { WORKER_MESSAGE_PORT, WORKER_SCRIPTS, WorkerMode } from "./consts";
-import { WorkerPool } from "./pool";
+import { WORKER_MESSAGE_PORT, WORKER_SCRIPTS, WorkerMode } from "../consts";
+import { WorkerPool } from "../pool";
 import { run as runScript } from "../../system/proc/run";
 import { Reservation } from "/system/memory";
 
@@ -36,6 +36,7 @@ export class Worker {
     threads: number = 0;
     pid: number = 0;
     awaitKilled: Promise<void>;
+    private readonly reservation;
 
     [Symbol.toPrimitive]() {
         return `Worker(${this.running ? this.pid : "DEAD"}:${this.mode}=>${this.target})`;
@@ -51,9 +52,9 @@ export class Worker {
 
         const scriptPath = WORKER_SCRIPTS[this.mode];
 
-        const reservation =
+        const reservation = this.reservation =
             options.useReservation ??
-            globalThis.system.memory.reserve(this.pool.workerRam[this.mode] * this.threads, { tag: this.mode });
+            globalThis.system.memory.reserve(this.pool.workerRam[this.mode] * this.threads, { tag: this.mode })!;
 
         const [pid, killed] = runScript(
             ns,
@@ -79,6 +80,11 @@ export class Worker {
         this.pid = pid;
         this.pool.byPids.set(this.pid, this);
         this.pool.free.add(this);
+    }
+
+    public get hostname(): string | null {
+        if (!this.running) return null;
+        return this.reservation.hostname;
     }
 
     get running() {

@@ -19,6 +19,8 @@ const EMIT_ON_UPDATE = {
     maxRam: "ram-updated",
 };
 
+// FIXME: servers seem to not update when they should and I have *no* idea why.
+
 /**
  * **Singleton** cache for servers and their related info.
  */
@@ -144,7 +146,7 @@ export class ServerData extends EventEmitter<ServerEvents> implements Server {
         private cache: ServerCache,
     ) {
         super();
-        this.server = { ...server };
+        this.server = structuredClone(server);
         this.memInfo;
     }
 

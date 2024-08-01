@@ -8,12 +8,12 @@ export const DELAY = 200;
  */
 export class HWGWWorkerBatch {
     constructor(
-        private readonly ns: NS,
-        private readonly target: string,
-        private readonly weakenGrowGroup: WorkerGroup,
-        private readonly weakenHackGroup: WorkerGroup,
-        private readonly growGroup: WorkerGroup,
-        private readonly hackGroup: WorkerGroup,
+        public readonly ns: NS,
+        public readonly target: string,
+        public readonly weakenGrowGroup: WorkerGroup,
+        public readonly weakenHackGroup: WorkerGroup,
+        public readonly growGroup: WorkerGroup,
+        public readonly hackGroup: WorkerGroup,
     ) {}
 
     /**
@@ -77,6 +77,15 @@ export class HWGWWorkerBatch {
 
         return hackResult.result;
     }
+    
+    async runContinuously() {
+        while (this.runnable) {
+            const result = await this.work();
+            if (result === null) return false;
+        }
+
+        return true;
+    }
 
     getDoneTime() {
         return this.ns.getWeakenTime(this.target) + 3 * DELAY;
@@ -84,20 +93,25 @@ export class HWGWWorkerBatch {
 
     get runnable() {
         return (
-            this.weakenGrowGroup !== null &&
-            this.weakenHackGroup !== null &&
-            this.hackGroup !== null &&
-            this.growGroup !== null
+            !!this.weakenGrowGroup &&
+            !!this.weakenHackGroup &&
+            !!this.hackGroup &&
+            !!this.growGroup 
         );
     }
 
     /**
      * Kill every worker in this batch. Effectively makes this worker unusable.
+     * Also deletes the groups from the batch.
      */
     stop() {
         this.weakenGrowGroup?.stop();
+        Reflect.deleteProperty(this, "weakenGrowGroup");
         this.weakenHackGroup?.stop();
+        Reflect.deleteProperty(this, "weakenHackGroup");
         this.hackGroup?.stop();
+        Reflect.deleteProperty(this, "hackGroup");
         this.growGroup?.stop();
+        Reflect.deleteProperty(this, "growGroup");
     }
 }

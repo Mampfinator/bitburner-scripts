@@ -1,8 +1,8 @@
 import { NS } from "@ns";
-import { Worker, WorkerOptions, WorkResult } from "./worker";
+import { Worker, WorkerOptions, WorkResult } from "./workers/worker";
 import { POOL_MESSAGE_PORT_BASE, WORKER_MESSAGE_PORT, WORKER_SCRIPTS, WorkerMode } from "./consts";
-import { HWGWWorkerBatch } from "./batch";
-import { WorkerGroup } from "./group";
+import { HWGWWorkerBatch } from "./workers/batch";
+import { WorkerGroup } from "./workers/group";
 import { OK, Reservation, reserveThreads, ReserveThreadsError } from "/system/memory";
 
 export interface PoolOptions {
