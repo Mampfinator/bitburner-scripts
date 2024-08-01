@@ -41,7 +41,10 @@ export class WorkerGroup {
      * @returns the minimum cores any worker in this group has available to it.
      */
     minCores(): number {
-        const { min } = findExtremes([...this.workers].map(worker => globalThis.servers.get(worker.hostname!)!), server => server.cpuCores)!;
+        const { min } = findExtremes(
+            [...this.workers].map((worker) => globalThis.servers.get(worker.hostname!)!),
+            (server) => server.cpuCores,
+        )!;
         return min.cpuCores;
     }
 

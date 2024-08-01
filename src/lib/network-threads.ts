@@ -22,7 +22,7 @@ export function calcThreads(
     }
 
     if (isNaN(total)) total = Number.MAX_SAFE_INTEGER;
-    if (isNaN(free)) free = Number.MAX_SAFE_INTEGER
+    if (isNaN(free)) free = Number.MAX_SAFE_INTEGER;
 
     return { total, free };
 }

@@ -31,7 +31,10 @@ class NodeGrid<T extends Omit<Node, "position"> = Omit<Node, "position">> {
     public minX = 0;
     public minY = 0;
 
-    constructor(private defaultValue: Partial<T> = {}, private offset = { x: 0, y: 0 }) {}
+    constructor(
+        private defaultValue: Partial<T> = {},
+        private offset = { x: 0, y: 0 },
+    ) {}
 
     set(x: number, y: number, value: T) {
         if (this.has(x, y)) console.warn("Overwriting node", x, y, value);
@@ -197,7 +200,10 @@ function getLayoutedElements(ns: NS, purchasedServerContainers: boolean = false)
     let x = -1;
     let y = grid.minY;
 
-    const purchasedGrid = new NodeGrid({ type: "server" }, purchasedServerContainers ? { x: -SPACE_X/4, y: 0 } : undefined);
+    const purchasedGrid = new NodeGrid(
+        { type: "server" },
+        purchasedServerContainers ? { x: -SPACE_X / 4, y: 0 } : undefined,
+    );
     for (let i = 0; i < purchasedRows; i++) {
         x = -1;
         const row = purchased.slice(i * purchasedRowLength, (i + 1) * purchasedRowLength);
@@ -256,7 +262,10 @@ function getLayoutedElements(ns: NS, purchasedServerContainers: boolean = false)
     const hacknetRows = rows - purchasedRows;
     const hacknetRowLength = Math.round(hacknet.length / hacknetRows);
 
-    const hacknetGrid = new NodeGrid({ type: "server" }, purchasedServerContainers ? { x: -SPACE_X/4 - 200, y: 0} : undefined);
+    const hacknetGrid = new NodeGrid(
+        { type: "server" },
+        purchasedServerContainers ? { x: -SPACE_X / 4 - 200, y: 0 } : undefined,
+    );
 
     for (let i = 0; i < hacknetRows; i++) {
         x = -1;

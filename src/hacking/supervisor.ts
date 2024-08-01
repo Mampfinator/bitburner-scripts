@@ -89,8 +89,6 @@ export async function main(ns: NS) {
             }
         }
 
-        
-
         return Math.min(Math.max(ratio, minRatio), maxRatio);
     }
 

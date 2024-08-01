@@ -77,7 +77,7 @@ export class HWGWWorkerBatch {
 
         return hackResult.result;
     }
-    
+
     async runContinuously() {
         while (this.runnable) {
             const result = await this.work();
@@ -92,12 +92,7 @@ export class HWGWWorkerBatch {
     }
 
     get runnable() {
-        return (
-            !!this.weakenGrowGroup &&
-            !!this.weakenHackGroup &&
-            !!this.hackGroup &&
-            !!this.growGroup 
-        );
+        return !!this.weakenGrowGroup && !!this.weakenHackGroup && !!this.hackGroup && !!this.growGroup;
     }
 
     /**

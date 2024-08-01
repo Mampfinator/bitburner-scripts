@@ -52,9 +52,9 @@ export class Worker {
 
         const scriptPath = WORKER_SCRIPTS[this.mode];
 
-        const reservation = this.reservation =
+        const reservation = (this.reservation =
             options.useReservation ??
-            globalThis.system.memory.reserve(this.pool.workerRam[this.mode] * this.threads, { tag: this.mode })!;
+            globalThis.system.memory.reserve(this.pool.workerRam[this.mode] * this.threads, { tag: this.mode })!);
 
         const [pid, killed] = runScript(
             ns,

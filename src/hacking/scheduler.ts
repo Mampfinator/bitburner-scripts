@@ -17,14 +17,13 @@ function checkNetworkMemory() {
 function getAvailableMemory(chunkSize: number) {
     let total = 0;
     for (const server of servers.values()) {
-        const available = server.memInfo.available
+        const available = server.memInfo.available;
         if (available > chunkSize) {
             total += available;
-        };
+        }
     }
     return total;
 }
-
 
 export async function main(ns: NS) {
     auto(ns, { tag: "hacking" });
@@ -40,7 +39,7 @@ export async function main(ns: NS) {
     while (!(await testBatch.prepare())) {
         console.log("Preparing batch....");
         await sleep(250, true);
-    };
+    }
 
     let i;
     for (i = 0; i < 2500; i++) {
@@ -50,7 +49,7 @@ export async function main(ns: NS) {
 
     ns.tprint(`Scheduled ${i} ${server.hostname} batches.`);
 
-    batchManagers.set(server.hostname, testBatch);   
+    batchManagers.set(server.hostname, testBatch);
     while (true) {
         await sleep(250);
     }
@@ -64,7 +63,7 @@ class BatchManager {
     private readonly batches = new Set<HWGWWorkerBatch>();
 
     private workPromises = new Set<Promise<boolean>>();
-    
+
     _target: ServerData;
 
     public get target() {
@@ -83,7 +82,7 @@ class BatchManager {
 
     /**
      * Prepare a server for being cycled.
-     * @returns whether the server has been prepared. 
+     * @returns whether the server has been prepared.
      * This should only ever return false when we're operating in a thread-starved environment.
      */
     public async prepare(): Promise<boolean> {
@@ -94,13 +93,13 @@ class BatchManager {
         const workers: WorkerGroup[] = [];
 
         const cleanup = () => {
-            workers.forEach(worker => worker.stop());
-        }
+            workers.forEach((worker) => worker.stop());
+        };
 
         if (growMultiplier !== 1) {
             const growThreads = Math.min(
                 this.ns.growthAnalyze(this.target.hostname, growMultiplier, 1),
-                calcThreads(this.pool.workerRam[WorkerMode.Grow]).free
+                calcThreads(this.pool.workerRam[WorkerMode.Grow]).free,
             );
 
             const grow = this.pool.reserveGroup(growThreads, { mode: WorkerMode.Grow, target: this.target.hostname });
@@ -117,7 +116,10 @@ class BatchManager {
         weakenThreads = Math.min(weakenThreads, calcThreads(this.pool.workerRam[WorkerMode.Weaken]).free);
 
         if (weakenThreads > 0) {
-            const weaken = this.pool.reserveGroup(weakenThreads, { mode: WorkerMode.Weaken, target: this.target.hostname });
+            const weaken = this.pool.reserveGroup(weakenThreads, {
+                mode: WorkerMode.Weaken,
+                target: this.target.hostname,
+            });
             if (!weaken) {
                 cleanup();
                 return false;
@@ -126,8 +128,7 @@ class BatchManager {
             workers.push(weaken);
         }
 
-
-        await Promise.all(workers.map(worker => worker.work()));
+        await Promise.all(workers.map((worker) => worker.work()));
         cleanup();
         return this.isPrepared();
     }
@@ -136,9 +137,13 @@ class BatchManager {
      * @returns the minimum amount of cores any single worker in this batch has available to it.
      */
     public minCores() {
-        const res = findExtremes([...this.batches].map(batch => [
-            batch.hackGroup, batch.growGroup, batch.weakenGrowGroup, batch.weakenHackGroup
-        ]).flat().map(group => group.minCores()), cores => cores)!;
+        const res = findExtremes(
+            [...this.batches]
+                .map((batch) => [batch.hackGroup, batch.growGroup, batch.weakenGrowGroup, batch.weakenHackGroup])
+                .flat()
+                .map((group) => group.minCores()),
+            (cores) => cores,
+        )!;
 
         return res?.min ?? 1;
     }
@@ -155,16 +160,16 @@ class BatchManager {
     public schedule(): boolean {
         const hackRatio = this.calculateHackRatio();
 
-        const { 
-            hackThreads, growThreads, 
-            growWeakenThreads, hackWeakenThreads
-        } = this.pool.calculateBatchRatios(this.target.hostname, hackRatio);
+        const { hackThreads, growThreads, growWeakenThreads, hackWeakenThreads } = this.pool.calculateBatchRatios(
+            this.target.hostname,
+            hackRatio,
+        );
 
         const groups: WorkerGroup[] = [];
         const cleanup = () => {
-            groups.forEach(group => group.stop());
+            groups.forEach((group) => group.stop());
             return false;
-        }
+        };
 
         const hackGroup = this.pool.reserveGroup(hackThreads, { mode: WorkerMode.Hack, target: this.target.hostname });
         if (!hackGroup) return cleanup();
@@ -174,19 +179,32 @@ class BatchManager {
         if (!growGroup) return cleanup();
         groups.push(growGroup);
 
-        const weakenGrowGroup = this.pool.reserveGroup(growWeakenThreads, { mode: WorkerMode.Weaken, target: this.target.hostname });
+        const weakenGrowGroup = this.pool.reserveGroup(growWeakenThreads, {
+            mode: WorkerMode.Weaken,
+            target: this.target.hostname,
+        });
         if (!weakenGrowGroup) return cleanup();
         groups.push(weakenGrowGroup);
 
-        const weakenHackGroup = this.pool.reserveGroup(hackWeakenThreads, { mode: WorkerMode.Weaken, target: this.target.hostname });
+        const weakenHackGroup = this.pool.reserveGroup(hackWeakenThreads, {
+            mode: WorkerMode.Weaken,
+            target: this.target.hostname,
+        });
         if (!weakenHackGroup) return cleanup();
         groups.push(weakenHackGroup);
 
-        const batch = new HWGWWorkerBatch(this.ns, this.target.hostname, weakenGrowGroup, weakenHackGroup, growGroup, hackGroup)
+        const batch = new HWGWWorkerBatch(
+            this.ns,
+            this.target.hostname,
+            weakenGrowGroup,
+            weakenHackGroup,
+            growGroup,
+            hackGroup,
+        );
         this.batches.add(batch);
 
         this.workPromises.add(batch.runContinuously());
-        
+
         return true;
     }
 
@@ -194,19 +212,16 @@ class BatchManager {
      * Whether the server is currently prepared.
      */
     public isPrepared(): boolean {
-        const { 
-            hackDifficulty, minDifficulty,
-            moneyAvailable, moneyMax
-        } = this.target;
+        const { hackDifficulty, minDifficulty, moneyAvailable, moneyMax } = this.target;
 
-        return (moneyAvailable === moneyMax && hackDifficulty === minDifficulty);
+        return moneyAvailable === moneyMax && hackDifficulty === minDifficulty;
     }
 
     /**
      * Kill every workers on this manager.
      */
     public stop(): void {
-        this.batches.forEach(batch => batch.stop());
+        this.batches.forEach((batch) => batch.stop());
         this.batches.clear();
     }
 }
