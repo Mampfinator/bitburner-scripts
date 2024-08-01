@@ -4,6 +4,7 @@ import { ServerNode } from "./ServerNode";
 import { getServerGraph, TreeNode } from "/lib/servers/graph";
 import { findExtremes, splitFilter } from "/lib/lib";
 import type { Edge, Node, Position } from "reactflow";
+import { HacknetContainer } from "./HacknetContainer";
 
 const {
     React,
@@ -30,7 +31,7 @@ class NodeGrid<T extends Omit<Node, "position"> = Omit<Node, "position">> {
     public minX = 0;
     public minY = 0;
 
-    constructor(private defaultValue: Partial<T> = {}) {}
+    constructor(private defaultValue: Partial<T> = {}, private offset = { x: 0, y: 0 }) {}
 
     set(x: number, y: number, value: T) {
         if (this.has(x, y)) console.warn("Overwriting node", x, y, value);
@@ -60,7 +61,7 @@ class NodeGrid<T extends Omit<Node, "position"> = Omit<Node, "position">> {
         return [...this].map(({ x, y, value }) => {
             return {
                 ...value,
-                position: { x: x * SPACE_X, y: y * SPACE_Y },
+                position: { x: x * SPACE_X + this.offset.x, y: y * SPACE_Y + this.offset.y },
             };
         });
     }
@@ -196,7 +197,7 @@ function getLayoutedElements(ns: NS, purchasedServerContainers: boolean = false)
     let x = -1;
     let y = grid.minY;
 
-    const purchasedGrid = new NodeGrid({ type: "server" });
+    const purchasedGrid = new NodeGrid({ type: "server" }, purchasedServerContainers ? { x: -SPACE_X/4, y: 0 } : undefined);
     for (let i = 0; i < purchasedRows; i++) {
         x = -1;
         const row = purchased.slice(i * purchasedRowLength, (i + 1) * purchasedRowLength);
@@ -255,7 +256,7 @@ function getLayoutedElements(ns: NS, purchasedServerContainers: boolean = false)
     const hacknetRows = rows - purchasedRows;
     const hacknetRowLength = Math.round(hacknet.length / hacknetRows);
 
-    const hacknetGrid = new NodeGrid({ type: "server" });
+    const hacknetGrid = new NodeGrid({ type: "server" }, purchasedServerContainers ? { x: -SPACE_X/4 - 200, y: 0} : undefined);
 
     for (let i = 0; i < hacknetRows; i++) {
         x = -1;
@@ -292,16 +293,18 @@ function getLayoutedElements(ns: NS, purchasedServerContainers: boolean = false)
 
         hacknetNodes.unshift({
             id: "hacknet-container",
-            type: "output",
+            type: "hacknetContainer",
             position: { x: bounds.x - growX / 4 + 14, y: bounds.y - growY / 4 },
             style: {
                 zIndex: -1,
-                background: "rgba(0, 48, 32, 0.85)",
-                width: bounds.width + 2 * growX,
-                height: bounds.height + 2 * growY,
+                background: "rgba(44, 48, 0, 0.85)", // muted yellow
             },
             targetPosition: PositionEnum.Right,
-            data: {},
+            data: {
+                ns,
+                width: bounds.width + 2 * growX + 200,
+                height: bounds.height + 2 * growY,
+            },
         });
 
         initialEdges.push({
@@ -395,7 +398,7 @@ export function ServerTree({
                     nodesConnectable={false}
                     edges={edges}
                     onEdgesChange={onEdgesChange}
-                    nodeTypes={{ server: ServerNode }}
+                    nodeTypes={{ server: ServerNode, hacknetContainer: HacknetContainer }}
                     proOptions={{ hideAttribution: true }}
                 >
                     <Controls position="bottom-left" />
