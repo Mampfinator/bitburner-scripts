@@ -238,11 +238,12 @@ export class ServerData extends EventEmitter<ServerEvents> implements Server {
                     `server:${EMIT_ON_UPDATE[key as keyof typeof EMIT_ON_UPDATE]}`,
                     this.hostname,
                     value,
-                    this[key as keyof this],
+                    this.server[key],
                 );
             }
 
-            Reflect.set(this, key, value);
+            const assigned = Reflect.set(this.server, key, value);
+            if (!assigned) console.error(`Failed to set server property ${key} to ${value}.`, this);
         }
         register(this);
     }

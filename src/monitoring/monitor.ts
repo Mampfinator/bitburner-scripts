@@ -145,6 +145,8 @@ export async function main(ns: NS) {
         ];
 
         for (const server of [...servers].sort((a, b) => a.hostname.localeCompare(b.hostname))) {
+            server.refetch();
+
             const { moneyAvailable, moneyMax } = server;
             const moneyPercentage = moneyAvailable / moneyMax;
 

@@ -39,10 +39,11 @@ export async function main(ns: NS) {
     const testBatch = new BatchManager(pool, server);
     while (!(await testBatch.prepare())) {
         console.log("Preparing batch....");
+        await sleep(250, true);
     };
 
     let i;
-    for (i = 0; i < 10000; i++) {
+    for (i = 0; i < 2500; i++) {
         const scheduled = testBatch.schedule();
         if (!scheduled) break;
     }
@@ -144,7 +145,7 @@ class BatchManager {
 
     private calculateHackRatio(_iterations = 25): number {
         // TODO: Actually implement.
-        return 0.25;
+        return 0.95;
     }
 
     /**
