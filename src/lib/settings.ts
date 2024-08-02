@@ -79,7 +79,12 @@ export abstract class Settings {
     protected abstract doSave(data: OmitFunctions<this>): void;
 
     [Symbol.dispose]() {
-        this.save();
+        try {
+            this.save();
+        } catch (err) {
+            // This is *most likely* to happen when a script is manually killed, since `ns` immediately becomes unusable.
+            console.warn(`Settings could not be saved during disposal: `, err);
+        }
     }
 }
 
