@@ -221,3 +221,21 @@ export function findExtremes<T>(items: T[], accessor: (item: T) => number): { ma
     }
     return { max, min };
 }
+
+/**
+ * A Promise that can be externally resolved and rejected.
+ */
+export class ControllablePromise<T> extends Promise<T> {
+    public readonly resolve!: (value: T | PromiseLike<T>) => T;
+    public readonly reject!: (reason?: any) => void;
+
+    constructor(executor?: (resolve: (value: T | PromiseLike<T>) => void, reject: (reason?: any) => void) => void) {
+        super((resolve, reject) => {
+            //@ts-expect-error: alternative is more wordy.
+            this.resolve = value => { resolve(value); return this; };
+            //@ts-expect-error: alternative is more wordy.
+            this.reject = reject;
+            executor?.(resolve, reject);
+        })
+    }
+}

@@ -27,19 +27,16 @@ function getAvailableMemory(chunkSize: number) {
 
 export async function main(ns: NS) {
     auto(ns, { tag: "hacking" });
-    ns.disableLog("exec");
-    ns.disableLog("sleep");
-    ns.disableLog("scan");
+    ns.disableLog("ALL");
 
     const pool = new WorkerPool(ns);
 
     const batchManagers = new Map<string, BatchManager>();
     const server = servers.get("the-hub")!;
     const testBatch = new BatchManager(pool, server);
-    while (!(await testBatch.prepare())) {
-        console.log("Preparing batch....");
-        await sleep(250, true);
-    }
+    while (!(await testBatch.prepare())) await sleep(50, true);
+
+    ns.tprint(`Prepared ${server.hostname} for cycling.`);
 
     let i;
     for (i = 0; i < 2500; i++) {
@@ -51,7 +48,7 @@ export async function main(ns: NS) {
 
     batchManagers.set(server.hostname, testBatch);
     while (true) {
-        await sleep(250);
+        await sleep(250, true);
     }
 }
 
