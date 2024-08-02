@@ -232,10 +232,13 @@ export class ControllablePromise<T> extends Promise<T> {
     constructor(executor?: (resolve: (value: T | PromiseLike<T>) => void, reject: (reason?: any) => void) => void) {
         super((resolve, reject) => {
             //@ts-expect-error: alternative is more wordy.
-            this.resolve = value => { resolve(value); return this; };
+            this.resolve = (value) => {
+                resolve(value);
+                return this;
+            };
             //@ts-expect-error: alternative is more wordy.
             this.reject = reject;
             executor?.(resolve, reject);
-        })
+        });
     }
 }

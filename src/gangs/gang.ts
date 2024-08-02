@@ -103,7 +103,9 @@ export async function main(ns: NS) {
                 mode = GangMode.Territory;
 
                 // We only enable territory warfare if we have a >= 75% chance to win against the highest power gang
-                ns.gang.setTerritoryWarfare(ns.gang.getChanceToWinClash(highestOther) >= settings.territoryWarfareWinThreshold);
+                ns.gang.setTerritoryWarfare(
+                    ns.gang.getChanceToWinClash(highestOther) >= settings.territoryWarfareWinThreshold,
+                );
             }
         }
 

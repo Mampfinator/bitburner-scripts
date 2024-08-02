@@ -17,7 +17,7 @@
         "type": "stylesheet",
         "href": "https://cdn.jsdelivr.net/npm/reactflow@11.11.4/dist/style.min.css"
     },
-    "ts-union": {
+    "unionize": {
         "type": "script",
         "src": "https://cdn.jsdelivr.net/npm/unionize@3.1.0/lib/index.min.js",
         "prepend": "const module = {exports: {}}; const exports = module.exports;",

@@ -73,7 +73,7 @@ export async function main(ns: NS) {
             );
         }
 
-        await sleep(500, true);
+        await sleep(100, true);
     }
 
     const totalRamUsed = (

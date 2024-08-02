@@ -1,6 +1,7 @@
 import { NS, Server } from "@ns";
 import { Position } from "reactflow";
 import { ReservationDetails } from "/system/memory";
+import { ServerData } from "/lib/servers/server-cache";
 
 const {
     React,
@@ -9,7 +10,7 @@ const {
 
 interface ServerNodeProps {
     data: {
-        server: Server;
+        server: ServerData;
         handles?: ["target" | "source", Position][];
         ns: NS;
         setInfoData: (server: string | null) => void;
@@ -198,52 +199,34 @@ export function ServerNode({ data: { server, handles, ns, setInfoData } }: Serve
 
     React.useEffect(() => {
         const cleanupFns = [
-            globalThis.eventEmitter.withCleanup(
-                "server:ram-updated",
-                ({ hostname, newRam }: { hostname: string; newRam: number }) => {
-                    if (hostname !== server.hostname) return;
-                    setCapacity(newRam);
-                },
-            ),
-            globalThis.eventEmitter.withCleanup("server:rooted", (hostname: string) => {
-                if (hostname !== server.hostname) return;
+            server.withCleanup("ramUpdated", (newRam: number) => setCapacity(newRam)),
+            server.withCleanup("rooted", () => {
                 setRooted(true);
             }),
-            globalThis.eventEmitter.withCleanup("server:backdoored", (hostname: string) => {
-                if (hostname !== server.hostname) return;
+            server.withCleanup("backdoored", () => {
                 setBackdoored(true);
             }),
-            globalThis.eventEmitter.withCleanup(
-                "process:assigned",
-                (_, reservation: ReservationDetails | null | undefined) => {
-                    if (!reservation || reservation.hostname !== server.hostname) return;
+            server.withCleanup("processStarted", (_, reservation: ReservationDetails) => {
+                let scriptUsage = usage.find(({ title }) => title === (reservation.tag ?? "unknown"));
+                if (!scriptUsage) {
+                    scriptUsage = {
+                        title: reservation.tag ?? "unknown",
+                        amount: 0,
+                        color: randomColor(),
+                    };
+                    usage.push(scriptUsage);
+                }
+                scriptUsage.amount += reservation.amount;
 
-                    let scriptUsage = usage.find(({ title }) => title === (reservation.tag ?? "unknown"));
-                    if (!scriptUsage) {
-                        scriptUsage = {
-                            title: reservation.tag ?? "unknown",
-                            amount: 0,
-                            color: randomColor(),
-                        };
-                        usage.push(scriptUsage);
-                    }
-                    scriptUsage.amount += reservation.amount;
+                setUsage([...usage]);
+            }),
+            server.withCleanup("processKilled", (_, reservation: ReservationDetails) => {
+                const scriptUsage = usage.find(({ title }) => title === (reservation.tag ?? "unknown"));
+                if (!scriptUsage) return;
+                scriptUsage.amount -= reservation.amount;
 
-                    setUsage([...usage]);
-                },
-            ),
-            globalThis.eventEmitter.withCleanup(
-                "process:killed",
-                (_, reservation: ReservationDetails | null | undefined) => {
-                    if (!reservation || reservation.hostname !== server.hostname) return;
-
-                    const scriptUsage = usage.find(({ title }) => title === (reservation.tag ?? "unknown"));
-                    if (!scriptUsage) return;
-                    scriptUsage.amount -= reservation.amount;
-
-                    setUsage([...usage]);
-                },
-            ),
+                setUsage([...usage]);
+            }),
         ];
 
         return () => {

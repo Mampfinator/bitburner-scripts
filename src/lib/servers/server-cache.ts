@@ -1,7 +1,8 @@
 //! This file contains everything to do with the global server cache.
 //! It should **never** have a RAM cost above base (1.6GB) when inspected ingame.
+//! All calls with RAM costs should be done through external providers and bridges.
 import { ProcessInfo, Server } from "@ns";
-import { getMemoryMap, MemInfo, register } from "/system/memory";
+import { getMemoryMap, MemInfo, register, ReservationDetails } from "/system/memory";
 import { EventEmitter } from "/system/events";
 import { ServerBridge } from "./server-provider";
 
@@ -18,8 +19,6 @@ const EMIT_ON_UPDATE = {
     isBackdoorInstalled: "backdoor",
     maxRam: "ram-updated",
 };
-
-// FIXME: servers seem to not update when they should and I have *no* idea why.
 
 /**
  * **Singleton** cache for servers and their related info.
@@ -43,6 +42,21 @@ export class ServerCache extends Map<string, ServerData> {
 
         eventEmitter.on("server:backdoored", (hostname) => {
             this.get(hostname)?.emit("backdoored");
+        });
+
+        eventEmitter.on("server:ram-updated", (hostname: string, newValue: number, oldValue: number) => {
+            this.get(hostname)?.emit("ramUpdated", newValue, oldValue);
+        });
+
+        eventEmitter.on("process:killed", (pid: number, reservation?: ReservationDetails) => {
+            const hostname = reservation?.hostname;
+            if (!hostname) return;
+            this.get(hostname)?.emit("processKilled", pid, reservation);
+        });
+
+        eventEmitter.on("process:assigned", (pid: number, reservation: ReservationDetails) => {
+            const hostname = reservation.hostname;
+            this.get(hostname)?.emit("processStarted", pid, reservation);
         });
     }
 
@@ -130,12 +144,14 @@ export type ServerEvents = {
     /**
      * Emitted when a process on this server is killed.
      */
-    processKilled: (pid: number) => Awaitable<void>;
+    processKilled: (pid: number, reservation: ReservationDetails) => Awaitable<void>;
 
     /**
      * Emitted when a process on this server is started.
      */
-    processStarted: (pid: number) => Awaitable<void>;
+    processStarted: (pid: number, reservation: ReservationDetails) => Awaitable<void>;
+
+    ramUpdated: (newMaxRam: number, oldMaxRam: number) => Awaitable<void>;
 };
 
 export class ServerData extends EventEmitter<ServerEvents> implements Server {
@@ -234,6 +250,7 @@ export class ServerData extends EventEmitter<ServerEvents> implements Server {
         for (const [key, value] of Object.entries(server) as [keyof Server, Server[keyof Server]][]) {
             if (value === undefined || !(key in this.server)) continue;
             if (key in EMIT_ON_UPDATE && this.server[key] !== value) {
+                // We emit the *global* variant of the event first, the ServerCache should emit the local variant.
                 globalThis.eventEmitter.emit(
                     `server:${EMIT_ON_UPDATE[key as keyof typeof EMIT_ON_UPDATE]}`,
                     this.hostname,
