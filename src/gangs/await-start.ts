@@ -1,18 +1,35 @@
 import { NS } from "@ns";
 import { auto } from "/system/proc/auto";
 import { sleep } from "/lib/lib";
+import { GangSettings } from "./settings";
 
 export async function main(ns: NS) {
     auto(ns, { tag: "gang" });
-    while (true) {
-        await sleep(5000, true);
 
+    const settings = new GangSettings(ns);
+    settings.save();
+
+    function getGang(): string | null {
         try {
             const gang = ns.gang.getGangInformation();
-            if (!gang) continue;
+            if (!gang) return null;
+            return gang.faction;
+        } catch {
+            return null;
+        }
+    }
 
-            ns.toast(`Gang with ${gang.faction} detected. Starting manager.`);
-            ns.spawn("gangs/gang.js", { spawnDelay: 0 });
-        } catch {}
+    while (true) {
+        await sleep(250, true);
+        settings.load();
+
+        if (getGang() !== null) {
+            ns.spawn("/gang/gang.js", 1);
+            return;
+        }
+
+        if (settings.gangFaction) {
+            ns.gang.createGang(settings.gangFaction);
+        }
     }
 }

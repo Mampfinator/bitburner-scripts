@@ -1,5 +1,7 @@
 import { GangTaskStats, NS } from "@ns";
 import { auto } from "/system/proc/auto";
+import { GangSettings } from "./settings";
+import { sleep } from "/lib/lib";
 
 /**
  * Current mode the gang operates in.
@@ -37,6 +39,8 @@ export async function main(ns: NS) {
     ns.disableLog("ALL");
     ns.clearLog();
 
+    const settings = new GangSettings(ns);
+
     const gang = ns.gang.getGangInformation();
 
     const tasks = ns.gang
@@ -59,7 +63,8 @@ export async function main(ns: NS) {
     let lastMode: GangMode | undefined = undefined;
 
     while (true) {
-        await ns.sleep(20);
+        await sleep(20, true);
+        settings.load();
 
         const members = ns.gang.getMemberNames();
 
@@ -98,7 +103,7 @@ export async function main(ns: NS) {
                 mode = GangMode.Territory;
 
                 // We only enable territory warfare if we have a >= 75% chance to win against the highest power gang
-                ns.gang.setTerritoryWarfare(ns.gang.getChanceToWinClash(highestOther) >= 0.75);
+                ns.gang.setTerritoryWarfare(ns.gang.getChanceToWinClash(highestOther) >= settings.territoryWarfareWinThreshold);
             }
         }
 
