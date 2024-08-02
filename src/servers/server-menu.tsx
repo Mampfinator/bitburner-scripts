@@ -24,7 +24,7 @@ export async function main(ns: NS) {
     ns.disableLog("ALL");
     ns.clearLog();
 
-    const settings = new ServerBuySettings(ns, "servers/settings.json");
+    using settings = new ServerBuySettings(ns, "servers/settings.json");
     settings.load();
 
     const messageBus = new MessageBus<ServerBuyMessage>();

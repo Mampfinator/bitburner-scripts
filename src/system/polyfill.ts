@@ -25,6 +25,11 @@ declare global {
     }
 }
 
+// @ts-expect-error: Readonly polyfill
+Symbol.dispose ??= Symbol("dispose");
+// @ts-expect-error: Readonly polyfill
+Symbol.asyncDispose ??= Symbol("asyncDispose");
+
 Promise.withResolvers ??= function <T>() {
     let resolve: (value: T | PromiseLike<T>) => void = () => {};
     let reject: (reason?: any) => void = () => {};

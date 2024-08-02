@@ -3,7 +3,8 @@
   "exclude": ["src/lib/react.ts"],
   "compilerOptions": {
     "module": "esnext",
-    "target": "esnext",
+    "target": "es2022",
+    "lib": ["es2022", "ESNext.Disposable", "DOM"],
     "moduleResolution": "node",
     "noImplicitReturns": true,
     "noImplicitThis": true,

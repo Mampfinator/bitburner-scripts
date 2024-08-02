@@ -25,9 +25,8 @@ class CoreSettings extends JSONSettings {
 }
 
 export async function load(ns: NS) {
-    const settings = new CoreSettings(ns);
+    using settings = new CoreSettings(ns);
     settings.load();
-    settings.save();
 
     await loadDependencies(ns);
 

@@ -39,7 +39,7 @@ export async function main(ns: NS) {
     ns.disableLog("ALL");
     ns.clearLog();
 
-    const settings = new GangSettings(ns);
+    using settings = new GangSettings(ns);
 
     const gang = ns.gang.getGangInformation();
 

@@ -77,6 +77,10 @@ export abstract class Settings {
         this.doSave(copy as OmitFunctions<this>);
     }
     protected abstract doSave(data: OmitFunctions<this>): void;
+
+    [Symbol.dispose]() {
+        this.save();
+    }
 }
 
 /**
@@ -91,7 +95,7 @@ export abstract class JSONSettings extends Settings {
         super(["ns", "filePath"]);
     }
 
-    doLoad(): OmitFunctions<this> {
+    protected doLoad(): OmitFunctions<this> {
         let fileContent = this.ns.read(this.filePath);
         if (fileContent === "") fileContent = "{}";
 
@@ -99,7 +103,7 @@ export abstract class JSONSettings extends Settings {
         return file;
     }
 
-    doSave(data: OmitFunctions<this>) {
+    protected doSave(data: OmitFunctions<this>) {
         this.ns.write(this.filePath, JSON.stringify(data), "w");
     }
 }

@@ -6,7 +6,8 @@ import { GangSettings } from "./settings";
 export async function main(ns: NS) {
     auto(ns, { tag: "gang" });
 
-    const settings = new GangSettings(ns);
+    using settings = new GangSettings(ns);
+    settings.load();
     settings.save();
 
     function getGang(): string | null {

@@ -38,7 +38,7 @@ export async function main(ns: NS) {
     ns.disableLog("ALL");
     ns.clearLog();
 
-    const settings = new HacknetSettings(ns);
+    using settings = new HacknetSettings(ns);
     settings.load();
 
     const { hacknet } = ns;
