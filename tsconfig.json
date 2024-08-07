@@ -11,6 +11,7 @@
     "esModuleInterop": true,
     "inlineSourceMap": true,
     "inlineSources": true,
+    "sourceRoot": "bitburner-scripts/",
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "strict": true,
@@ -20,6 +21,7 @@
     "allowJs": true,
     "checkJs": true,
     "jsx": "react",
+    "skipLibCheck": true,
     "paths": {
       "/*": ["*"],
       "@ns": ["../NetscriptDefinitions.d.ts"],
