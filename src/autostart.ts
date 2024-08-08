@@ -1,5 +1,5 @@
+import type * as _ from "reflect-metadata";
 import "system/polyfill";
-
 import { NS } from "@ns";
 import { run } from "./system/proc/run";
 import { auto } from "./system/proc/auto";
