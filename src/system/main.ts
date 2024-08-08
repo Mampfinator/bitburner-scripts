@@ -54,6 +54,26 @@ export async function main(ns: NS) {
     const provider = new ServerProvider(ns);
     globalThis.servers.setBridge(provider.bridge);
 
+    globalThis.eventEmitter.register(ns, "server:added", (hostname: string) => {
+        ns.scp(
+            [
+                // call scripts
+                "call/call.js",
+                "call/call-worker.js",
+
+                // hacking workers
+                "hacking/worker-scripts/grow.js",
+                "hacking/worker-scripts/hack.js",
+                "hacking/worker-scripts/weaken.js",
+
+                // share worker
+                "share/share.js",
+            ],
+            hostname,
+            "home",
+        );
+    });
+
     // for good measure
     syncServers(ns);
 

@@ -8,23 +8,6 @@ import { calcThreads } from "/lib/network-threads";
 import { WorkerGroup } from "./workers/group";
 import { auto } from "/system/proc/auto";
 
-function checkNetworkMemory() {
-    let total = 0;
-    for (const server of servers.values()) total += server.maxRam;
-    return total;
-}
-
-function getAvailableMemory(chunkSize: number) {
-    let total = 0;
-    for (const server of servers.values()) {
-        const available = server.memInfo.available;
-        if (available > chunkSize) {
-            total += available;
-        }
-    }
-    return total;
-}
-
 export async function main(ns: NS) {
     auto(ns, { tag: "hacking" });
     ns.disableLog("ALL");

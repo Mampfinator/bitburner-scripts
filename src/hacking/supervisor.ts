@@ -24,21 +24,6 @@ export async function main(ns: NS) {
 
     ns.disableLog("ALL");
 
-    function copyFiles(server: string) {
-        for (const script of Object.values(WORKER_SCRIPTS)) {
-            ns.scp(script, server);
-        }
-    }
-
-    for (const server of globalThis.servers.values()) {
-        if (server.hostname === "home") continue;
-        copyFiles(server.hostname);
-    }
-
-    globalThis.eventEmitter.register(ns, "server:added", ({ hostname }: { hostname: string }) => {
-        copyFiles(hostname);
-    });
-
     const prepared = new Set();
 
     /**

@@ -24,10 +24,6 @@ export async function main(ns: NS) {
         return ns.tprint(`ERROR: Either "--threads" or "--multiplier" required, not both.`);
     }
 
-    for (const server of getServerNames(ns)) {
-        ns.scp(WORKER_NAME, server);
-    }
-
     const result = share(ns, { threads, multiplier });
 
     if (!result) {
