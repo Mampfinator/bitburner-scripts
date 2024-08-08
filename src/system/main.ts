@@ -41,18 +41,13 @@ let ready = false;
 
 export async function main(ns: NS) {
     ready = false;
-    globalThis.awaitSystemReady = async (ns: NS) => {
+    globalThis.awaitSystemReady = async (otherNs: NS) => {
         while (!ready) {
-            await ns.asleep(20);
+            await otherNs.asleep(250);
         }
     };
 
     await load(ns);
-
-    const skip = new Set<string>();
-
-    const provider = new ServerProvider(ns);
-    globalThis.servers.setBridge(provider.bridge);
 
     globalThis.eventEmitter.register(ns, "server:added", (hostname: string) => {
         ns.scp(
@@ -73,6 +68,11 @@ export async function main(ns: NS) {
             "home",
         );
     });
+
+    const skip = new Set<string>();
+
+    const provider = new ServerProvider(ns);
+    globalThis.servers.setBridge(provider.bridge);
 
     // for good measure
     syncServers(ns);

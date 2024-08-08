@@ -19,6 +19,7 @@ export function auto(ns: NS, options?: AutoOptions) {
             useReservation ??
             reserve(ramOverride ?? ns.getScriptRam(ns.getScriptName()), {
                 tag,
+                onServer: ns.getHostname(),
             });
         if (!reservation) {
             throw new Error("Failed to reserve memory for automatic process management.");

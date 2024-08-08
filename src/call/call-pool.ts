@@ -1,4 +1,4 @@
-import { NS } from "@ns";
+import { NS, ScriptArg } from "@ns";
 import { call, Index, Shifted, Split } from "./call";
 import { run } from "/system/proc/run";
 
@@ -114,4 +114,40 @@ export interface DoOptions<S extends string = string> {
 
     then?: DoOptions | ((result: any, variables: Map<string, any>) => Awaitable<DoOptions | undefined | void>);
     catch?: DoOptions | ((error: any, variables: Map<string, any>) => Awaitable<DoOptions | undefined | void>);
+}
+
+export async function main(ns: NS) {
+    const pool = new CallPool();
+
+    const { _: [command, ...args] } = ns.flags([]) as {_: ScriptArg[]};
+    if (typeof command !== "string") {
+        ns.tprint("ERROR: Invalid command");
+        return;
+    }
+
+    const result = await pool.do(ns, {
+        command,
+        args,
+        store: "result"
+    });
+
+    const value = result.get("result");
+    if (value === undefined) {
+        return ns.tprint("Result: undefined"); 
+    }
+
+    if (/Time/.test(command)) {
+        return ns.tprint(`Result: ${ns.tFormat(value)}`);
+    }
+
+    if (/Ram/.test(command)) {
+        return ns.tprint(`Result: ${ns.formatRam(value)}`);
+    }
+
+    // has to be lowercase because of inconsistent naming
+    if (/money/.test(command)) {
+        return ns.tprint(`Result: ${ns.formatNumber(value, 2)}`);
+    }
+
+    ns.tprint(`Result: ${value}`);
 }

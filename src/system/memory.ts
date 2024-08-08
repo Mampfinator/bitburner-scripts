@@ -214,9 +214,9 @@ export function register(server: ServerMemInfo): [true, MemInfo] | [false, MemIn
     MEMORY_MAP.set(server.hostname, info);
     /**
      * @event global#server:added
-     * @type {ServerMemInfo}
+     * @type {string}
      */
-    globalThis.eventEmitter.emit(`server:added`, server);
+    globalThis.eventEmitter.emit(`server:added`, server.hostname);
 
     return [true, info];
 }
@@ -277,9 +277,15 @@ export function reserveThreads(
     threadSize: number,
     tag?: string,
 ): { result: ReserveThreadsError; reservations: null } | { result: typeof OK; reservations: Reservation[] } {
-    const available = [...MEMORY_MAP.values()].reduce((acc, curr) => acc + curr.available, 0);
+    // fractional threads are not (yet) supported.
+    threads = Math.ceil(threads);
 
-    if (available < threads * threadSize) {
+    const available = [...MEMORY_MAP.values()].reduce((acc, curr) => {
+        if (!curr.usable) return acc;
+        return acc + Math.floor(curr.available / threadSize);
+    }, 0);
+
+     if (available < threads) {
         return { result: ReserveThreadsError.OutOfMemory, reservations: null };
     }
 
@@ -290,7 +296,7 @@ export function reserveThreads(
     }
 
     const servers = [...MEMORY_MAP.values()]
-        .filter((server) => server.available >= threadSize)
+        .filter((server) => server.usable && server.available >= threadSize)
         .sort((a, b) => b.available - a.available);
 
     while (threads > 0 && servers.length > 0) {

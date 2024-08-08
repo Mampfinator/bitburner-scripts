@@ -16,13 +16,21 @@ function shouldStartServerbuyer(ns: NS) {
     return servers.length < serverMax || servers.some((server) => server.maxRam < ramMax);
 }
 
-const SCRIPTS = [
+interface AutostartEntry {
+    script: string;
+    tag: string;
+    condition?: (ns: NS) => boolean;
+    args?: string[];
+    wait?: number;
+}
+
+const SCRIPTS: AutostartEntry[] = [
     { script: "monitoring/cli.js", tag: "monitoring", args: ["reset"] },
     { script: "servers/server-menu.js", tag: "servers", condition: shouldStartServerbuyer },
     { script: "gangs/await-start.js", tag: "gang" },
     { script: "hacknet/hacknet.js", tag: "hacknet" },
     { script: "network/network-tree.js", tag: "monitoring" },
-    { script: "hacking/supervisor.js", tag: "hacking", wait: 1000 },
+    { script: "hacking/scheduler.js", tag: "hacking" },
 ];
 
 export async function main(ns: NS) {
