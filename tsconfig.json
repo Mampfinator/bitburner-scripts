@@ -10,7 +10,7 @@
     "noImplicitThis": true,
     "esModuleInterop": true,
     "inlineSourceMap": true,
-    "inlineSources": true,
+    "inlineSources": false,
     "sourceRoot": "bitburner-scripts/",
     "noUnusedLocals": true,
     "noUnusedParameters": true,
