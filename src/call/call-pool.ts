@@ -1,5 +1,5 @@
 import { NS, ScriptArg } from "@ns";
-import { call, Index, Shifted, Split } from "./call";
+import { call, CallCommand, Index, Shifted, Split } from "./call";
 import { run } from "/system/proc/run";
 
 const WORKER_PATH = "call/call-worker.js";
@@ -16,11 +16,10 @@ globalThis.callValues = new Map();
 export class CallPool {
     readonly promises = new Map<string, ReturnType<PromiseConstructor["withResolvers"]>>();
 
-    public async dispatchCall<
-        C extends string,
+    public async call<
+        C extends CallCommand,
         F = Index<NS, Split<C>>,
-        R = F extends (...args: unknown[]) => infer R ? R : never,
-    >(ns: NS, command: C, ...args: F extends (...args: infer P) => unknown ? P : any[]): Promise<R> {
+    >(ns: NS, command: C, ...args: F extends (...args: infer P) => any ? P : any[]): Promise<F extends (...args: any[]) => infer R ? R : never> {
         const id = `${Date.now()}_${Math.random()}`;
 
         const reservation = system.memory.reserve(1.6 + ns.getFunctionRamCost(command));
@@ -75,7 +74,7 @@ export class CallPool {
 
         while (current) {
             try {
-                let result: any = await this.dispatchCall(ns, current!.command, ...current!.args);
+                let result: any = await this.call(ns, current!.command, ...current!.args);
                 if (current.map) result = await current.map(result, variables);
 
                 if (current.store) variables.set(current.store, result);
@@ -91,7 +90,7 @@ export class CallPool {
 
 type DoCommand = DoOptions | ((variables: Map<string, any>) => Awaitable<DoOptions | undefined | void>);
 
-export interface DoOptions<S extends string = string> {
+export interface DoOptions<S extends CallCommand = CallCommand> {
     /**
      * NS function to call.
      */
@@ -126,8 +125,9 @@ export async function main(ns: NS) {
     }
 
     const result = await pool.do(ns, {
-        command,
-        args,
+        command: command as CallCommand,
+        // this is a hack.
+        args: args as never,
         store: "result"
     });
 

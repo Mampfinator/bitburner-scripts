@@ -6,6 +6,7 @@ import { CCTSDashboard, CCTSMessageType, DashboardMessage } from "./dashboard";
 import { parseRewardString } from "./consts";
 import { auto } from "/system/proc/auto";
 import { sleep } from "/lib/lib";
+import { CallPool } from "/call/call-pool";
 
 const { React } = globalThis;
 
@@ -16,6 +17,7 @@ export async function main(ns: NS) {
     ns.clearLog();
 
     const messageBus = new MessageBus<DashboardMessage>();
+    const pool = new CallPool();
 
     ns.printRaw(<CCTSDashboard messageBus={messageBus} formatNumber={(number) => ns.formatNumber(number)} />);
 
@@ -96,7 +98,7 @@ export async function main(ns: NS) {
         const ccts = findCcts(ns);
 
         for (const [hostname, filename] of ccts) {
-            const type = ns.codingcontract.getContractType(filename, hostname);
+            const type = await pool.call(ns, "codingcontract.getContractType", filename, hostname);
 
             const solve = solvers.get(type);
 
@@ -105,13 +107,13 @@ export async function main(ns: NS) {
                 continue;
             }
 
-            const data = ns.codingcontract.getData(filename, hostname);
+            const data = await pool.call(ns, "codingcontract.getData", filename, hostname);
             const solution = solve(data);
 
-            const reward = ns.codingcontract.attempt(solution, filename, hostname);
+            const reward = await pool.call(ns, "codingcontract.attempt", solution, filename, hostname);
 
             if (reward === "") {
-                const remaining = ns.codingcontract.getNumTriesRemaining(filename, hostname);
+                const remaining = await pool.call(ns, "codingcontract.getNumTriesRemaining", filename, hostname);
                 reportError(hostname, filename, type, remaining, data, solution);
                 continue;
             }

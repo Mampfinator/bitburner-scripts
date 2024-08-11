@@ -25,14 +25,29 @@ function recursiveIndex<O extends object, P extends string>(object: O, path: P):
     return indices.reduce((obj: any, index: string) => obj?.[index], object) as unknown as Index<O, Split<P>>;
 }
 
+type Properties<T extends object> = T extends object ? Extract<keyof T, string> : never;
+
+type PropertyPaths<T extends object> = {
+    [K in Properties<T>]: T[K] extends object ? `${K}.${Properties<T[K]>}` : K;
+}[Properties<T>];
+
+type FilterFunctions<T extends object> = {
+    [K in Properties<T>]: 
+        T[K] extends Function ? K : 
+        T[K] extends object ? FilterFunctions<T[K]> : 
+        never;
+}
+
+export type CallCommand = PropertyPaths<Omit<FilterFunctions<NS>, "args" | "enums">>;
+
 /**
  * Dynamically call any NS function given its path in the NS object, and its arguments.
  */
-export async function call<C extends string, F = Index<NS, Split<C>>>(
+export async function call<C extends CallCommand, F = Index<NS, Split<C>>>(
     ns: NS,
     command: C,
     ...args: F extends (...args: infer P) => unknown ? P : any[]
-): Promise<F extends (...args: unknown[]) => infer R ? R : never> {
+): Promise<F extends (...args: any[]) => infer R ? R : never> {
     const fn = recursiveIndex(ns, command);
     if (!fn || typeof fn !== "function") throw new Error(`Unknown command: ${command}`);
     return fn(...args);

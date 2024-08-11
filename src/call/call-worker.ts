@@ -1,9 +1,9 @@
 import { NS } from "@ns";
-import { call } from "./call";
+import { call, CallCommand } from "./call";
 
 export interface CallWorkerOptions {
     id: string;
-    command: string;
+    command: CallCommand;
     args: any[];
 }
 
@@ -17,6 +17,6 @@ export async function main(ns: NS) {
     const callCost = ns.getFunctionRamCost(options.command);
     ns.ramOverride(1.6 + callCost);
 
-    const result = await call(ns, options.command, ...options.args);
+    const result = await call(ns, options.command, ...(options.args as never));
     globalThis.callValues.set(options.id, result);
 }
