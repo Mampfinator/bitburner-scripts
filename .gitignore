@@ -1,3 +1,10 @@
 node_modules/
 dist/
 NetscriptDefinitions.d.ts
+
+# Added by cargo
+
+/target
+
+# Temporary `wasm-pack` output
+tmp

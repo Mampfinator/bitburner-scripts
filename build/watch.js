@@ -1,9 +1,11 @@
 const fs = require('node:fs');
 const path = require('node:path');
+const childProcess = require('node:child_process');
+const packageJson = require('../package.json');
 const syncDirectory = require('sync-directory');
 const fg = require('fast-glob');
 const chokidar = require('chokidar');
-const { src, dist, allowedFiletypes } = require('./config');
+const { src, dist, allowedFiletypes, wasm } = require('./config');
 
 /** Format dist path for printing */
 function normalize(p) {
@@ -15,7 +17,7 @@ function normalize(p) {
  * Include init and watch phase.
  */
 async function syncStatic() {
-  return syncDirectory.async(path.resolve(src), path.resolve(dist), {
+  syncDirectory.async(path.resolve(src), path.resolve(dist), {
     exclude: (file) => {
       const { ext } = path.parse(file);
       return ext && !allowedFiletypes.includes(ext);
@@ -56,8 +58,10 @@ async function initTypeScript() {
       !fs.existsSync(srcFile) &&
       !fs.existsSync(srcFile.replace(/\.js$/, '.ts'))
     ) {
-      await fs.promises.unlink(distFile);
-      console.log(`${normalize(relative)} deleted`);
+      try {
+        await fs.promises.unlink(distFile);
+        console.log(`${normalize(relative)} deleted`);
+      } catch {}
     }
   }
 }
@@ -88,6 +92,66 @@ async function syncTypeScript() {
   return watchTypeScript();
 }
 
-console.log('Start watching static and ts files...');
-syncStatic();
-syncTypeScript();
+const moduleName = packageJson.name.replace("-","_");
+
+const jsFileText = `
+import * as ${moduleName}_bg from './${moduleName}_bg.js';
+const { __wbg_set_wasm } = ${moduleName}_bg;
+
+/*
+ * Initialize the WASM module.
+ */
+export async function init(ns) {
+  const wasmb64 = ns.read("${wasm.out}/${moduleName}.wasm.txt");
+  const bytes = Uint8Array.from(atob(wasmb64), c => c.charCodeAt(0));
+  const wasm = await WebAssembly.compile(bytes);
+  const instance = await WebAssembly.instantiate(wasm, {
+    "./${moduleName}_bg.js": ${moduleName}_bg
+  });
+
+  __wbg_set_wasm(instance.exports);
+}
+
+export * from "./${moduleName}_bg.js";
+`
+
+async function compileWasm() {
+  console.log(`Compiling WASM.`);
+  childProcess.execSync(`wasm-pack build ./ --out-dir ${wasm.temp}`);
+
+  const wasmText = await fs.promises.readFile(`./${wasm.temp}/${moduleName}_bg.wasm`);
+  await fs.promises.writeFile(`${path.join(dist, wasm.out, `${moduleName}.wasm.txt`)}`, Buffer.from(wasmText).toString('base64'));
+  await fs.promises.cp(
+    `${path.join(wasm.temp, `${moduleName}_bg.js`)}`,
+    `${path.join(dist, wasm.out, `${moduleName}_bg.js`)}`
+  );
+}
+
+async function watchWasm() {
+  chokidar.watch(`${wasm.src}/**/*.rs`).on('change', async () => {
+    await compileWasm();
+  });
+}
+
+async function initWasm() {
+  await fs.promises.rm(`${wasm.temp}`, { recursive: true, force: true });
+  await fs.promises.mkdir(`${wasm.temp}`, { recursive: true });
+  await fs.promises.mkdir(`${path.join(dist, wasm.out)}`, { recursive: true });
+  await fs.promises.writeFile(`${path.join(dist, wasm.out, `${moduleName}.js`)}`, jsFileText);
+  await compileWasm();
+}
+
+async function syncWasm() {
+  await initWasm();
+  return watchWasm();
+}
+
+console.log('Start watching static, ts and rs files...');
+
+async function main() {
+  await syncStatic();
+  await syncTypeScript();
+  await syncWasm();
+}
+
+main();
