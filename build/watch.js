@@ -116,15 +116,28 @@ export * from "./${moduleName}_bg.js";
 `
 
 async function compileWasm() {
-  console.log(`Compiling WASM.`);
+  console.log("Compiling WASM.");
   childProcess.execSync(`wasm-pack build ./ --out-dir ${wasm.temp}`);
 
   const wasmText = await fs.promises.readFile(`./${wasm.temp}/${moduleName}_bg.wasm`);
   await fs.promises.writeFile(`${path.join(dist, wasm.out, `${moduleName}.wasm.txt`)}`, Buffer.from(wasmText).toString('base64'));
-  await fs.promises.cp(
-    `${path.join(wasm.temp, `${moduleName}_bg.js`)}`,
-    `${path.join(dist, wasm.out, `${moduleName}_bg.js`)}`
-  );
+  
+  let bg = await fs.promises.readFile(`./${wasm.temp}/${moduleName}_bg.js`);
+  // wasm-bindgen can emit window/document code, so we need to replace it with evals to avoid +25/+50 gig script cost.
+  bg = bg.toString()
+    .replace("window.window", "eval('window')")
+    .replace("window.document", "eval('document')")
+    .replace(/(?<=\b)(window|document)(?=\b)/g, match => `eval(\\'${match}\\')`);
+  
+  await fs.promises.writeFile(`${path.join(dist, wasm.out, `${moduleName}_bg.js`)}`, bg);
+
+
+  const tsDeclarations = await fs.promises.readFile(`./${wasm.temp}/${moduleName}.d.ts`);
+  await fs.promises.writeFile(`${moduleName}.d.ts`, 
+`declare module "${wasm.out}/${moduleName}" {
+    declare async function init(ns: NS): Promise<void>;
+${tsDeclarations.toString().replace("export", "declare").split("\n").map(l => ("    " + l)).join("\n")}
+}`);
 }
 
 async function watchWasm() {

@@ -1,6 +1,7 @@
 node_modules/
 dist/
 NetscriptDefinitions.d.ts
+bitburner_scripts.d.ts
 
 # Added by cargo
 

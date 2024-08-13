@@ -12,6 +12,7 @@ import { load as loadDependencies } from "./dependencies";
 import { compressTime } from "./compress-time";
 import { ServerCache } from "/lib/servers/server-cache";
 import { JSONSettings } from "/lib/settings";
+import { init } from "wasm/bitburner_scripts";
 
 class CoreSettings extends JSONSettings {
     constructor(ns: NS) {
@@ -40,6 +41,8 @@ export async function load(ns: NS) {
 
     await loadMemory(ns, system);
     await loadProc(ns, system);
+
+    await init(ns);
 
     console.log(`System namespace loaded: `, system);
     globalThis.system = system;
