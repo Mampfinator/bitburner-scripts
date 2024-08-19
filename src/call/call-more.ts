@@ -16,17 +16,17 @@ interface CallOptions<
     /**
      * NS function to call
      */
-    function: C,
+    function: C;
     /**
      * Arguments to pass to said function.
      */
-    args: A,
+    args: A;
     /**
      * A function to call when the result is ready.
-     * 
+     *
      * @returns The next commands to execute, or void.
      */
-    then?: (result: R, variables: Record<string, any>) => Awaitable<CallOptions[] | void>,
+    then?: (result: R, variables: Record<string, any>) => Awaitable<CallOptions[] | void>;
     /**
      * The name of the variable to store the result in.
      */
@@ -85,7 +85,6 @@ function serialize(options: CallMoreOptions): string {
     return JSON.stringify(noFns);
 }
 
-
 export async function main(ns: NS) {
     const options = deserialize(ns.args[0] as string);
     const command = options.commands.shift()!;
@@ -94,7 +93,7 @@ export async function main(ns: NS) {
         return ns.writePort(options.port, { id: options.id, variables: options.variables });
     }
 
-    const desired = (1.6 + ns.getFunctionRamCost(command.function) + 1) * (command.threads ?? 1); 
+    const desired = (1.6 + ns.getFunctionRamCost(command.function) + 1) * (command.threads ?? 1);
 
     // base + function + run
     const actual = ns.ramOverride(desired);
@@ -108,14 +107,14 @@ export async function main(ns: NS) {
         if (command.store) {
             options.variables[command.store] = result;
         }
-    
+
         if (command.then) {
             const then = await command.then(result, options.variables);
             if (then) {
                 options.commands.unshift(...then);
             }
         }
-    
+
         if (options.commands.length > 0) {
             ns.run("call/call-more.js", { threads: options.commands[0]?.threads, temporary: true }, serialize(options));
         } else {

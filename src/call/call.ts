@@ -32,11 +32,8 @@ type PropertyPaths<T extends object> = {
 }[Properties<T>];
 
 type FilterFunctions<T extends object> = {
-    [K in Properties<T>]: 
-        T[K] extends Function ? K : 
-        T[K] extends object ? FilterFunctions<T[K]> : 
-        never;
-}
+    [K in Properties<T>]: T[K] extends Function ? K : T[K] extends object ? FilterFunctions<T[K]> : never;
+};
 
 export type CallCommand = PropertyPaths<Omit<FilterFunctions<NS>, "args" | "enums">>;
 

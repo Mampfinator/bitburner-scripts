@@ -56,10 +56,8 @@ export async function main(ns: NS) {
                 "call/call.js",
                 "call/call-worker.js",
 
-                // hacking workers
-                "hacking/worker-scripts/grow.js",
-                "hacking/worker-scripts/hack.js",
-                "hacking/worker-scripts/weaken.js",
+                // hacking stuff
+                "hacking/worker.js",
 
                 // share worker
                 "share/share.js",

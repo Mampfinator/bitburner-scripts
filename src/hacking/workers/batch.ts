@@ -1,7 +1,45 @@
 import { NS } from "@ns";
 import { WorkerGroup } from "./group";
 
-export const DELAY = 200;
+export const DELAY = 150;
+
+class OrderError<T> extends Error {
+    constructor(
+        public readonly a: { index: number; finishedAt: Date; result: T },
+        public readonly b: { index: number; finishedAt: Date; result: T },
+    ) {
+        super(`Promise ${b.index} finished before ${a.index}: ${Number(a.finishedAt)} < ${Number(b.finishedAt)}`);
+    }
+}
+
+/**
+ * Assert that all promises finish in the order they're specified.
+ * This waits for all Promises to resolve *before* computing the result.
+ *
+ * @throws An `OrderError` if the promises finish in the wrong order.
+ */
+async function assertFinishedInOrder<T>(...promises: Promise<T>[]): Promise<T[]> {
+    const results = await Promise.all(promises.map((p) => p.then((result) => ({ finishedAt: new Date(), result }))));
+    if (results.length <= 1) return results.map(({ result }) => result);
+
+    for (let i = 1; i < results.length; i++) {
+        if (results[i].finishedAt < results[i - 1].finishedAt) {
+            throw new OrderError<T>({ ...results[i - 1], index: i - 1 }, { ...results[i], index: i });
+        }
+    }
+
+    return results.map(({ result }) => result);
+}
+
+function rethrowOrder(nameA: string, nameB: string): (error: any) => never {
+    return (error: any) => {
+        if (!(error instanceof OrderError)) throw error;
+
+        throw new Error(`
+            ${nameB} finished before ${nameA}: ${Number(error.b.finishedAt) - Number(error.a.finishedAt)}ms.
+        `);
+    };
+}
 
 /**
  * A `Hack->Weaken->Grow->Weaken` worker batch.
@@ -32,50 +70,34 @@ export class HWGWWorkerBatch {
         const weakenTime = this.ns.getWeakenTime(this.target);
         const growTime = this.ns.getGrowTime(this.target);
 
-        this.weakenHackGroup.work();
+        const hackDelay = weakenTime - hackTime - DELAY;
+        const growDelay = weakenTime - growTime - DELAY;
 
-        let hackPromise = this.ns.asleep(weakenTime - hackTime - DELAY).then(() => this.hackGroup.work());
+        if (hackTime > growTime) {
+            throw new Error(`hackTime > growTime not implemented.`);
+        }
 
-        await this.ns.asleep(DELAY);
+        const results = await assertFinishedInOrder(
+            assertFinishedInOrder(
+                this.hackGroup.work({ additionalMsec: hackDelay }),
+                this.weakenHackGroup.work({ additionalMsec: 0 }),
+            ).catch(rethrowOrder("hack", "weakenHack")),
+            assertFinishedInOrder(
+                this.growGroup.work({ additionalMsec: growDelay }),
+                this.weakenGrowGroup.work({ additionalMsec: 0 }),
+            ).catch(rethrowOrder("grow", "weakenGrow")),
+        ).catch(rethrowOrder("hack", "grow"));
 
-        await this.weakenGrowGroup.work();
-        let growPromise = this.ns.asleep(weakenTime - growTime - DELAY).then(() => this.growGroup.work());
+        if (results === null) {
+            return null;
+        }
 
-        await Promise.all([hackPromise, growPromise]);
+        const hackResult = results[0][1];
+        if (hackResult === null) {
+            return null;
+        }
 
-        let hackingDone = false;
-        let growingDone = false;
-
-        const [hackResult] = await Promise.all([
-            this.hackGroup.nextDone().then((res) => {
-                hackingDone = true;
-                return res;
-            }),
-            this.growGroup.nextDone().then((res) => {
-                growingDone = true;
-                return res;
-            }),
-            this.weakenHackGroup.nextDone().then((res) => {
-                if (!hackingDone)
-                    /*this.ns.toast(
-                        `${this.target}: Weaken Hack finished before hacking completed.`,
-                        "error",
-                        null,
-                    );*/
-                    return res;
-            }),
-            this.weakenGrowGroup.nextDone().then((res) => {
-                if (!growingDone)
-                    /*this.ns.toast(
-                        `${this.target}: Weaken Grow finished before growing completed.`,
-                        "error",
-                        null,
-                    );*/
-                    return res;
-            }),
-        ]);
-
-        return hackResult.result;
+        return hackResult.reduce((acc, result) => acc + result.result, 0);
     }
 
     async runContinuously() {
@@ -85,10 +107,6 @@ export class HWGWWorkerBatch {
         }
 
         return true;
-    }
-
-    getDoneTime() {
-        return this.ns.getWeakenTime(this.target) + 3 * DELAY;
     }
 
     get runnable() {

@@ -1,4 +1,4 @@
-import { NS } from "@ns";
+import { BasicHGWOptions, NS } from "@ns";
 import { WorkerMode } from "../consts";
 import { WorkerPool } from "../pool";
 import { Worker, WorkResult } from "./worker";
@@ -51,8 +51,8 @@ export class WorkerGroup {
     /**
      * @returns {Promise<boolean>}
      */
-    async work(): Promise<null | WorkResult[]> {
-        const result = await Promise.allSettled([...this.workers.values()].map((worker) => worker.work()));
+    async work(options?: BasicHGWOptions): Promise<null | WorkResult[]> {
+        const result = await Promise.allSettled([...this.workers.values()].map((worker) => worker.work(options)));
 
         // if any single worker failed starting, we abort here and free all workers.
         if (result.some((res) => res.status === "rejected" || res.value === null)) {

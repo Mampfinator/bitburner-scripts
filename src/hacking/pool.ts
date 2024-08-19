@@ -1,6 +1,6 @@
 import { NS } from "@ns";
 import { Worker, WorkerOptions, WorkResult } from "./workers/worker";
-import { POOL_MESSAGE_PORT_BASE, WORKER_MESSAGE_PORT, WORKER_SCRIPTS, WorkerMode } from "./consts";
+import { getWorkerScriptCost, WorkerMode } from "./consts";
 import { HWGWWorkerBatch } from "./workers/batch";
 import { WorkerGroup } from "./workers/group";
 import { OK, Reservation, reserveThreads, ReserveThreadsError } from "/system/memory";
@@ -10,7 +10,7 @@ export interface PoolOptions {
     excludeServers?: Set<string>;
 }
 
-export class WorkerPool {
+export class WorkerPool implements Disposable {
     static instance: WorkerPool | null = null;
 
     static singleton(ns: NS, options?: PoolOptions) {
@@ -28,10 +28,10 @@ export class WorkerPool {
      * All workers that currently have nothing to do.
      */
     free = new WeakSet();
-    startResolvers = new Map<number, (started: boolean) => void>();
-    resumeResolvers = new Map<number, (resumed: boolean) => void>();
 
     workerRam: Record<WorkerMode, number>;
+
+    private readonly cleanupFns: (() => void)[] = [];
 
     get reservedRam() {
         return Object.values(this.options?.reserveRam ?? {}).reduce((total, current) => total + current, 0);
@@ -48,48 +48,39 @@ export class WorkerPool {
             this.killAll();
         }, "workerpool-cleanup");
 
-        globalThis.eventEmitter.register(ns, "worker:done", (data: WorkResult & { pid: number }) => {
-            this.byPids.get(data.pid)?.done({ ...data });
-        });
-
-        globalThis.eventEmitter.register(ns, "worker:resumed", ({ pid }: { pid: number }) => {
-            this.resumeResolvers.get(pid)?.(true);
-        });
-
-        globalThis.eventEmitter.register(ns, "worker:started", ({ pid }: { pid: number }) => {
-            this.startResolvers.get(pid)?.(true);
-        });
-
-        globalThis.eventEmitter.register(this.ns, "worker:killed", ({ pid }: { pid: number }) => {
-            if (this.ns.isRunning(pid)) {
-                this.ns.print(
-                    `WARNING: Got killed event from ${pid}, but worker still exists. Forgetting, but not killing.`,
-                );
-                return;
-            }
-            const worker = this.byPids.get(pid);
-            if (!worker) {
-                this.ns.print(`WARNING: Got killed event from ${pid} but worker did not exist.`);
-                return;
-            }
-            this.byPids.delete(pid);
-        });
+        this.cleanupFns = [
+            globalThis.eventEmitter.withCleanup(
+                "worker:done",
+                (data: WorkResult & { pid: number }) => {
+                    this.byPids.get(data.pid)?.done({ ...data });
+                },
+                ns,
+            ),
+            globalThis.eventEmitter.withCleanup(
+                "worker:killed",
+                ({ pid }: { pid: number }) => {
+                    const worker = this.byPids.get(pid);
+                    if (!worker) {
+                        this.ns.print(`WARNING: Got killed event from ${pid} but worker did not exist.`);
+                        return;
+                    }
+                    this.byPids.delete(pid);
+                },
+                ns,
+            ),
+        ];
 
         this.options = options ?? {};
 
         this.workerRam = {
-            [WorkerMode.Hack]: ns.getScriptRam(WORKER_SCRIPTS[WorkerMode.Hack]),
-            [WorkerMode.Grow]: ns.getScriptRam(WORKER_SCRIPTS[WorkerMode.Grow]),
-            [WorkerMode.Weaken]: ns.getScriptRam(WORKER_SCRIPTS[WorkerMode.Weaken]),
+            [WorkerMode.Hack]: getWorkerScriptCost(ns, WorkerMode.Hack),
+            [WorkerMode.Grow]: getWorkerScriptCost(ns, WorkerMode.Grow),
+            [WorkerMode.Weaken]: getWorkerScriptCost(ns, WorkerMode.Weaken),
         };
     }
-
-    get listenPort() {
-        const port = POOL_MESSAGE_PORT_BASE + this.ns.pid;
-
-        if (port > WORKER_MESSAGE_PORT) throw new Error(`TOO MANY SERVERS/PROCESSES`);
-
-        return port;
+    [Symbol.dispose](): void {
+        this.killAll();
+        this.cleanupFns.forEach((fn) => fn());
     }
 
     /**
@@ -98,9 +89,6 @@ export class WorkerPool {
     forget(worker: Worker) {
         this.byPids.delete(worker.pid);
         this.free.delete(worker);
-
-        this.startResolvers.get(worker.pid)?.(false);
-        this.resumeResolvers.get(worker.pid)?.(false);
     }
 
     /**
@@ -109,20 +97,6 @@ export class WorkerPool {
     killAll() {
         for (const worker of this.byPids.values()) {
             worker.stop();
-        }
-    }
-
-    *readPort(): Generator<{ event: string; pid: number; data: Record<string, any> }, void> {
-        const port = this.ns.getPortHandle(this.listenPort);
-
-        if (port.empty()) return;
-
-        while (true) {
-            const message = port.read();
-            if (message === "NULL PORT DATA") return;
-
-            if (!message || typeof message !== "object") continue;
-            yield message;
         }
     }
 

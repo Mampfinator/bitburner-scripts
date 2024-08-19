@@ -285,7 +285,7 @@ export function reserveThreads(
         return acc + Math.floor(curr.available / threadSize);
     }, 0);
 
-     if (available < threads) {
+    if (available < threads) {
         return { result: ReserveThreadsError.OutOfMemory, reservations: null };
     }
 

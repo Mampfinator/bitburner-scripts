@@ -16,10 +16,11 @@ globalThis.callValues = new Map();
 export class CallPool {
     readonly promises = new Map<string, ReturnType<PromiseConstructor["withResolvers"]>>();
 
-    public async call<
-        C extends CallCommand,
-        F = Index<NS, Split<C>>,
-    >(ns: NS, command: C, ...args: F extends (...args: infer P) => any ? P : any[]): Promise<F extends (...args: any[]) => infer R ? R : never> {
+    public async call<C extends CallCommand, F = Index<NS, Split<C>>>(
+        ns: NS,
+        command: C,
+        ...args: F extends (...args: infer P) => any ? P : any[]
+    ): Promise<F extends (...args: any[]) => infer R ? R : never> {
         const id = `${Date.now()}_${Math.random()}`;
 
         const reservation = system.memory.reserve(1.6 + ns.getFunctionRamCost(command));
@@ -118,7 +119,9 @@ export interface DoOptions<S extends CallCommand = CallCommand> {
 export async function main(ns: NS) {
     const pool = new CallPool();
 
-    const { _: [command, ...args] } = ns.flags([]) as {_: ScriptArg[]};
+    const {
+        _: [command, ...args],
+    } = ns.flags([]) as { _: ScriptArg[] };
     if (typeof command !== "string") {
         ns.tprint("ERROR: Invalid command");
         return;
@@ -128,12 +131,12 @@ export async function main(ns: NS) {
         command: command as CallCommand,
         // this is a hack.
         args: args as never,
-        store: "result"
+        store: "result",
     });
 
     const value = result.get("result");
     if (value === undefined) {
-        return ns.tprint("Result: undefined"); 
+        return ns.tprint("Result: undefined");
     }
 
     if (/Time/.test(command)) {

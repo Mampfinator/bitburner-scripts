@@ -5,8 +5,8 @@ export interface InjectableOptions {
 }
 
 const DEFAULT_OPTIONS: InjectableOptions = {
-    manual: false
-}
+    manual: false,
+};
 
 export const TYPE_REGISTRY = new Map<string | symbol | Function, any>();
 
@@ -16,12 +16,8 @@ export interface FullInjectableOptions extends InjectableOptions {
 
 export const Injectable = (options?: InjectableOptions): ClassDecorator => {
     return (target) => {
-        Reflect.defineMetadata(
-            INJECTABLE, 
-            { ...DEFAULT_OPTIONS, ...(options ?? {}), token: target, }, 
-            target
-        );
+        Reflect.defineMetadata(INJECTABLE, { ...DEFAULT_OPTIONS, ...(options ?? {}), token: target }, target);
 
         TYPE_REGISTRY.set(target, target);
-    }
-}
+    };
+};

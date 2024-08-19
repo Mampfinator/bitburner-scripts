@@ -1,5 +1,5 @@
 import { NS, Server } from "@ns";
-import { WORKER_SCRIPTS, WorkerMode } from "./consts";
+import { WorkerMode } from "./consts";
 import { type WorkerGroup } from "./workers/group";
 import { WorkerPool } from "./pool";
 import { MONITORING_PORT } from "monitoring/monitor.js";

@@ -1,5 +1,5 @@
-import { NS } from "@ns";
-import { WORKER_MESSAGE_PORT, WORKER_SCRIPTS, WorkerMode } from "../consts";
+import { BasicHGWOptions, NS } from "@ns";
+import { WORKER_MESSAGE_PORT, WORKER_SCRIPT_PATH, WorkerMessage, WorkerMode } from "../consts";
 import { WorkerPool } from "../pool";
 import { run as runScript } from "../../system/proc/run";
 import { Reservation } from "/system/memory";
@@ -50,15 +50,13 @@ export class Worker {
         this.mode = options.mode;
         this.target = options.target;
 
-        const scriptPath = WORKER_SCRIPTS[this.mode];
-
         const reservation = (this.reservation =
             options.useReservation ??
             globalThis.system.memory.reserve(this.pool.workerRam[this.mode] * this.threads, { tag: this.mode })!);
 
         const [pid, killed] = runScript(
             ns,
-            scriptPath,
+            WORKER_SCRIPT_PATH,
             {
                 hostname: reservation!.hostname,
                 threads: this.threads,
@@ -67,6 +65,8 @@ export class Worker {
             },
             "--target",
             this.target,
+            "--mode",
+            this.mode,
         );
         if (pid === 0) {
             console.warn(`Couldn't start worker: `, this, reservation);
@@ -95,7 +95,10 @@ export class Worker {
      * Kill this Worker's process.
      */
     stop() {
-        this.ns.kill(this.pid);
+        this.send({
+            event: "stop",
+            data: {},
+        });
         this.pid = 0;
         this.pool.forget(this);
 
@@ -106,9 +109,10 @@ export class Worker {
      * Instructs this worker to execute once.
      * @returns A Promise that resolves when the worker has finished its task.
      */
-    work() {
-        this.send("start", {
-            autoContinue: false,
+    work(options?: BasicHGWOptions) {
+        this.send({
+            event: "start",
+            data: { options },
         });
 
         return this.awaitDone();
@@ -142,13 +146,9 @@ export class Worker {
     /**
      * Send a message to this worker.
      */
-    send(event: string, data: Record<string, any>) {
+    send(message: WorkerMessage) {
         if (!this.running) return;
 
-        this.ns.writePort(WORKER_MESSAGE_PORT + this.pid, {
-            event,
-            pid: this.pid,
-            data,
-        });
+        this.ns.writePort(WORKER_MESSAGE_PORT + this.pid, message);
     }
 }

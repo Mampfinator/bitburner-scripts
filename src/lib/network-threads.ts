@@ -7,16 +7,18 @@ export function calcThreads(
     threadSize: number,
     reserveRam: Record<string, number> = {},
 ): { total: number; free: number } {
-    return [...servers.values()].reduce((acc, server) => {
-        const mem = server.memInfo; 
-        if (!server.memInfo) return acc;
+    return [...servers.values()].reduce(
+        (acc, server) => {
+            const mem = server.memInfo;
+            if (!server.memInfo) return acc;
 
-        const free = acc.free + Math.floor(mem.available / threadSize);
-        const total = acc.total + Math.floor(mem.capacity / threadSize);
+            const free = acc.free + Math.floor(mem.available / threadSize);
+            const total = acc.total + Math.floor(mem.capacity / threadSize);
 
-        return { total, free }
-    }, { total: 0, free: 0 });
-
+            return { total, free };
+        },
+        { total: 0, free: 0 },
+    );
 }
 
 export async function main(ns: NS) {

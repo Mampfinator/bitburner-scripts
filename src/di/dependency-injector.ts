@@ -9,7 +9,7 @@ class DependencyGraph {
     public readonly instantiable = new Set<string | symbol | Function>();
 
     readonly pending = new Set<string | symbol | Function>();
-    
+
     readonly dependencies = new Map<string | symbol | Function, Set<string | symbol | Function>>();
     readonly dependents = new Map<string | symbol | Function, Set<string | symbol | Function>>();
 
@@ -60,7 +60,7 @@ export class DependencyInjector {
     public async build(): Promise<void> {
         const types = [...TYPE_REGISTRY];
 
-        const graph = this.graph = new DependencyGraph();
+        const graph = (this.graph = new DependencyGraph());
 
         while (types.length > 0) {
             const entry = types.shift();
@@ -79,20 +79,22 @@ export class DependencyInjector {
 
             // injectable is instantiable, so we need to add it to the dependency graph.
             const parameters: unknown[] = Reflect.getMetadata("design:paramtypes", injectable) ?? [];
-            
+
             graph.setDependencies(
-                token, 
-                parameters.filter(parameter => 
-                    canHaveMetadata(parameter) && 
-                    Reflect.hasMetadata(INJECTABLE, parameter)
-                ).map(parameter => (Reflect.getMetadata(INJECTABLE, parameter as Function) as FullInjectableOptions).token)
+                token,
+                parameters
+                    .filter((parameter) => canHaveMetadata(parameter) && Reflect.hasMetadata(INJECTABLE, parameter))
+                    .map(
+                        (parameter) =>
+                            (Reflect.getMetadata(INJECTABLE, parameter as Function) as FullInjectableOptions).token,
+                    ),
             );
         }
     }
 
     /**
      * Instantiate as much of the dependency graph as possible.
-     * 
+     *
      * @returns `true` if all nodes were instantiated, `false` otherwise.
      */
     public async instantiate(): Promise<boolean> {
@@ -110,18 +112,24 @@ export class DependencyInjector {
             const options: FullInjectableOptions = Reflect.getMetadata(INJECTABLE, node) as FullInjectableOptions;
             if (options.manual) continue;
 
-            const parameters = (Reflect.getMetadata("design:paramtypes", node) as unknown[] ?? [])
-                .map(parameter => (Reflect.getMetadata(INJECTABLE, parameter as Function | object) as FullInjectableOptions).token)
-                .map(token => [token, this.instances.get(token)]);
+            const parameters = ((Reflect.getMetadata("design:paramtypes", node) as unknown[]) ?? [])
+                .map(
+                    (parameter) =>
+                        (Reflect.getMetadata(INJECTABLE, parameter as Function | object) as FullInjectableOptions)
+                            .token,
+                )
+                .map((token) => [token, this.instances.get(token)]);
 
             parameters.forEach(([token, instance], index) => {
                 if (instance === undefined) {
-                    throw new Error(`Cannot resolve parameter ${index} (${String(token)}) of ${node.name ?? String(node)}.`);
+                    throw new Error(
+                        `Cannot resolve parameter ${index} (${String(token)}) of ${node.name ?? String(node)}.`,
+                    );
                 }
             });
 
             try {
-                const instance = new node(...parameters.map(parameter => parameter[1]!));
+                const instance = new node(...parameters.map((parameter) => parameter[1]!));
                 this.instances.set(node, instance);
                 this.graph.resolve(node);
                 instantiable = [...this.graph.instantiable];
@@ -133,10 +141,20 @@ export class DependencyInjector {
         return this.graph.pending.size === 0;
     }
 
+    public async provide<T extends Type<unknown>>(
+        token: T,
+        instantiate: (instances: Map<string | symbol | Function, any>) => Promise<T> | T,
+    ): Promise<void>;
     public async provide<T extends Type<unknown>>(token: T, value: InstanceType<T>): Promise<void>;
     public async provide(token: string | symbol, value: any): Promise<void>;
     public async provide(token: string | symbol | Function, value: any): Promise<void> {
         if (!this.graph) throw new Error(`Cannot provide without building the dependency graph.`);
+        if (this.instances.has(token)) return;
+
+        if (typeof value === "function") {
+            value = await value(this.instances);
+        }
+
         this.instances.set(token, value);
         this.graph.resolve(token);
 
@@ -145,6 +163,11 @@ export class DependencyInjector {
 
     public async resolve<T>(token: any): Promise<T | undefined> {
         if (!this.graph) throw new Error(`Cannot resolve without building the dependency graph.`);
+
+        if (!this.instances.has(token)) {
+            await this.instantiate();
+        }
+
         return this.instances.get(token) as T | undefined;
     }
 }

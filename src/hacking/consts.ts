@@ -1,3 +1,5 @@
+import { BasicHGWOptions, NS } from "@ns";
+
 export const POOL_MESSAGE_PORT_BASE = 1000;
 export const WORKER_MESSAGE_PORT = 10000;
 
@@ -7,8 +9,22 @@ export enum WorkerMode {
     Weaken = "weaken",
 }
 
-export const WORKER_SCRIPTS = {
-    [WorkerMode.Hack]: "hacking/worker-scripts/hack.js",
-    [WorkerMode.Grow]: "hacking/worker-scripts/grow.js",
-    [WorkerMode.Weaken]: "hacking/worker-scripts/weaken.js",
-};
+export function getWorkerScriptCost(ns: NS, mode: WorkerMode) {
+    return 1.6 + ns.getFunctionRamCost(mode);
+}
+
+export const WORKER_SCRIPT_PATH = "hacking/worker.js";
+
+export interface WorkerStartMessage {
+    event: "start";
+    data: {
+        options?: BasicHGWOptions;
+    };
+}
+
+export interface WorkerStopMessage {
+    event: "stop";
+    data: {};
+}
+
+export type WorkerMessage = WorkerStartMessage | WorkerStopMessage;

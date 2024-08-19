@@ -133,6 +133,13 @@ export class TestContext {
 
     constructor(readonly ns: NS) {}
 
+    public ramOverride(ram: number) {
+        const actual = this.ns.ramOverride(ram);
+        if (actual < ram) {
+            throw new TestError(`Could not allocate enough RAM to run test.`);
+        }
+    }
+
     public beforeAll(callback: () => Awaitable<void>) {
         this.beforeAllCallback = callback;
     }

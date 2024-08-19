@@ -9,9 +9,7 @@ import { WorkerGroup } from "./workers/group";
 import { auto } from "/system/proc/auto";
 
 function rateServer(server: ServerData) {
-    return (
-        Math.pow(server.moneyMax, 1.5) / server.minDifficulty
-    ) * Math.log(server.serverGrowth);
+    return (Math.pow(server.moneyMax, 1.5) / server.minDifficulty) * Math.log(server.serverGrowth);
 }
 
 export async function main(ns: NS) {
@@ -22,16 +20,16 @@ export async function main(ns: NS) {
     let manager: BatchManager | undefined = undefined;
 
     while (true) {
-        const targets = [...globalThis.servers.values()].filter( s =>
-            !s.purchasedByPlayer && s.moneyMax > 0 && s.requiredHackingSkill <= ns.getHackingLevel()
-        ).sort((a, b) => rateServer(b) - rateServer(a))
+        const targets = [...globalThis.servers.values()]
+            .filter((s) => !s.purchasedByPlayer && s.moneyMax > 0 && s.requiredHackingSkill <= ns.getHackingLevel())
+            .sort((a, b) => rateServer(b) - rateServer(a));
 
         const target = targets[0];
 
         if (!manager || manager.target.hostname !== target.hostname) {
             ns.print(`Switching hacking target to ${target.hostname}.`);
             await (manager as BatchManager)?.stop();
-            
+
             manager = new BatchManager(pool, target);
             await manager.prepare();
             ns.print(`Prepared ${manager.target.hostname}. Now scheduling cycles.`);
@@ -89,7 +87,10 @@ class BatchManager {
             workers.forEach((worker) => worker.stop());
         };
 
-        const weakenThreads = Math.min((this.target.hackDifficulty - this.target.minDifficulty) / 0.05, calcThreads(this.pool.workerRam[WorkerMode.Weaken]).free);
+        const weakenThreads = Math.min(
+            (this.target.hackDifficulty - this.target.minDifficulty) / 0.05,
+            calcThreads(this.pool.workerRam[WorkerMode.Weaken]).free,
+        );
 
         if (weakenThreads > 0) {
             const weaken = this.pool.reserveGroup(weakenThreads, {
@@ -102,22 +103,22 @@ class BatchManager {
             }
         }
 
-
         const growMultiplier = 1 / (Math.max(this.target.moneyAvailable, 1) / this.target.moneyMax);
         if (growMultiplier !== 1) {
-            const analyzed = Math.ceil(this.ns.growthAnalyze(this.target.hostname, growMultiplier)); 
+            const analyzed = Math.ceil(this.ns.growthAnalyze(this.target.hostname, growMultiplier));
             const free = Math.floor(calcThreads(this.pool.workerRam[WorkerMode.Grow]).free * 0.5);
 
-            const growThreads = Math.min(
-                analyzed, free
-            );
+            const growThreads = Math.min(analyzed, free);
 
             const grow = this.pool.reserveGroup(growThreads, { mode: WorkerMode.Grow, target: this.target.hostname });
             if (grow) {
                 workers.push(grow);
 
                 const growSecIncrease = this.ns.growthAnalyzeSecurity(growThreads);
-                const weakenThreads = Math.min(Math.floor(growSecIncrease / 0.05), calcThreads(this.pool.workerRam[WorkerMode.Weaken]).free);
+                const weakenThreads = Math.min(
+                    Math.floor(growSecIncrease / 0.05),
+                    calcThreads(this.pool.workerRam[WorkerMode.Weaken]).free,
+                );
                 const weaken = this.pool.reserveGroup(weakenThreads, {
                     mode: WorkerMode.Weaken,
                     target: this.target.hostname,
