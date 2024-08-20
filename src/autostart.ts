@@ -35,6 +35,11 @@ const SCRIPTS: AutostartEntry[] = [
 
 export async function main(ns: NS) {
     const mainPid = ns.run("system/main.js");
+    if (!mainPid) {
+        ns.tprint("WARNING: Failed to start system main loop. Aborting autostart.");
+        return;
+    }
+
     while (!globalThis.awaitSystemReady) {
         await ns.asleep(20);
     }
