@@ -47,7 +47,7 @@ export async function main(ns: NS) {
 
     const mainMemory = globalThis.system.memory.info(globalThis.system.proc.getReservation(mainPid)!)!.amount;
 
-    ns.tprint(`Loaded system namespace and started system main loop using ${ns.formatRam(mainMemory)}.`);
+    ns.tprint(`Loaded system namespace and started system main loop using ${chalk.bold.cyan(ns.formatRam(mainMemory))}.`);
     ns.tprint("Loading startup scripts...");
 
     auto(ns, { tag: "system" });
@@ -61,7 +61,7 @@ export async function main(ns: NS) {
         if (script.condition?.(ns) ?? true) {
             if (script.wait) {
                 ns.tprint(
-                    chalk.blueBright(`Waiting ${script.wait}ms before starting ${chalk.cyan.bold(script.script)}.`),
+                    `Waiting ${script.wait}ms before starting ${chalk.cyan.bold(script.script)}.`
                 );
                 await sleep(script.wait);
             }
@@ -73,18 +73,16 @@ export async function main(ns: NS) {
                 if (reservation && system.memory.info(reservation)) {
                     const details = system.memory.info(reservation)!;
                     ns.tprint(
-                        `${chalk.cyan.bold(script.script)} ${chalk.blueBright(`is using ${ns.formatRam(details.amount)} (Index: ${details.chunkIndex}, Tag: ${details.tag ?? "Unknown"})`)}`,
+                        `${chalk.cyan.bold(script.script)} is using ${chalk.cyan.bold(ns.formatRam(details.amount))} (Index: ${details.chunkIndex}, Tag: ${details.tag ?? "Unknown"})`
                     );
                 }
             } else {
-                ns.print(chalk.yellow(`Failed to start ${chalk.yellowBright.bold(script.script)}${chalk.yellow(".")}`));
+                ns.print(chalk.yellow(`Failed to start ${chalk.yellow.bold(script.script)}${chalk.yellow(".")}`));
                 pending.push(script);
             }
         } else {
             ns.tprint(
-                chalk.blueBright(
-                    `Skipping ${chalk.cyan.bold(script.script)}${chalk.blueBright("(launch condition not met).")}`,
-                ),
+                `Skipping ${chalk.cyan.bold(script.script)} (launch condition not met).`,
             );
         }
 

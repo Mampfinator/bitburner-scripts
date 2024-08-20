@@ -18,6 +18,9 @@ function normalize(p) {
  */
 async function syncStatic() {
   syncDirectory.async(path.resolve(src), path.resolve(dist), {
+    onError(error) {
+      console.error(error);
+    },
     exclude: (file) => {
       const { ext } = path.parse(file);
       return ext && !allowedFiletypes.includes(ext);
@@ -48,7 +51,7 @@ async function syncStatic() {
  * Init phase only.
  */
 async function initTypeScript() {
-  const distFiles = await fg(`${dist}/**/*.js`);
+  const distFiles = await fg(`${dist}/**/*.js`).catch(() => []);
   for (const distFile of distFiles) {
     // search existing *.js file in dist
     const relative = path.relative(dist, distFile);
@@ -59,7 +62,7 @@ async function initTypeScript() {
       !fs.existsSync(srcFile.replace(/\.js$/, '.ts'))
     ) {
       try {
-        await fs.promises.unlink(distFile);
+        await fs.promises.unlink(distFile).catch(() => {});
         console.log(`${normalize(relative)} deleted`);
       } catch {}
     }
@@ -77,8 +80,10 @@ async function watchTypeScript() {
     const distFile = path.resolve(dist, relative);
     // if distFile exists, delete it
     if (fs.existsSync(distFile)) {
-      await fs.promises.unlink(distFile);
-      console.log(`${normalize(relative)} deleted`);
+      try {
+        await fs.promises.unlink(distFile);
+        console.log(`${normalize(relative)} deleted`);
+      } catch {}
     }
   });
 }
@@ -95,24 +100,37 @@ async function syncTypeScript() {
 const moduleName = packageJson.name.replace("-","_");
 
 const jsFileText = `
-import * as ${moduleName}_bg from './${moduleName}_bg.js';
-const { __wbg_set_wasm } = ${moduleName}_bg;
+async function dynamicImport(ns, path) {
+  const script = ns.read(path);
+  const scriptUri = "data:text/javascript;base64," + btoa(script);
+  return (await import(scriptUri));
+}
+
+let wasmInterface;
+
+export function getWasmInterface() {
+  if (!wasmInterface) throw new Error("WASM not initialized. Call init() first.");
+  return wasmInterface;
+}
 
 /*
  * Initialize the WASM module.
  */
 export async function init(ns) {
+  const ${moduleName}_bg = await dynamicImport(ns, "${wasm.out}/${moduleName}_bg.js");
+
+  const { __wbg_set_wasm } = ${moduleName}_bg;
+
   const wasmb64 = ns.read("${wasm.out}/${moduleName}.wasm.txt");
   const bytes = Uint8Array.from(atob(wasmb64), c => c.charCodeAt(0));
   const wasm = await WebAssembly.compile(bytes);
   const instance = await WebAssembly.instantiate(wasm, {
-    "./${moduleName}_bg.js": ${moduleName}_bg
+    "./${moduleName}_bg.js": ${moduleName}_bg,
   });
 
   __wbg_set_wasm(instance.exports);
+  wasmInterface = ${moduleName}_bg;
 }
-
-export * from "./${moduleName}_bg.js";
 `
 
 async function compileWasm() {
@@ -136,8 +154,13 @@ async function compileWasm() {
   await fs.promises.writeFile(`${moduleName}.d.ts`, 
 `declare module "${wasm.out}/${moduleName}" {
     declare async function init(ns: NS): Promise<void>;
+    declare function getWasmInterface(): typeof WASMInterface;
+}
+
+declare namespace WASMInterface {
 ${tsDeclarations.toString().replace("export", "declare").split("\n").map(l => ("    " + l)).join("\n")}
-}`);
+}
+`);
 }
 
 async function watchWasm() {
@@ -163,8 +186,11 @@ console.log('Start watching static, ts and rs files...');
 
 async function main() {
   await syncStatic();
+  console.log("Started syncing static files.");
   await syncTypeScript();
+  console.log("Started syncing ts files.");
   await syncWasm();
+  console.log("Started syncing wasm-pack files.");
 }
 
 main();

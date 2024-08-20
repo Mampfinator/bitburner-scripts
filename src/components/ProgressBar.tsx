@@ -2,36 +2,33 @@ const { React } = globalThis;
 
 const CONTAINER_STYLE: React.CSSProperties = {
     display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
+    flexDirection: "row",
     margin: "20px",
 };
 
 const BAR_STYLE: React.CSSProperties = {
-    width: "0%",
-    height: "auto",
+    height: "25px",
+    padding: 0,
+    margin: 0,
 };
-
-const VALUE_STYLE: React.CSSProperties = {};
 
 export interface ProgressProps {
     progress: number;
-    label?: string;
+    barHeight?: string;
     barColor?: string;
-    fontSize?: string;
 }
 
-export const ProgressBar = ({ progress, label, barColor, fontSize }: ProgressProps) => {
+export const ProgressBar = ({ progress, barHeight, barColor }: ProgressProps) => {
     return (
         <div style={CONTAINER_STYLE}>
             <div
                 style={{
                     ...BAR_STYLE,
-                    width: `${progress}%`,
-                    backgroundColor: barColor ?? "green",
+                    width: `${progress * 100}%`,
+                    background: barColor ?? "green",
+                    height: barHeight ?? "25px",
                 }}
             />
-            {label ? label : <div style={{ ...VALUE_STYLE, fontSize: fontSize ?? "0.75rem" }}>{progress}</div>}
         </div>
     );
 };

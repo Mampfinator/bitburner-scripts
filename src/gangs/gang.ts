@@ -2,7 +2,7 @@ import { GangTaskStats, NS } from "@ns";
 import { auto } from "/system/proc/auto";
 import { GangSettings } from "./settings";
 import { sleep } from "/lib/lib";
-import { gang as wasmGang } from "wasm/bitburner_scripts";
+import { getWasmInterface } from "wasm/bitburner_scripts";
 
 /**
  * Current mode the gang operates in.
@@ -185,7 +185,8 @@ function findMax<T>(arr: T[], fn: (element: T, index: number) => number): T | un
 // }
 
 export async function main(ns: NS) {
-    //await gang(ns);
+    const wasmGang = getWasmInterface().gang;
+
     await wasmGang(ns);
 }
 

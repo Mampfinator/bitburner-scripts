@@ -2,11 +2,15 @@ import { NS } from "@ns";
 import { WorkerPool } from "./pool";
 import { ServerData } from "/lib/servers/server-cache";
 import { HWGWWorkerBatch } from "./workers/batch";
-import { findExtremes, sleep } from "/lib/lib";
+import { findExtremes, randomString, sleep } from "/lib/lib";
 import { WorkerMode } from "./consts";
 import { calcThreads } from "/lib/network-threads";
 import { WorkerGroup } from "./workers/group";
 import { auto } from "/system/proc/auto";
+import { EventEmitter } from "/system/events";
+import { BatchManagerView } from "./components/BatchManager";
+
+const { React } = globalThis;
 
 function rateServer(server: ServerData) {
     return (Math.pow(server.moneyMax, 1.5) / server.minDifficulty) * Math.log(server.serverGrowth);
@@ -15,6 +19,7 @@ function rateServer(server: ServerData) {
 export async function main(ns: NS) {
     auto(ns, { tag: "hacking" });
     ns.disableLog("ALL");
+    ns.clearLog();
 
     const pool = new WorkerPool(ns);
     let manager: BatchManager | undefined = undefined;
@@ -27,19 +32,19 @@ export async function main(ns: NS) {
         const target = targets[0];
 
         if (!manager || manager.target.hostname !== target.hostname) {
-            ns.print(`Switching hacking target to ${target.hostname}.`);
+            ns.clearLog();
             await (manager as BatchManager)?.stop();
 
             manager = new BatchManager(pool, target);
+            ns.printRaw(<BatchManagerView manager={manager} />);
             await manager.prepare();
-            ns.print(`Prepared ${manager.target.hostname}. Now scheduling cycles.`);
         }
 
         const prepared = await manager.prepare();
         if (prepared) {
             let scheduled = true;
             while (scheduled) {
-                scheduled = manager.schedule();
+                scheduled = await manager.schedule();
                 // give the game some breathing room.
                 await sleep(100, true);
             }
@@ -48,16 +53,20 @@ export async function main(ns: NS) {
     }
 }
 
+type BatchManagerEvents = {
+    "scheduled": (batch: HWGWWorkerBatch, id: string) => void;
+}
+
 /**
  * Manages HWGW batches for a single server.
  */
-class BatchManager {
+export class BatchManager extends EventEmitter<BatchManagerEvents> {
     private readonly ns: NS;
-    private readonly batches = new Set<HWGWWorkerBatch>();
+    public readonly batches = new Map<string, HWGWWorkerBatch>();
 
     private workPromises = new Set<Promise<boolean>>();
 
-    _target: ServerData;
+    readonly _target: ServerData;
 
     public get target() {
         this._target.refetch();
@@ -68,6 +77,8 @@ class BatchManager {
         private readonly pool: WorkerPool,
         target: ServerData,
     ) {
+        super();
+
         if (target.moneyMax === 0) throw new Error(`Invalid server for hacking.`);
         this._target = target;
         this.ns = pool.ns;
@@ -138,7 +149,7 @@ class BatchManager {
      */
     public minCores() {
         const res = findExtremes(
-            [...this.batches]
+            [...this.batches.values()]
                 .map((batch) => [batch.hackGroup, batch.growGroup, batch.weakenGrowGroup, batch.weakenHackGroup])
                 .flat()
                 .map((group) => group.minCores()),
@@ -150,14 +161,14 @@ class BatchManager {
 
     private calculateHackRatio(_iterations = 25): number {
         // TODO: Actually implement.
-        return 0.05;
+        return 0.25;
     }
 
     /**
      * Schedule a new cycle to run in parallel with all other current cycles.
      * @returns whether the cycle was scheduled.
      */
-    public schedule(): boolean {
+    public async schedule(): Promise<boolean> {
         const hackRatio = this.calculateHackRatio();
 
         const { hackThreads, growThreads, growWeakenThreads, hackWeakenThreads } = this.pool.calculateBatchRatios(
@@ -201,7 +212,12 @@ class BatchManager {
             growGroup,
             hackGroup,
         );
-        this.batches.add(batch);
+
+        const id = randomString(7)
+
+        this.batches.set(id, batch);
+
+        await this.emit("scheduled", batch, id);
 
         this.workPromises.add(batch.runContinuously());
 

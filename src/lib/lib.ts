@@ -242,3 +242,15 @@ export class ControllablePromise<T> extends Promise<T> {
         });
     }
 }
+
+const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+export function randomString(length: number) {
+    let out = "";
+
+    for (let i = 0; i < length; i++) {
+        out += ALPHABET.charAt(Math.floor(Math.random() * ALPHABET.length));
+    }
+
+    return out;
+}

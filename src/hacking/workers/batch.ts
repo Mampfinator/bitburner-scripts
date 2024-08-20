@@ -1,7 +1,9 @@
 import { NS } from "@ns";
 import { WorkerGroup } from "./group";
+import { formatTime } from "/lib/lib";
+import { EventEmitter } from "/system/events";
 
-export const DELAY = 150;
+export const DELAY = 50;
 
 class OrderError<T> extends Error {
     constructor(
@@ -19,32 +21,56 @@ class OrderError<T> extends Error {
  * @throws An `OrderError` if the promises finish in the wrong order.
  */
 async function assertFinishedInOrder<T>(...promises: Promise<T>[]): Promise<T[]> {
-    const results = await Promise.all(promises.map((p) => p.then((result) => ({ finishedAt: new Date(), result }))));
-    if (results.length <= 1) return results.map(({ result }) => result);
+    if (promises.length <= 1) return Promise.all(promises); 
 
-    for (let i = 1; i < results.length; i++) {
-        if (results[i].finishedAt < results[i - 1].finishedAt) {
-            throw new OrderError<T>({ ...results[i - 1], index: i - 1 }, { ...results[i], index: i });
-        }
+    const withTimestamp = promises.map((p) => p.then((result) => ({ finishedAt: new Date(), result })));
+
+    let { finishedAt } = await withTimestamp[0];
+
+    for (let i = 1; i < withTimestamp.length; i++) {
+        const current = await withTimestamp[i];
+        if (current.finishedAt < finishedAt) throw new OrderError<T>({ ...(await withTimestamp[i - 1]), index: i - 1 }, { ...current, index: i });
+        finishedAt = current.finishedAt;
     }
 
-    return results.map(({ result }) => result);
+    return Promise.all(promises);
 }
 
+/**
+ * Rethrow `OrderError`s with a human-readable message.
+ */
 function rethrowOrder(nameA: string, nameB: string): (error: any) => never {
     return (error: any) => {
         if (!(error instanceof OrderError)) throw error;
 
         throw new Error(`
-            ${nameB} finished before ${nameA}: ${Number(error.b.finishedAt) - Number(error.a.finishedAt)}ms.
+            ${nameB} finished before ${nameA}: ${Number(error.a.finishedAt) - Number(error.b.finishedAt)}ms.
         `);
     };
+}
+
+interface BatchTiming {
+    hackDelay: number;
+    growDelay: number;
+    hackWeakenDelay: number;
+    growWeakenDelay: number;
+
+    hackTime: number;
+    growTime: number;
+    hackWeakenTime: number;
+    growWeakenTime: number;
+}
+
+export type HWGWWorkerBatchEvents = {
+    started: (timing: BatchTiming) => void;
+    done: (gained: number) => void;
+    error: (error: any) => void;
 }
 
 /**
  * A `Hack->Weaken->Grow->Weaken` worker batch.
  */
-export class HWGWWorkerBatch {
+export class HWGWWorkerBatch extends EventEmitter<HWGWWorkerBatchEvents> {
     constructor(
         public readonly ns: NS,
         public readonly target: string,
@@ -52,7 +78,9 @@ export class HWGWWorkerBatch {
         public readonly weakenHackGroup: WorkerGroup,
         public readonly growGroup: WorkerGroup,
         public readonly hackGroup: WorkerGroup,
-    ) {}
+    ) {
+        super();
+    }
 
     /**
      * Runs this batch once.
@@ -70,21 +98,34 @@ export class HWGWWorkerBatch {
         const weakenTime = this.ns.getWeakenTime(this.target);
         const growTime = this.ns.getGrowTime(this.target);
 
-        const hackDelay = weakenTime - hackTime - DELAY;
-        const growDelay = weakenTime - growTime - DELAY;
+        const hackDelay = Math.max(weakenTime - (hackTime + DELAY), DELAY);
+        const hackWeakenDelay = 0;
+        const growDelay = weakenTime - growTime + DELAY;
+        const growWeakenDelay = 0 + 2 * DELAY;
 
         if (hackTime > growTime) {
             throw new Error(`hackTime > growTime not implemented.`);
         }
 
+        this.emit("started", {
+            hackDelay, 
+            growDelay, 
+            hackWeakenDelay, 
+            growWeakenDelay,
+            growTime: growTime + growDelay,
+            hackTime: hackTime + hackDelay,
+            hackWeakenTime: weakenTime + hackWeakenDelay,
+            growWeakenTime: weakenTime + growWeakenDelay,
+        });
+
         const results = await assertFinishedInOrder(
             assertFinishedInOrder(
                 this.hackGroup.work({ additionalMsec: hackDelay }),
-                this.weakenHackGroup.work({ additionalMsec: 0 }),
+                this.weakenHackGroup.work({ additionalMsec: hackWeakenDelay }),
             ).catch(rethrowOrder("hack", "weakenHack")),
             assertFinishedInOrder(
                 this.growGroup.work({ additionalMsec: growDelay }),
-                this.weakenGrowGroup.work({ additionalMsec: 0 }),
+                this.weakenGrowGroup.work({ additionalMsec: growWeakenDelay }),
             ).catch(rethrowOrder("grow", "weakenGrow")),
         ).catch(rethrowOrder("hack", "grow"));
 
@@ -97,7 +138,11 @@ export class HWGWWorkerBatch {
             return null;
         }
 
-        return hackResult.reduce((acc, result) => acc + result.result, 0);
+        const gained = hackResult.reduce((acc, result) => acc + result.result, 0);
+
+        this.emit("done", gained);
+
+        return gained;
     }
 
     async runContinuously() {
