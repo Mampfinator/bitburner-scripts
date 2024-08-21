@@ -1,6 +1,6 @@
 import { NS } from "@ns";
 import { compressTime, getCompressionFactor, uncompressTime } from "/system/compress-time";
-import { formatTime } from "/lib/lib";
+import { formatDuration, formatTime } from "/lib/lib";
 
 const { React } = globalThis;
 
@@ -73,7 +73,7 @@ export function TimeCompression({ ns }: { ns: NS }) {
                     <option value={24 * 60 * 60 * 1000}>1d</option>
                     <option value={7 * 24 * 60 * 60 * 1000}>7d</option>
                 </select>{" "}
-                = {formatTime(exampleTime / factor)})
+                = {formatDuration(exampleTime / factor)})
             </span>
             <button
                 style={{ alignSelf: "start" }}

@@ -195,6 +195,29 @@ export function formatTime(time: number): string {
     return units.map((input) => input.join("")).join("");
 }
 
+const TIME_UNITS = [
+    [1000, "ms"],
+    [60, "s"],
+    [60, "m"],
+    [24, "h"],
+    [1, "d"],
+] as const;
+
+export function formatDuration(time: number): string {
+    let out = "";
+    for (const [divisor, unit] of TIME_UNITS) {
+        const value = Math.floor(time % divisor);
+        time /= divisor;
+
+        if (value > 0) {
+            out = `${value}${unit}${out}`;
+        }
+    }
+
+    return out.length > 0 ? out : "0ms";
+}
+
+
 /**
  * Finds the minimum and maximum values in an array.
  *
@@ -222,34 +245,13 @@ export function findExtremes<T>(items: T[], accessor: (item: T) => number): { ma
     return { max, min };
 }
 
-/**
- * A Promise that can be externally resolved and rejected.
- */
-export class ControllablePromise<T> extends Promise<T> {
-    public readonly resolve!: (value: T | PromiseLike<T>) => T;
-    public readonly reject!: (reason?: any) => void;
+const DEFAULT_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
-    constructor(executor?: (resolve: (value: T | PromiseLike<T>) => void, reject: (reason?: any) => void) => void) {
-        super((resolve, reject) => {
-            //@ts-expect-error: alternative is more wordy.
-            this.resolve = (value) => {
-                resolve(value);
-                return this;
-            };
-            //@ts-expect-error: alternative is more wordy.
-            this.reject = reject;
-            executor?.(resolve, reject);
-        });
-    }
-}
-
-const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-
-export function randomString(length: number) {
+export function randomString(length: number, alphabet = DEFAULT_ALPHABET) {
     let out = "";
 
     for (let i = 0; i < length; i++) {
-        out += ALPHABET.charAt(Math.floor(Math.random() * ALPHABET.length));
+        out += alphabet.charAt(Math.floor(Math.random() * alphabet.length));
     }
 
     return out;

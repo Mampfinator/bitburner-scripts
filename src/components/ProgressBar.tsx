@@ -20,7 +20,7 @@ export interface ProgressProps {
 
 export const ProgressBar = ({ progress, barHeight, barColor }: ProgressProps) => {
     return (
-        <div style={CONTAINER_STYLE}>
+        <div style={CONTAINER_STYLE} data-progress={progress}>
             <div
                 style={{
                     ...BAR_STYLE,

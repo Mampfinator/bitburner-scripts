@@ -1,6 +1,5 @@
 import { NS } from "@ns";
 import { WorkerGroup } from "./group";
-import { formatTime } from "/lib/lib";
 import { EventEmitter } from "/system/events";
 
 export const DELAY = 50;
@@ -71,6 +70,12 @@ export type HWGWWorkerBatchEvents = {
  * A `Hack->Weaken->Grow->Weaken` worker batch.
  */
 export class HWGWWorkerBatch extends EventEmitter<HWGWWorkerBatchEvents> {
+    public get metadata() {
+        return structuredClone(this._metadata);
+    }
+
+    private _metadata: { timing: BatchTiming } | null = null;
+
     constructor(
         public readonly ns: NS,
         public readonly target: string,
@@ -107,7 +112,7 @@ export class HWGWWorkerBatch extends EventEmitter<HWGWWorkerBatchEvents> {
             throw new Error(`hackTime > growTime not implemented.`);
         }
 
-        this.emit("started", {
+        const timing = {
             hackDelay, 
             growDelay, 
             hackWeakenDelay, 
@@ -116,7 +121,11 @@ export class HWGWWorkerBatch extends EventEmitter<HWGWWorkerBatchEvents> {
             hackTime: hackTime + hackDelay,
             hackWeakenTime: weakenTime + hackWeakenDelay,
             growWeakenTime: weakenTime + growWeakenDelay,
-        });
+        }
+
+        this._metadata = { timing };
+
+        await this.emit("started", timing);
 
         const results = await assertFinishedInOrder(
             assertFinishedInOrder(

@@ -11,13 +11,14 @@ export const Batch = ({ batch, id }: { batch: HWGWWorkerBatch, id: string }) => 
     // current progress out of 100
     const [progress, setProgress] = useState(0);
 
-    let totalTime = 0;
-    let currentTime = 0;
+    let totalTime = batch.metadata?.timing.growWeakenTime ?? 0;
+
+    const [currentTime, setCurrentTime] = useState(0);
 
     batch.on("started", timing => {
         setProgress(0);
 
-        currentTime = 0;
+        setCurrentTime(0);
         totalTime = timing.growWeakenTime;
     });
 
@@ -26,11 +27,11 @@ export const Batch = ({ batch, id }: { batch: HWGWWorkerBatch, id: string }) => 
 
         const interval = setInterval(() => {
             const now = Date.now();
-            currentTime += now - last;
+            setCurrentTime(currentTime + (now - last));
             last = now;
 
             setProgress(Math.min((currentTime / totalTime) * 100, 100));
-        });
+        }, 250);
 
         return () => clearInterval(interval);
     });

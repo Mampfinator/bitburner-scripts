@@ -16,6 +16,10 @@ function rateServer(server: ServerData) {
     return (Math.pow(server.moneyMax, 1.5) / server.minDifficulty) * Math.log(server.serverGrowth);
 }
 
+function calculateFreeNetworkRam(): number {
+    return [...servers.values()].map(server => server.memInfo?.available ?? 0).reduce((a, b) => a + b, 0);
+}
+
 export async function main(ns: NS) {
     auto(ns, { tag: "hacking" });
     ns.disableLog("ALL");
@@ -24,21 +28,37 @@ export async function main(ns: NS) {
     const pool = new WorkerPool(ns);
     let manager: BatchManager | undefined = undefined;
 
+    let oldScore = 0;
+
+
     while (true) {
+        const freeRam = calculateFreeNetworkRam();
+
         const targets = [...globalThis.servers.values()]
-            .filter((s) => !s.purchasedByPlayer && s.moneyMax > 0 && s.requiredHackingSkill <= ns.getHackingLevel())
+            .filter(s => !s.purchasedByPlayer && s.moneyMax > 0 && s.requiredHackingSkill <= ns.getHackingLevel())
+            .filter(s => pool.calculateBatchRatios(s.hostname, 0.25).totalRam <= freeRam)
             .sort((a, b) => rateServer(b) - rateServer(a));
 
         const target = targets[0];
+        const score = rateServer(target);
 
-        if (!manager || manager.target.hostname !== target.hostname) {
+        if (
+            (!manager || manager.target.hostname !== target.hostname) && 
+            // only switch targets if the new target is significantly better than the current one, since prepare() is expensive.
+            (oldScore * 1.1 < score)
+        ) {
             ns.clearLog();
             await (manager as BatchManager)?.stop();
 
             manager = new BatchManager(pool, target);
             ns.printRaw(<BatchManagerView manager={manager} />);
             await manager.prepare();
+            oldScore = score;
+        } else {
+            oldScore = score;
         }
+
+        if (!manager) throw new Error(`No manager!`);
 
         const prepared = await manager.prepare();
         if (prepared) {
@@ -46,10 +66,10 @@ export async function main(ns: NS) {
             while (scheduled) {
                 scheduled = await manager.schedule();
                 // give the game some breathing room.
-                await sleep(100, true);
+                await sleep(500, true);
             }
         }
-        await sleep(250, true);
+        await sleep(1000, true);
     }
 }
 

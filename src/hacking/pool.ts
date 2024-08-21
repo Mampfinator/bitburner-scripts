@@ -160,6 +160,8 @@ export class WorkerPool implements Disposable {
         const growSecIncrease = this.ns.growthAnalyzeSecurity(growThreads);
         const growWeakenThreads = Math.ceil(growSecIncrease / 0.05);
 
+        const workerRam = this.workerRam;
+
         return {
             hackThreads,
             hackWeakenThreads,
@@ -168,6 +170,10 @@ export class WorkerPool implements Disposable {
             get total() {
                 return this.hackThreads + this.hackWeakenThreads + this.growThreads + this.growWeakenThreads;
             },
+            get totalRam() {
+                return this.hackThreads * workerRam[WorkerMode.Hack] + this.hackWeakenThreads * workerRam[WorkerMode.Weaken] +
+                    this.growThreads * workerRam[WorkerMode.Grow] + this.growWeakenThreads * workerRam[WorkerMode.Weaken];
+            }
         };
     }
 
