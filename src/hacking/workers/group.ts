@@ -4,6 +4,14 @@ import { WorkerPool } from "../pool";
 import { Worker, WorkResult } from "./worker";
 import { findExtremes } from "/lib/lib";
 
+function allWorkSuccess(res: PromiseSettledResult<WorkResult | null>[]): res is PromiseFulfilledResult<WorkResult>[] {
+    return res.every(isWorkSuccess);
+}   
+
+function isWorkSuccess(res: PromiseSettledResult<WorkResult | null>): res is PromiseFulfilledResult<WorkResult> {
+    return res.status === "fulfilled" && res.value !== null;
+}
+
 export class WorkerGroup {
     workers: Set<Worker>;
     ns: NS;
@@ -51,11 +59,12 @@ export class WorkerGroup {
     /**
      * @returns {Promise<boolean>}
      */
-    async work(options?: BasicHGWOptions): Promise<null | WorkResult[]> {
-        const result = await Promise.allSettled([...this.workers.values()].map((worker) => worker.work(options)));
+    async work(options?: BasicHGWOptions, signal?: AbortSignal): Promise<null | WorkResult[]> {
+        const result = await Promise.allSettled([...this.workers.values()].map((worker) => worker.work(options, signal)));
 
         // if any single worker failed starting, we abort here and free all workers.
-        if (result.some((res) => res.status === "rejected" || res.value === null)) {
+        // TODO: do not stop workers if we aborted. this would probably require making `WorkResult` a union of some description.
+        if (!allWorkSuccess(result)) {
             for (const worker of this.workers) {
                 worker.stop();
             }
@@ -63,16 +72,7 @@ export class WorkerGroup {
             return null;
         }
 
-        return result.map((res) => (res as PromiseFulfilledResult<WorkResult>).value);
-    }
-
-    async nextDone() {
-        const results = await Promise.all([...this.workers].map((worker) => worker.awaitDone()));
-        return {
-            target: results[0].target,
-            mode: results[0].mode,
-            result: results.reduce((acc, { result }) => acc + result, 0),
-        };
+        return result.map((res) => res.value);
     }
 
     stop() {

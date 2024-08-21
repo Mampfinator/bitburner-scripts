@@ -67,25 +67,38 @@ export async function main(ns: NS) {
         send("killed");
     });
 
-    let promise: Promise<number> | undefined;
+    let reject: ((reason: any) => void) | undefined;
+    let promise: Promise<void> | undefined;
 
     while (true) {
         for await (const { event, data } of readPort<{ options?: BasicHGWOptions }>(port)) {
             if (event === "start") {
                 if (promise) {
                     console.error(`Worker ${pid} already started.`, data);
+                    ns.print("Worker already started.");
                     continue;
                 }
 
                 const { options } = data;
 
-                promise = ns[mode](target, options).then((n) => {
+                promise = new Promise<void>(async (res, rej) => {
+                    reject = rej;
+
+                    const result = await ns[mode](target, options);
+                    send("done", {result});
+                    res();
+                }).catch(() => {
+                    ns.print("Aborted.");
+                }).finally(() => {
+                    reject = undefined;
                     promise = undefined;
-                    send("done", { result: n });
-                    return n;
                 });
             } else if (event === "stop") {
                 return;
+            } else if (event === "abort") {
+                // if we don't have anything to abort, we just ignore the message.
+                if (!promise || !reject) continue;
+                reject(undefined);
             }
         }
 

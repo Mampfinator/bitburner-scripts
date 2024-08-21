@@ -109,13 +109,18 @@ export class Worker {
      * Instructs this worker to execute once.
      * @returns A Promise that resolves when the worker has finished its task.
      */
-    work(options?: BasicHGWOptions) {
+    public async work(options?: BasicHGWOptions, signal?: AbortSignal) {
         this.send({
             event: "start",
             data: { options },
         });
 
-        return this.awaitDone();
+        try {
+            return await this.awaitDone(signal);
+        } catch {
+            // the only way `awaitDone` can throw is if it's aborted.
+            return null;
+        }
     }
 
     #nextDonePromise: null | Promise<WorkResult> = null;
@@ -124,9 +129,16 @@ export class Worker {
     /**
      * Returns a Promise that returns when the Worker finishes its current task.
      */
-    awaitDone() {
+    private awaitDone(signal?: AbortSignal) {
         if (!this.#nextDonePromise) {
-            const { promise, resolve } = Promise.withResolvers<WorkResult>();
+            const { promise, resolve, reject } = Promise.withResolvers<WorkResult>();
+            signal?.addEventListener("abort", () => {
+                this.send({
+                    event: "abort",
+                    data: {},
+                });
+                reject(signal.reason ?? new Error("Aborted."));
+            });
             this.#nextDonePromise = promise;
             this.#nextDoneRes = resolve;
         }

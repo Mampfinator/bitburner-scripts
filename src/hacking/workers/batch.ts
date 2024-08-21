@@ -1,49 +1,19 @@
 import { NS } from "@ns";
 import { WorkerGroup } from "./group";
 import { EventEmitter } from "/system/events";
+import { assertFinishedInOrder, OrderError } from "/lib/lib";
 
 export const DELAY = 50;
-
-class OrderError<T> extends Error {
-    constructor(
-        public readonly a: { index: number; finishedAt: Date; result: T },
-        public readonly b: { index: number; finishedAt: Date; result: T },
-    ) {
-        super(`Promise ${b.index} finished before ${a.index}: ${Number(a.finishedAt)} < ${Number(b.finishedAt)}`);
-    }
-}
-
-/**
- * Assert that all promises finish in the order they're specified.
- * This waits for all Promises to resolve *before* computing the result.
- *
- * @throws An `OrderError` if the promises finish in the wrong order.
- */
-async function assertFinishedInOrder<T>(...promises: Promise<T>[]): Promise<T[]> {
-    if (promises.length <= 1) return Promise.all(promises); 
-
-    const withTimestamp = promises.map((p) => p.then((result) => ({ finishedAt: new Date(), result })));
-
-    let { finishedAt } = await withTimestamp[0];
-
-    for (let i = 1; i < withTimestamp.length; i++) {
-        const current = await withTimestamp[i];
-        if (current.finishedAt < finishedAt) throw new OrderError<T>({ ...(await withTimestamp[i - 1]), index: i - 1 }, { ...current, index: i });
-        finishedAt = current.finishedAt;
-    }
-
-    return Promise.all(promises);
-}
 
 /**
  * Rethrow `OrderError`s with a human-readable message.
  */
-function rethrowOrder(nameA: string, nameB: string): (error: any) => never {
+function rethrowOrderError(...names: string[]): (error: any) => never {
     return (error: any) => {
         if (!(error instanceof OrderError)) throw error;
 
         throw new Error(`
-            ${nameB} finished before ${nameA}: ${Number(error.a.finishedAt) - Number(error.b.finishedAt)}ms.
+            ${names[error.b.index]} finished before ${names[error.a.index]}: ${Number(error.a.finishedAt) - Number(error.b.finishedAt)}ms.
         `);
     };
 }
@@ -70,6 +40,10 @@ export type HWGWWorkerBatchEvents = {
  * A `Hack->Weaken->Grow->Weaken` worker batch.
  */
 export class HWGWWorkerBatch extends EventEmitter<HWGWWorkerBatchEvents> {
+    /**
+     * Cached metadata about the last started `work` call.
+     * Guaranteed to be non-null after the `started` event is emitted.
+     */
     public get metadata() {
         return structuredClone(this._metadata);
     }
@@ -91,7 +65,7 @@ export class HWGWWorkerBatch extends EventEmitter<HWGWWorkerBatchEvents> {
      * Runs this batch once.
      * @returns the amount of money stolen, or null if the batch failed to run.
      */
-    async work(): Promise<number | null> {
+    async work(signal?: AbortSignal): Promise<number | null> {
         if (!this.runnable) {
             this.ns.tprint(
                 `Failed to start batch for ${this.target}. ${this.hackGroup ? "Hack exists" : "Hack is null"} : ${this.growGroup ? "Grow exists" : "Grow is null"}.`,
@@ -129,14 +103,14 @@ export class HWGWWorkerBatch extends EventEmitter<HWGWWorkerBatchEvents> {
 
         const results = await assertFinishedInOrder(
             assertFinishedInOrder(
-                this.hackGroup.work({ additionalMsec: hackDelay }),
-                this.weakenHackGroup.work({ additionalMsec: hackWeakenDelay }),
-            ).catch(rethrowOrder("hack", "weakenHack")),
+                this.hackGroup.work({ additionalMsec: hackDelay }, signal),
+                this.weakenHackGroup.work({ additionalMsec: hackWeakenDelay }, signal),
+            ).catch(rethrowOrderError("hack", "weakenHack")),
             assertFinishedInOrder(
-                this.growGroup.work({ additionalMsec: growDelay }),
-                this.weakenGrowGroup.work({ additionalMsec: growWeakenDelay }),
-            ).catch(rethrowOrder("grow", "weakenGrow")),
-        ).catch(rethrowOrder("hack", "grow"));
+                this.growGroup.work({ additionalMsec: growDelay }, signal),
+                this.weakenGrowGroup.work({ additionalMsec: growWeakenDelay }, signal),
+            ).catch(rethrowOrderError("grow", "weakenGrow")),
+        ).catch(rethrowOrderError("hack", "grow"));
 
         if (results === null) {
             return null;
@@ -154,9 +128,14 @@ export class HWGWWorkerBatch extends EventEmitter<HWGWWorkerBatchEvents> {
         return gained;
     }
 
-    async runContinuously() {
+    /**
+     * Run this batch continuously.
+     * 
+     * @param signal optional AbortSignal.
+     */
+    async runContinuously(signal?: AbortSignal) {
         while (this.runnable) {
-            const result = await this.work();
+            const result = await this.work(signal);
             if (result === null) return false;
         }
 

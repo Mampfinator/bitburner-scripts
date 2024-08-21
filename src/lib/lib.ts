@@ -256,3 +256,34 @@ export function randomString(length: number, alphabet = DEFAULT_ALPHABET) {
 
     return out;
 }
+
+
+export class OrderError<T> extends Error {
+    constructor(
+        public readonly a: { index: number; finishedAt: Date; result: T },
+        public readonly b: { index: number; finishedAt: Date; result: T },
+    ) {
+        super(`Promise ${b.index} finished before ${a.index}: ${Number(a.finishedAt)} < ${Number(b.finishedAt)}`);
+    }
+}
+
+/**
+ * Assert that all promises finish in the order they're specified.
+ *
+ * @throws An `OrderError` if any Promise finishes in the wrong order.
+ */
+export async function assertFinishedInOrder<T>(...promises: Promise<T>[]): Promise<T[]> {
+    if (promises.length <= 1) return Promise.all(promises); 
+
+    const withTimestamp = promises.map((p) => p.then((result) => ({ finishedAt: new Date(), result })));
+
+    let { finishedAt } = await withTimestamp[0];
+
+    for (let i = 1; i < withTimestamp.length; i++) {
+        const current = await withTimestamp[i];
+        if (current.finishedAt < finishedAt) throw new OrderError<T>({ ...(await withTimestamp[i - 1]), index: i - 1 }, { ...current, index: i });
+        finishedAt = current.finishedAt;
+    }
+
+    return Promise.all(promises);
+}

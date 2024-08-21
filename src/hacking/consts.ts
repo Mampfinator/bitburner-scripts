@@ -27,4 +27,9 @@ export interface WorkerStopMessage {
     data: {};
 }
 
-export type WorkerMessage = WorkerStartMessage | WorkerStopMessage;
+export interface WorkerAbortMessage {
+    event: "abort";
+    data: {};
+}
+
+export type WorkerMessage = WorkerStartMessage | WorkerStopMessage | WorkerAbortMessage;
