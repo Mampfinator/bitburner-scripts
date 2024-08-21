@@ -164,37 +164,6 @@ export function pluralize(singular: string, plural: string, amount: number) {
     return amount === 1 ? singular : plural;
 }
 
-export function formatTime(time: number): string {
-    const milliseconds = Math.floor(time % 1000);
-
-    time /= 1000;
-    const seconds = Math.floor(time % 60);
-
-    time /= 60;
-    const minutes = Math.floor(time % 60);
-
-    time /= 60;
-    const hours = Math.floor(time % 24);
-
-    time /= 24;
-    const days = Math.floor(time);
-
-    const units = (
-        [
-            [milliseconds, "ms"],
-            [seconds, "s"],
-            [minutes, "m"],
-            [hours, "h"],
-            [days, "d"],
-        ] as const
-    )
-        .filter(([unit]) => unit > 0)
-        .reverse();
-
-    if (units.length === 0) return "0s";
-    return units.map((input) => input.join("")).join("");
-}
-
 const TIME_UNITS = [
     [1000, "ms"],
     [60, "s"],
@@ -286,4 +255,20 @@ export async function assertFinishedInOrder<T>(...promises: Promise<T>[]): Promi
     }
 
     return Promise.all(promises);
+}
+
+
+// TODO: there has to be a more generic way of doing this. But this is fine for now.
+const NUMBER_SUFFIXES = ["", "k", "m", "b", "t", "q", "Q"];
+
+/**
+ * Attempt to parse a number formatted with `ns.formatNumber`.
+ */
+export function unformatNumber(string: string): number | null {
+    const [, numStr, , letter] = /([0-9]+(\.[0-9]+)?)([A-Za-z])*/.exec(string.trim())!;
+
+    const multIndex = NUMBER_SUFFIXES.indexOf(letter ?? "");
+    if (multIndex < 0) return null;
+
+    return Number(numStr) * 1000 ** multIndex;
 }

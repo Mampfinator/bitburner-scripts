@@ -1,3 +1,5 @@
+import { unformatNumber } from "/lib/lib";
+
 export enum ContractRewardType {
     Money,
     Reputation,
@@ -21,21 +23,6 @@ export interface ReputationReward {
 }
 
 export type ContractReward = ReputationReward | MoneyReward;
-
-// TODO: there has to be a more generic way of doing this. But this is fine for now.
-const MULTIPLIERS = ["", "k", "m", "b", "t", "q", "Q"];
-
-/**
- * Attempt to parse a number formatted with `ns.formatNumber`.
- */
-export function unformatNumber(string: string): number | null {
-    const [, numStr, , letter] = /([0-9]+(\.[0-9]+)?)([A-Za-z])*/.exec(string.trim())!;
-
-    const multIndex = MULTIPLIERS.indexOf(letter);
-    if (multIndex < 0) return null;
-
-    return Number(numStr) * 1000 ** multIndex;
-}
 
 const MONEY_REGEX = /(?<=\$).+\b/;
 
