@@ -80,8 +80,10 @@ export async function main(ns: NS) {
     }
     function reportSuccess(hostname: string, file: string, type: string, rewardString: string) {
         const reward = parseRewardString(rewardString);
-        if (!reward) return console.log(`Failed to parse contract reward, but contract was completed.`, rewardString);
-        // TODO report to dashboard
+        if (!reward) {
+            ns.write("failed.txt", rewardString, "a");
+            return console.log(`Failed to parse contract reward, but contract was completed.`, rewardString);
+        }
 
         messageBus.send({
             type: CCTSMessageType.Success,
