@@ -1,7 +1,6 @@
 import { BasicHGWOptions, NS } from "@ns";
 
-export const POOL_MESSAGE_PORT_BASE = 1000;
-export const WORKER_MESSAGE_PORT = 10000;
+export const WORKER_MESSAGE_PORT_BASE = 10000;
 
 export enum WorkerMode {
     Hack = "hack",
@@ -24,12 +23,10 @@ export interface WorkerStartMessage {
 
 export interface WorkerStopMessage {
     event: "stop";
-    data: {};
 }
 
 export interface WorkerAbortMessage {
     event: "abort";
-    data: {};
 }
 
 export type WorkerMessage = WorkerStartMessage | WorkerStopMessage | WorkerAbortMessage;

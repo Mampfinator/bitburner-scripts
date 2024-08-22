@@ -1,6 +1,6 @@
 import { NetscriptPort, NS } from "@ns";
 
-export function* readPort(port: NetscriptPort) {
+export function* readPort<T = any>(port: NetscriptPort): Generator<T, void> {
     if (port.empty()) return;
     while (true) {
         const message = port.read();

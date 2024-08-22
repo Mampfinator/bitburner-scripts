@@ -1,22 +1,9 @@
-import { BasicHGWOptions, NetscriptPort, NS } from "@ns";
-
-/**
- * Port read by Workers.
- */
-const WORKER_MESSAGE_PORT_BASE = 10000;
+import { NS } from "@ns";
+import { getWorkerScriptCost, WORKER_MESSAGE_PORT_BASE, WorkerMessage, WorkerMode } from "./consts";
+import { readPort } from "/lib/lib";
 
 function roundToHundreths(x: number) {
     return Math.round(x * 100) / 100;
-}
-
-function* readPort<T = Record<string, any>>(port: NetscriptPort): Generator<{ event: string; data: T }, void> {
-    while (true) {
-        const message = port.read();
-        if (message === "NULL PORT DATA") return;
-
-        if (!message || typeof message !== "object") continue;
-        yield message;
-    }
 }
 
 export async function main(ns: NS) {
@@ -30,7 +17,7 @@ export async function main(ns: NS) {
     ]) as {
         autoContinue: boolean;
         target: string;
-        mode: "hack" | "grow" | "weaken";
+        mode: WorkerMode;
     };
 
     if (typeof autoContinue !== "boolean")
@@ -38,7 +25,7 @@ export async function main(ns: NS) {
             `Invalid argument. Expected autoContinue to be boolean, got ${typeof autoContinue} (${autoContinue})`,
         );
 
-    if (typeof target !== "string" || target === "") {
+    if (typeof target !== "string" || target === "" || !(globalThis.servers.get(target))) {
         throw new Error(`Invalid target: ${target} (${typeof target}).`);
     }
 
@@ -46,7 +33,7 @@ export async function main(ns: NS) {
         throw new Error(`Invalid mode: ${mode} (${typeof mode}).`);
     }
 
-    const required = 1.6 + ns.getFunctionRamCost(mode);
+    const required = getWorkerScriptCost(ns, mode);
     const actual = ns.ramOverride(required);
     if (roundToHundreths(actual) < roundToHundreths(required)) {
         throw new Error(`Insufficient RAM. Required: ${ns.formatRam(required)}. Actual: ${ns.formatRam(actual)}`);
@@ -71,8 +58,10 @@ export async function main(ns: NS) {
     let promise: Promise<void> | undefined;
 
     while (true) {
-        for await (const { event, data } of readPort<{ options?: BasicHGWOptions }>(port)) {
-            if (event === "start") {
+        for await (const message of readPort<WorkerMessage>(port)) {
+            if (message.event === "start") {
+                const { data } = message;
+
                 if (promise) {
                     console.error(`Worker ${pid} already started.`, data);
                     ns.print("Worker already started.");
@@ -93,9 +82,9 @@ export async function main(ns: NS) {
                     reject = undefined;
                     promise = undefined;
                 });
-            } else if (event === "stop") {
+            } else if (message.event === "stop") {
                 return;
-            } else if (event === "abort") {
+            } else if (message.event === "abort") {
                 // if we don't have anything to abort, we just ignore the message.
                 if (!promise || !reject) continue;
                 reject(undefined);

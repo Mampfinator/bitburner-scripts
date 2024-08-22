@@ -161,6 +161,6 @@ export class Worker {
     send(message: WorkerMessage) {
         if (!this.running) return;
 
-        this.ns.writePort(WORKER_MESSAGE_PORT + this.pid, message);
+        this.ns.writePort(WORKER_MESSAGE_PORT_BASE + this.pid, message);
     }
 }

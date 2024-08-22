@@ -52,12 +52,16 @@ export async function main(ns: NS) {
     globalThis.eventEmitter.register(ns, "server:added", (hostname: string) => {
         ns.scp(
             [
+                // lib
+                "lib/lib.js",
+
                 // call scripts
                 "call/call.js",
                 "call/call-worker.js",
 
                 // hacking stuff
                 "hacking/worker.js",
+                "hacking/consts.js",
 
                 // share worker
                 "share/share.js",
