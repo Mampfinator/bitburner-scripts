@@ -32,6 +32,7 @@ interface BatchTiming {
 
 export type HWGWWorkerBatchEvents = {
     started: (timing: BatchTiming) => void;
+    stopped: () => void;
     done: (gained: number) => void;
     error: (error: any) => void;
 }
@@ -146,18 +147,29 @@ export class HWGWWorkerBatch extends EventEmitter<HWGWWorkerBatchEvents> {
         return !!this.weakenGrowGroup && !!this.weakenHackGroup && !!this.hackGroup && !!this.growGroup;
     }
 
+    get workers() {
+        return {
+            hackGroup: this.hackGroup,
+            growGroup: this.growGroup,
+            weakenGrowGroup: this.weakenGrowGroup,
+            weakenHackGroup: this.weakenHackGroup,
+        } as const;
+    }
+
     /**
      * Kill every worker in this batch. Effectively makes this worker unusable.
      * Also deletes the groups from the batch.
      */
-    stop() {
-        this.weakenGrowGroup?.stop();
-        Reflect.deleteProperty(this, "weakenGrowGroup");
-        this.weakenHackGroup?.stop();
-        Reflect.deleteProperty(this, "weakenHackGroup");
-        this.hackGroup?.stop();
-        Reflect.deleteProperty(this, "hackGroup");
-        this.growGroup?.stop();
-        Reflect.deleteProperty(this, "growGroup");
+    async stop() {
+        await Promise.all(Object.entries(this.workers).map(([key, worker]) => new Promise<void>(async res => {
+            const cleanup = worker.withCleanup("stopped", () => {
+                cleanup();
+                Reflect.deleteProperty(this, key);
+                res();
+            });
+            await worker.stop();
+        })));
+
+        this.emit("stopped");
     }
 }

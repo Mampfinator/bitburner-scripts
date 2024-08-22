@@ -3,6 +3,7 @@ import { WorkerMode } from "../consts";
 import { WorkerPool } from "../pool";
 import { Worker, WorkResult } from "./worker";
 import { findExtremes } from "/lib/lib";
+import { EventEmitter } from "/system/events";
 
 function allWorkSuccess(res: PromiseSettledResult<WorkResult | null>[]): res is PromiseFulfilledResult<WorkResult>[] {
     return res.every(isWorkSuccess);
@@ -12,7 +13,12 @@ function isWorkSuccess(res: PromiseSettledResult<WorkResult | null>): res is Pro
     return res.status === "fulfilled" && res.value !== null;
 }
 
-export class WorkerGroup {
+export type WorkerGroupEvents = {
+    done: (result: WorkResult[]) => void;
+    stopped: () => void;
+}
+
+export class WorkerGroup extends EventEmitter<WorkerGroupEvents> {
     workers: Set<Worker>;
     ns: NS;
     pool: WorkerPool;
@@ -23,6 +29,8 @@ export class WorkerGroup {
     }
 
     constructor(workers: Set<Worker>) {
+        super();
+
         if (workers.size <= 0) throw new Error(`Invalid Worker set for WorkerGroup.`);
 
         const mode = [...workers.values()][0].mode;
@@ -65,19 +73,17 @@ export class WorkerGroup {
         // if any single worker failed starting, we abort here and free all workers.
         // TODO: do not stop workers if we aborted. this would probably require making `WorkResult` a union of some description.
         if (!allWorkSuccess(result)) {
-            for (const worker of this.workers) {
-                worker.stop();
-            }
-
+            await this.stop();
             return null;
         }
 
-        return result.map((res) => res.value);
+        const results = result.map((res) => res.value);
+        this.emit("done", results);
+        return results;
     }
 
-    stop() {
-        for (const worker of this.workers) {
-            worker.stop();
-        }
+    async stop() {
+        await Promise.all([...this.workers.values()].map((worker) => worker.stop()));
+        this.emit("stopped");
     }
 }

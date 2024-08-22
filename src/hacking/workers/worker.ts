@@ -1,8 +1,9 @@
 import { BasicHGWOptions, NS } from "@ns";
-import { WORKER_MESSAGE_PORT, WORKER_SCRIPT_PATH, WorkerMessage, WorkerMode } from "../consts";
+import { WORKER_MESSAGE_PORT_BASE, WORKER_SCRIPT_PATH, WorkerMessage, WorkerMode } from "../consts";
 import { WorkerPool } from "../pool";
 import { run as runScript } from "../../system/proc/run";
 import { Reservation } from "/system/memory";
+import { EventEmitter } from "/system/events";
 
 export interface WorkResult {
     target: string;
@@ -25,10 +26,15 @@ export interface WorkerOptions {
     mode: WorkerMode;
 }
 
+type WorkerEvents = {
+    done: (result: WorkResult) => void;
+    stopped: () => void;
+}
+
 /**
  * Represents a remote instance of `hacking/worker.js`.
  */
-export class Worker {
+export class Worker extends EventEmitter<WorkerEvents> {
     ns: NS;
     pool: WorkerPool;
     target: string;
@@ -43,6 +49,8 @@ export class Worker {
     }
 
     constructor(ns: NS, pool: WorkerPool, options: WorkerOptions) {
+        super();
+
         this.ns = ns;
         this.pool = pool;
 
@@ -75,6 +83,8 @@ export class Worker {
 
         this.awaitKilled = killed!.then(() => {
             if (this.pid > 0) this.stop();
+        }).finally(() => {
+            this.emit("stopped");
         });
 
         this.pid = pid;
@@ -94,15 +104,14 @@ export class Worker {
     /**
      * Kill this Worker's process.
      */
-    stop() {
+    public async stop() {
         this.send({
             event: "stop",
-            data: {},
         });
         this.pid = 0;
         this.pool.forget(this);
 
-        return this.awaitKilled;
+        await this.awaitKilled;
     }
 
     /**
@@ -135,11 +144,19 @@ export class Worker {
             signal?.addEventListener("abort", () => {
                 this.send({
                     event: "abort",
-                    data: {},
                 });
                 reject(signal.reason ?? new Error("Aborted."));
             });
-            this.#nextDonePromise = promise;
+            this.#nextDonePromise = promise
+                .then(result => {
+                    this.emit("done", result);
+                    return result;
+                })
+                .finally(() => {
+                    this.#nextDonePromise = null;
+                    this.#nextDoneRes = null;
+                });
+                
             this.#nextDoneRes = resolve;
         }
 
@@ -151,8 +168,6 @@ export class Worker {
      */
     done(result: WorkResult) {
         this.#nextDoneRes?.(result);
-        this.#nextDonePromise = null;
-        this.#nextDoneRes = null;
     }
 
     /**
